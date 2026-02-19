@@ -293,6 +293,163 @@ END $$;
 
 
 -- =============================================
+-- 12. TABLAS: Gestión de Proyectos
+-- =============================================
+
+-- Tabla principal de Proyectos
+CREATE TABLE IF NOT EXISTS public.projects (
+    id            uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+    name          text          NOT NULL,
+    client        text          NOT NULL,
+    status        text          DEFAULT 'En Progreso',
+    description   text,
+    id_alias      text          UNIQUE, -- e.g., PRJ-2024-001
+    total_hours   integer       DEFAULT 0,
+    actual_hours  integer       DEFAULT 0,
+    created_at    timestamptz   DEFAULT now(),
+    updated_at    timestamptz   DEFAULT now()
+);
+
+-- Hitos del Proyecto
+CREATE TABLE IF NOT EXISTS public.project_milestones (
+    id            uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
+    title         text          NOT NULL,
+    target_date   date,
+    status        text          DEFAULT 'pending', -- pending, in_progress, completed
+    created_at    timestamptz   DEFAULT now()
+);
+
+-- Tareas del Proyecto
+CREATE TABLE IF NOT EXISTS public.project_tasks (
+    id            uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
+    title         text          NOT NULL,
+    status        text          DEFAULT 'todo', -- todo, doing, done
+    priority      text          DEFAULT 'Media', -- Alta, Media, Baja
+    assigned_to   uuid          REFERENCES public.users(id) ON DELETE SET NULL,
+    created_at    timestamptz   DEFAULT now(),
+    updated_at    timestamptz   DEFAULT now()
+);
+
+-- Archivos del Proyecto
+CREATE TABLE IF NOT EXISTS public.project_files (
+    id            uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
+    name          text          NOT NULL,
+    size          text,
+    file_type     text,
+    url           text          NOT NULL,
+    created_at    timestamptz   DEFAULT now()
+);
+
+-- Miembros del Proyecto (para compartir/asignar)
+CREATE TABLE IF NOT EXISTS public.project_members (
+    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
+    user_id       uuid          REFERENCES public.users(id) ON DELETE CASCADE,
+    role          text          DEFAULT 'viewer', -- admin, editor, viewer
+    PRIMARY KEY (project_id, user_id)
+);
+
+-- Índices para Proyectos
+CREATE INDEX IF NOT EXISTS idx_projects_name ON public.projects(name);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON public.projects(status);
+CREATE INDEX IF NOT EXISTS idx_milestones_project ON public.project_milestones(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_project ON public.project_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_files_project ON public.project_files(project_id);
+
+-- Triggers updated_at para Proyectos y Tareas
+DROP TRIGGER IF EXISTS set_updated_at_projects ON public.projects;
+CREATE TRIGGER set_updated_at_projects
+    BEFORE UPDATE ON public.projects
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+DROP TRIGGER IF EXISTS set_updated_at_project_tasks ON public.project_tasks;
+CREATE TRIGGER set_updated_at_project_tasks
+    BEFORE UPDATE ON public.project_tasks
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+
+-- =============================================
+-- 13. POLÍTICAS RLS - Proyectos
+-- =============================================
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_milestones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
+
+-- Limpiar políticas existentes
+DROP POLICY IF EXISTS "projects_select_member" ON public.projects;
+DROP POLICY IF EXISTS "projects_all_admin" ON public.projects;
+
+-- SELECT Projects: El usuario puede ver si es miembro o es admin global
+CREATE POLICY "projects_select_member"
+    ON public.projects FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.project_members pm 
+            WHERE pm.project_id = public.projects.id AND pm.user_id = auth.uid()
+        ) OR EXISTS (
+            SELECT 1 FROM public.users u 
+            WHERE u.id = auth.uid() AND u.role = 'admin'
+        )
+    );
+
+-- ALL Projects: Solo administradores (globales o del proyecto)
+CREATE POLICY "projects_all_admin"
+    ON public.projects FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.users 
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );
+
+-- Políticas similares para hitos, tareas y archivos (heredan de project_id)
+CREATE POLICY "milestones_select_member" ON public.project_milestones FOR SELECT TO authenticated
+USING (EXISTS (SELECT 1 FROM public.projects p WHERE p.id = project_id));
+
+CREATE POLICY "tasks_select_member" ON public.project_tasks FOR SELECT TO authenticated
+USING (EXISTS (SELECT 1 FROM public.projects p WHERE p.id = project_id));
+
+CREATE POLICY "files_select_member" ON public.project_files FOR SELECT TO authenticated
+USING (EXISTS (SELECT 1 FROM public.projects p WHERE p.id = project_id));
+
+
+-- =============================================
+-- 14. HABILITAR REALTIME (Actualizado v2)
+-- =============================================
+
+DO $$ 
+BEGIN
+    -- Tablas base
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'users') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'leads') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.leads;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'services') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.services;
+    END IF;
+    
+    -- Nuevas tablas de proyectos
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'projects') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.projects;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'project_milestones') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.project_milestones;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'project_tasks') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.project_tasks;
+    END IF;
+END $$;
+
+
+-- =============================================
 -- VERIFICACIÓN
 -- =============================================
 -- Ejecutar después de todo lo anterior para verificar:

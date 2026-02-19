@@ -5,6 +5,7 @@ import ProjectDetail from './pages/ProjectDetail';
 import Users from './pages/Users';
 import Leads from './pages/Leads';
 import Services from './pages/Services';
+import Projects from './pages/Projects';
 import Login from './pages/Login';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -80,7 +81,7 @@ function App() {
 
                         <Route path="/projects" element={
                             <ProtectedRoute>
-                                <ProjectDetail />
+                                <Projects />
                             </ProtectedRoute>
                         } />
 
