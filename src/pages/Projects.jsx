@@ -137,25 +137,18 @@ export default function Projects() {
                 id_alias: finalAlias
             };
 
-            // 1. Create the project
-            const { data: project, error: projectError } = await supabase
-                .from('projects')
-                .insert([insertData])
-                .select()
-                .single();
+            // 1. Call RPC function to create project safely
+            const { data: projectId, error: rpcError } = await supabase
+                .rpc('create_project', {
+                    p_name: formData.name,
+                    p_client: formData.client,
+                    p_description: formData.description || '',
+                    p_alias: finalAlias,
+                    p_total_hours: parseInt(formData.total_hours) || 0,
+                    p_lead_id: formData.lead_id || null
+                });
 
-            if (projectError) throw projectError;
-
-            // 2. Add creator as admin member
-            const { error: memberError } = await supabase
-                .from('project_members')
-                .insert([{
-                    project_id: project.id,
-                    user_id: currentProfile.id,
-                    role: 'admin'
-                }]);
-
-            if (memberError) throw memberError;
+            if (rpcError) throw rpcError;
 
             // 3. Update lead status if applicable
             if (formData.lead_id) {

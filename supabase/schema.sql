@@ -510,7 +510,51 @@ END $$;
 
 
 -- =============================================
--- VERIFICACIÓN
+-- 15. FUNCIONES RPC (Para crear proyectos de forma segura)
+-- =============================================
+CREATE OR REPLACE FUNCTION create_project(
+    p_name text,
+    p_client text,
+    p_description text,
+    p_alias text,
+    p_total_hours int,
+    p_lead_id uuid
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER -- Ejecuta con permisos de admin, saltando RLS
+SET search_path = public
+AS $$
+DECLARE
+    new_project_id uuid;
+    v_user_id uuid;
+BEGIN
+    -- Verificar que el usuario está autenticado
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- 1. Insertar Proyecto
+    INSERT INTO public.projects (name, client, status, description, id_alias, total_hours, lead_id)
+    VALUES (p_name, p_client, 'En Progreso', p_description, p_alias, p_total_hours, p_lead_id)
+    RETURNING id INTO new_project_id;
+
+    -- 2. Insertar Miembro (Admin)
+    INSERT INTO public.project_members (project_id, user_id, role)
+    VALUES (new_project_id, v_user_id, 'admin');
+
+    -- 3. Actualizar Lead (si existe)
+    IF p_lead_id IS NOT NULL THEN
+        UPDATE public.leads SET status = 'ganado' WHERE id = p_lead_id;
+    END IF;
+
+    RETURN new_project_id;
+END;
+$$;
+
+-- =============================================
+-- 16. VERIFICACIÓN
 -- =============================================
 -- Ejecutar después de todo lo anterior para verificar:
 
