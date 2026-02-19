@@ -64,7 +64,7 @@ export default function ProjectDetail() {
                             Cliente: <span className="text-variable-main font-bold">Inmobiliaria Premium</span>
                         </p>
                     </div>
-                    <div className="flex flex-col xs:flex-row gap-4 w-full sm:w-auto">
+                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                         <button className="glass flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold text-sm text-variable-main hover:brightness-110 transition-all shadow-sm">
                             <Share2 size={18} /> Compartir
                         </button>

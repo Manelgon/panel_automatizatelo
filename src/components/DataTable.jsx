@@ -182,7 +182,7 @@ export default function DataTable({
                         }}
                     >
                         <Columns3 size={15} />
-                        <span className="hidden xs:inline">Columnas</span>
+                        <span className="hidden sm:inline">Columnas</span>
                         <span
                             className="px-1.5 py-0.5 rounded-lg text-[10px] font-black"
                             style={{

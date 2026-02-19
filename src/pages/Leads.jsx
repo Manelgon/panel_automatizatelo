@@ -39,9 +39,9 @@ export default function Leads() {
         client_type: 'particular',
         service_interest: 'automatizacion',
         message: '',
-        source: 'panel_admin',
-        score: 3,
-        privacy_accepted: true
+        source: 'Panel Administrativo',
+        score: 0,
+        privacy_accepted: false
     };
     const [formData, setFormData] = useState(defaultForm);
 
@@ -127,7 +127,7 @@ export default function Leads() {
                             </div>
                         )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 w-full xs:w-auto">
+                    <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                         <button
                             onClick={fetchLeads}
                             className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all flex items-center justify-center"
@@ -143,7 +143,7 @@ export default function Leads() {
                         </button>
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex-1 xs:flex-none bg-primary text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-lg shadow-primary/20"
+                            className="flex-1 sm:flex-none bg-primary text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-lg shadow-primary/20"
                         >
                             <UserPlus size={20} /> <span className="whitespace-nowrap">Nuevo Lead</span>
                         </button>
@@ -306,27 +306,7 @@ export default function Leads() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Calificación (Score)</label>
-                                    <div className="flex flex-wrap gap-4 items-center bg-white/5 p-4 rounded-2xl border border-variable">
-                                        <div className="flex gap-2">
-                                            {[1, 2, 3, 4, 5].map((s) => (
-                                                <button key={s} type="button" onClick={() => setFormData({ ...formData, score: s })} className="transition-transform active:scale-90">
-                                                    <Star size={24} className={s <= formData.score ? 'fill-primary text-primary' : 'text-variable-muted'} />
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <span className="sm:ml-auto text-[10px] font-black text-primary uppercase">{formData.score}/5 Puntos</span>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Mensaje o Notas</label>
-                                    <div className="relative">
-                                        <MessageSquare className="absolute left-4 top-4 text-variable-muted" size={18} />
-                                        <textarea value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all h-24 resize-none text-sm" placeholder="Observaciones adicionales..." />
-                                    </div>
-                                </div>
+                                {/* Removed Score and Message fields for administrative creation */}
 
                                 <button
                                     disabled={loading}

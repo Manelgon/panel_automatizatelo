@@ -192,7 +192,7 @@ export default function Users() {
                             {fetchError && <span className="text-rose-500 block">Error DB: {fetchError.message} - {fetchError.details}</span>}
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 w-full xs:w-auto">
+                    <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                         <button
                             onClick={fetchUsers}
                             className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all flex items-center justify-center"
@@ -208,7 +208,7 @@ export default function Users() {
                         </button>
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex-1 xs:flex-none bg-primary text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-lg shadow-primary/20"
+                            className="flex-1 sm:flex-none bg-primary text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-lg shadow-primary/20"
                         >
                             <UserPlus size={20} /> <span className="whitespace-nowrap">Nuevo Miembro</span>
                         </button>
