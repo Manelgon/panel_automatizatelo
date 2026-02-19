@@ -9,6 +9,7 @@ import Projects from './pages/Projects';
 import Login from './pages/Login';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 // Componente para proteger rutas
 const ProtectedRoute = ({ children, requireAdmin = true }) => {
@@ -44,52 +45,54 @@ const ProtectedRoute = ({ children, requireAdmin = true }) => {
 function App() {
     return (
         <AuthProvider>
-            <ThemeProvider>
-                <Router>
-                    <Routes>
-                        <Route path="/login" element={<Login />} />
+            <NotificationProvider>
+                <ThemeProvider>
+                    <Router>
+                        <Routes>
+                            <Route path="/login" element={<Login />} />
 
-                        <Route path="/" element={
-                            <ProtectedRoute>
-                                <Dashboard />
-                            </ProtectedRoute>
-                        } />
+                            <Route path="/" element={
+                                <ProtectedRoute>
+                                    <Dashboard />
+                                </ProtectedRoute>
+                            } />
 
-                        <Route path="/users" element={
-                            <ProtectedRoute>
-                                <Users />
-                            </ProtectedRoute>
-                        } />
+                            <Route path="/users" element={
+                                <ProtectedRoute>
+                                    <Users />
+                                </ProtectedRoute>
+                            } />
 
-                        <Route path="/leads" element={
-                            <ProtectedRoute>
-                                <Leads />
-                            </ProtectedRoute>
-                        } />
+                            <Route path="/leads" element={
+                                <ProtectedRoute>
+                                    <Leads />
+                                </ProtectedRoute>
+                            } />
 
-                        <Route path="/services" element={
-                            <ProtectedRoute>
-                                <Services />
-                            </ProtectedRoute>
-                        } />
+                            <Route path="/services" element={
+                                <ProtectedRoute>
+                                    <Services />
+                                </ProtectedRoute>
+                            } />
 
-                        <Route path="/projects/:id" element={
-                            <ProtectedRoute>
-                                <ProjectDetail />
-                            </ProtectedRoute>
-                        } />
+                            <Route path="/projects/:id" element={
+                                <ProtectedRoute>
+                                    <ProjectDetail />
+                                </ProtectedRoute>
+                            } />
 
-                        <Route path="/projects" element={
-                            <ProtectedRoute>
-                                <Projects />
-                            </ProtectedRoute>
-                        } />
+                            <Route path="/projects" element={
+                                <ProtectedRoute>
+                                    <Projects />
+                                </ProtectedRoute>
+                            } />
 
-                        {/* Redirect a login por defecto si no encuentra ruta */}
-                        <Route path="*" element={<Navigate to="/" />} />
-                    </Routes>
-                </Router>
-            </ThemeProvider>
+                            {/* Redirect a login por defecto si no encuentra ruta */}
+                            <Route path="*" element={<Navigate to="/" />} />
+                        </Routes>
+                    </Router>
+                </ThemeProvider>
+            </NotificationProvider>
         </AuthProvider>
     );
 }

@@ -25,10 +25,12 @@ import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import DataTable from '../components/DataTable';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function Projects() {
     const { darkMode } = useTheme();
     const { profile: currentProfile } = useAuth();
+    const { showNotification, confirm } = useNotifications();
     const navigate = useNavigate();
     const { search } = useLocation();
     const query = new URLSearchParams(search);
@@ -38,6 +40,8 @@ export default function Projects() {
     const [loading, setLoading] = useState(false);
     const [projectsList, setProjectsList] = useState([]);
     const [leads, setLeads] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [services, setServices] = useState([]);
     const [fetchError, setFetchError] = useState(null);
 
     const defaultForm = {
@@ -47,7 +51,9 @@ export default function Projects() {
         status: 'En Progreso',
         total_hours: 0,
         id_alias: '',
-        lead_id: ''
+        lead_id: '',
+        assigned_users: [], // Array of user IDs
+        selected_services: [] // Array of service IDs
     };
     const [formData, setFormData] = useState(defaultForm);
 
@@ -79,9 +85,31 @@ export default function Projects() {
         return data || [];
     };
 
+    const fetchUsers = async () => {
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, first_name, second_name, role, status')
+            .order('first_name', { ascending: true });
+
+        if (error) console.error("Error fetching users:", error);
+        setUsers(data || []);
+    };
+
+    const fetchServices = async () => {
+        const { data, error } = await supabase
+            .from('services')
+            .select('*')
+            .order('name', { ascending: true });
+
+        if (error) console.error("Error fetching services:", error);
+        setServices(data || []);
+    };
+
     useEffect(() => {
         const init = async () => {
             await fetchProjects();
+            await fetchUsers();
+            await fetchServices();
             const leadsData = await fetchLeads();
 
             if (convertLeadId) {
@@ -145,7 +173,9 @@ export default function Projects() {
                     p_description: formData.description || '',
                     p_alias: finalAlias,
                     p_total_hours: parseInt(formData.total_hours) || 0,
-                    p_lead_id: formData.lead_id || null
+                    p_lead_id: formData.lead_id || null,
+                    p_assigned_users: formData.assigned_users,
+                    p_service_ids: formData.selected_services
                 });
 
             if (rpcError) throw rpcError;
@@ -161,17 +191,24 @@ export default function Projects() {
                 navigate('/projects', { replace: true });
             }
 
-            alert('Proyecto creado con éxito y Lead convertido');
+            showNotification('Proyecto creado con éxito y Lead convertido');
         } catch (err) {
             console.error('Error creating project:', err);
-            alert(`Error al crear proyecto: ${err.message}`);
+            showNotification(`Error al crear proyecto: ${err.message}`, 'error');
         } finally {
             setLoading(false);
         }
     };
 
     const handleDeleteProject = async (id) => {
-        if (!window.confirm('¿Estás seguro de que deseas eliminar este proyecto definitivamente? Se borrarán todos los hitos, tareas y archivos asociados.')) return;
+        const confirmed = await confirm({
+            title: '¿Eliminar Proyecto?',
+            message: '¿Estás seguro de que deseas eliminar este proyecto definitivamente? Se borrarán todos los hitos, tareas y archivos asociados.',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) return;
 
         setLoading(true);
         try {
@@ -181,10 +218,11 @@ export default function Projects() {
                 .eq('id', id);
 
             if (error) throw error;
+            showNotification('Proyecto eliminado correctamente');
             fetchProjects();
         } catch (err) {
             console.error('Error deleting project:', err);
-            alert(`Error al eliminar: ${err.message}`);
+            showNotification(`Error al eliminar: ${err.message}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -326,7 +364,7 @@ export default function Projects() {
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-xl glass rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 shadow-2xl overflow-visible"
+                            className="relative w-full max-w-2xl glass rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 shadow-2xl overflow-y-auto max-h-[90vh]"
                         >
                             <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 sm:top-8 sm:right-8 text-variable-muted hover:text-primary transition-colors z-10">
                                 <X size={24} />
@@ -399,6 +437,87 @@ export default function Projects() {
                                             ))}
                                         </select>
                                     </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1 flex items-center justify-between">
+                                        <div className="flex items-center gap-2"><Briefcase size={14} /> Servicios Incluidos</div>
+                                        <div className="px-3 py-1 bg-primary/10 rounded-lg text-primary text-[10px] font-black">
+                                            TOTAL: €{services
+                                                .filter(s => formData.selected_services.includes(s.id))
+                                                .reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0)
+                                                .toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                                        </div>
+                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white/5 border border-variable rounded-2xl p-4 max-h-48 overflow-y-auto custom-scrollbar">
+                                        {services.length === 0 && <p className="text-[10px] text-variable-muted italic col-span-2 text-center py-2">No hay servicios activos en el catálogo.</p>}
+                                        {services.map(service => (
+                                            <label key={service.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="peer size-5 opacity-0 absolute"
+                                                            checked={formData.selected_services.includes(service.id)}
+                                                            onChange={(e) => {
+                                                                const isChecked = e.target.checked;
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    selected_services: isChecked
+                                                                        ? [...prev.selected_services, service.id]
+                                                                        : prev.selected_services.filter(id => id !== service.id)
+                                                                }));
+                                                            }}
+                                                        />
+                                                        <div className={`size-5 rounded-md border-2 transition-all flex items-center justify-center ${formData.selected_services.includes(service.id) ? 'bg-primary border-primary' : 'border-variable group-hover:border-primary/50'}`}>
+                                                            {formData.selected_services.includes(service.id) && <CheckCircle2 size={12} className="text-white" />}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold text-variable-main leading-tight truncate max-w-[120px]">{service.name}</span>
+                                                        <span className="text-[9px] text-variable-muted font-bold italic">€{parseFloat(service.price || 0).toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                                        <UsersIcon size={14} /> Asignar Miembros al Equipo
+                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white/5 border border-variable rounded-2xl p-4 max-h-40 overflow-y-auto custom-scrollbar">
+                                        {users.length === 0 && <p className="text-[10px] text-variable-muted italic col-span-2 text-center py-2">No se encontraron miembros de equipo.</p>}
+                                        {users.map(user => (
+                                            <label key={user.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group">
+                                                <div className="relative flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="peer size-5 opacity-0 absolute"
+                                                        checked={formData.assigned_users.includes(user.id)}
+                                                        onChange={(e) => {
+                                                            const isChecked = e.target.checked;
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                assigned_users: isChecked
+                                                                    ? [...prev.assigned_users, user.id]
+                                                                    : prev.assigned_users.filter(id => id !== user.id)
+                                                            }));
+                                                        }}
+                                                    />
+                                                    <div className={`size-5 rounded-md border-2 transition-all flex items-center justify-center ${formData.assigned_users.includes(user.id) ? 'bg-primary border-primary' : 'border-variable group-hover:border-primary/50'}`}>
+                                                        {formData.assigned_users.includes(user.id) && <CheckCircle2 size={12} className="text-white" />}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-variable-main leading-tight">{user.first_name} {user.second_name}</span>
+                                                    <span className={`text-[8px] uppercase font-black tracking-widest ${user.role === 'admin' ? 'text-rose-500' : 'text-variable-muted'}`}>{user.role}</span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-variable-muted italic ml-1">* El creador del proyecto se asigna automáticamente como administrador del mismo.</p>
                                 </div>
 
                                 <div className="space-y-2">

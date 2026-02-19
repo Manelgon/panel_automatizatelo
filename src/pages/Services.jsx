@@ -24,10 +24,12 @@ import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import DataTable from '../components/DataTable';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function Services() {
     const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
+    const { showNotification, confirm } = useNotifications();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [servicesList, setServicesList] = useState([]);
@@ -91,12 +93,12 @@ export default function Services() {
             setFormData(defaultForm);
             setEditingServiceId(null);
             setIsModalOpen(false);
+            showNotification(`Servicio ${editingServiceId ? 'actualizado' : 'creado'} con éxito`);
             fetchServices();
         } catch (err) {
             console.error('Error saving service:', err);
             const msg = err.message || (typeof err === 'string' ? err : 'Error desconocido');
-            const details = err.details ? ` (${err.details})` : '';
-            alert(`Error al guardar servicio: ${msg}${details}`);
+            showNotification(`Error al guardar servicio: ${msg}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -114,7 +116,14 @@ export default function Services() {
     };
 
     const handleDeleteService = async (id) => {
-        if (!window.confirm('¿Estás seguro de que deseas eliminar este servicio definitivamente?')) return;
+        const confirmed = await confirm({
+            title: '¿Eliminar Servicio?',
+            message: '¿Estás seguro de que deseas eliminar este servicio definitivamente? No podrás deshacer esta acción.',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) return;
 
         setLoading(true);
         try {
@@ -124,10 +133,11 @@ export default function Services() {
                 .eq('id', id);
 
             if (error) throw error;
+            showNotification('Servicio eliminado correctamente');
             fetchServices();
         } catch (err) {
             console.error('Error deleting service:', err);
-            alert(`Error al eliminar: ${err.message}`);
+            showNotification(`Error al eliminar: ${err.message}`, 'error');
         } finally {
             setLoading(false);
         }

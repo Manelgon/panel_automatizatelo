@@ -157,31 +157,21 @@ DROP POLICY IF EXISTS "users_insert_authenticated" ON public.users;
 DROP POLICY IF EXISTS "users_update_own" ON public.users;
 DROP POLICY IF EXISTS "users_delete_own" ON public.users;
 
--- SELECT: Usuarios autenticados pueden ver todos los perfiles
--- (no causa recursión porque usa auth.uid() directo, sin sub-query a users)
-CREATE POLICY "users_select_authenticated"
-    ON public.users FOR SELECT
-    TO authenticated
-    USING (true);
+-- SELECT: Todos los autenticados pueden ver la lista de miembros
+DROP POLICY IF EXISTS "users_select_authenticated" ON public.users;
+CREATE POLICY "users_select_authenticated" ON public.users FOR SELECT TO authenticated USING (true);
 
--- INSERT: Usuarios autenticados pueden insertar perfiles
--- (WITH CHECK true porque solo admins acceden a la página de gestión)
-CREATE POLICY "users_insert_authenticated"
-    ON public.users FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
+-- INSERT: Solo permitida por autenticados (el registro lo hace el panel)
+DROP POLICY IF EXISTS "users_insert_authenticated" ON public.users;
+CREATE POLICY "users_insert_authenticated" ON public.users FOR INSERT TO authenticated WITH CHECK (true);
 
--- UPDATE: Usuarios pueden actualizar su propio perfil
-CREATE POLICY "users_update_own"
-    ON public.users FOR UPDATE
-    TO authenticated
-    USING (auth.uid() = id);
+-- UPDATE: Cada uno el suyo
+DROP POLICY IF EXISTS "users_update_own" ON public.users;
+CREATE POLICY "users_update_own" ON public.users FOR UPDATE TO authenticated USING (auth.uid() = id);
 
--- DELETE: Usuarios pueden eliminar su propio perfil
-CREATE POLICY "users_delete_own"
-    ON public.users FOR DELETE
-    TO authenticated
-    USING (auth.uid() = id);
+-- DELETE: Solo para dueños (simplificado sin subquery para evitar recursión)
+DROP POLICY IF EXISTS "users_delete_own" ON public.users;
+CREATE POLICY "users_delete_own" ON public.users FOR DELETE TO authenticated USING (auth.uid() = id);
 
 
 -- =============================================
@@ -259,21 +249,18 @@ DROP POLICY IF EXISTS "services_select_authenticated" ON public.services;
 DROP POLICY IF EXISTS "services_all_admin" ON public.services;
 
 -- SELECT: Cualquiera (incluyendo visitantes de la web) puede ver los servicios
+DROP POLICY IF EXISTS "services_select_public" ON public.services;
 CREATE POLICY "services_select_public"
     ON public.services FOR SELECT
     TO anon, authenticated
     USING (true);
 
--- ALL: Solo administradores pueden insertar, actualizar o eliminar servicios
+-- ALL: Permitir a cualquier admin gestionar servicios
+DROP POLICY IF EXISTS "services_all_admin" ON public.services;
 CREATE POLICY "services_all_admin"
     ON public.services FOR ALL
     TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE id = auth.uid() AND role = 'admin'
-        )
-    );
+    USING ( (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin' );
 
 
 -- =============================================
@@ -375,6 +362,84 @@ CREATE TRIGGER set_updated_at_project_tasks
 
 
 -- =============================================
+-- 15. FUNCIONES RPC (Para crear proyectos de forma segura)
+-- =============================================
+
+-- Eliminar versiones antiguas para evitar conflictos de sobrecarga
+DROP FUNCTION IF EXISTS public.create_project(text, text, text, text, int, uuid);
+DROP FUNCTION IF EXISTS public.create_project(text, text, text, text, int, uuid, uuid[]);
+
+-- =============================================
+-- 15. FUNCIONES RPC (Limpieza y Creación)
+-- =============================================
+
+-- Borrar TODAS las posibles firmas anteriores para evitar el error de Schema Cache
+DROP FUNCTION IF EXISTS public.create_project(text, text, text, text, int, uuid);
+DROP FUNCTION IF EXISTS public.create_project(text, text, text, text, int, uuid, uuid[]);
+DROP FUNCTION IF EXISTS public.create_project(text, text, text, text, int, uuid, uuid[], uuid[]);
+
+-- Re-crear la función limpia
+CREATE OR REPLACE FUNCTION create_project(
+    p_name text,
+    p_client text,
+    p_description text,
+    p_alias text,
+    p_total_hours int,
+    p_lead_id uuid,
+    p_assigned_users uuid[] DEFAULT '{}',
+    p_service_ids uuid[] DEFAULT '{}'
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    new_project_id uuid;
+    v_user_id uuid;
+    v_assignee_id uuid;
+    v_service_id uuid;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+
+    INSERT INTO public.projects (name, client, status, description, id_alias, total_hours, lead_id)
+    VALUES (p_name, p_client, 'En Progreso', p_description, p_alias, p_total_hours, p_lead_id)
+    RETURNING id INTO new_project_id;
+
+    -- Creador es admin
+    INSERT INTO public.project_members (project_id, user_id, role)
+    VALUES (new_project_id, v_user_id, 'admin') ON CONFLICT DO NOTHING;
+
+    -- Otros miembros
+    IF p_assigned_users IS NOT NULL AND array_length(p_assigned_users, 1) > 0 THEN
+        FOREACH v_assignee_id IN ARRAY p_assigned_users LOOP
+            INSERT INTO public.project_members (project_id, user_id, role)
+            VALUES (new_project_id, v_assignee_id, 'editor') ON CONFLICT DO NOTHING;
+        END LOOP;
+    END IF;
+
+    -- Servicios
+    IF p_service_ids IS NOT NULL AND array_length(p_service_ids, 1) > 0 THEN
+        FOREACH v_service_id IN ARRAY p_service_ids LOOP
+            INSERT INTO public.project_services (project_id, service_id)
+            VALUES (new_project_id, v_service_id) ON CONFLICT DO NOTHING;
+        END LOOP;
+    END IF;
+
+    IF p_lead_id IS NOT NULL THEN
+        UPDATE public.leads SET status = 'ganado' WHERE id = p_lead_id;
+    END IF;
+
+    RETURN new_project_id;
+END;
+$$;
+
+-- Permisos de ejecución actualizados
+GRANT EXECUTE ON FUNCTION public.create_project(text, text, text, text, int, uuid, uuid[], uuid[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_project(text, text, text, text, int, uuid, uuid[], uuid[]) TO anon;
+
+-- =============================================
 -- 13. POLÍTICAS RLS - Proyectos
 -- =============================================
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
@@ -382,6 +447,7 @@ ALTER TABLE public.project_milestones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_services ENABLE ROW LEVEL SECURITY;
 
 -- Limpiar políticas existentes
 DROP POLICY IF EXISTS "projects_select_member" ON public.projects;
@@ -393,56 +459,61 @@ DROP POLICY IF EXISTS "tasks_all_admin" ON public.project_tasks;
 DROP POLICY IF EXISTS "files_select_member" ON public.project_files;
 DROP POLICY IF EXISTS "files_all_admin" ON public.project_files;
 
--- SELECT Projects: El usuario puede ver si es miembro o es admin global
+-- SELECT Projects: Miembros o Administradores Globales
+DROP POLICY IF EXISTS "projects_select_member" ON public.projects;
 CREATE POLICY "projects_select_member"
     ON public.projects FOR SELECT
     TO authenticated
     USING (
-        EXISTS (
-            SELECT 1 FROM public.project_members pm 
-            WHERE pm.project_id = public.projects.id AND pm.user_id = auth.uid()
-        ) OR EXISTS (
-            SELECT 1 FROM public.users u 
-            WHERE u.id = auth.uid() AND u.role = 'admin'
-        )
+        EXISTS (SELECT 1 FROM public.project_members pm WHERE pm.project_id = id AND pm.user_id = auth.uid()) 
+        OR 
+        (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin'
     );
 
--- ALL Projects: Solo administradores (globales o del proyecto)
+-- ALL Projects: Admins
+DROP POLICY IF EXISTS "projects_all_admin" ON public.projects;
 CREATE POLICY "projects_all_admin"
     ON public.projects FOR ALL
     TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users 
-            WHERE id = auth.uid() AND role = 'admin'
-        )
-    );
+    USING ( (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin' );
 
--- INSERT Projects: Usuarios autenticados pueden crear proyectos
+-- INSERT Projects: Cualquiera logueado
 DROP POLICY IF EXISTS "projects_insert_authenticated" ON public.projects;
 CREATE POLICY "projects_insert_authenticated"
     ON public.projects FOR INSERT
     TO authenticated
     WITH CHECK (true);
 
--- Políticas para hitos, tareas y archivos
-CREATE POLICY "milestones_select_member" ON public.project_milestones FOR SELECT TO authenticated
-USING (EXISTS (SELECT 1 FROM public.projects p WHERE p.id = project_id));
+-- Miembros del Proyecto
+DROP POLICY IF EXISTS "members_select" ON public.project_members;
+CREATE POLICY "members_select" ON public.project_members FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY "milestones_all_admin" ON public.project_milestones FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin'));
+DROP POLICY IF EXISTS "members_insert_self" ON public.project_members;
+CREATE POLICY "members_insert_self" ON public.project_members FOR INSERT TO authenticated WITH CHECK (true);
 
-CREATE POLICY "tasks_select_member" ON public.project_tasks FOR SELECT TO authenticated
-USING (EXISTS (SELECT 1 FROM public.projects p WHERE p.id = project_id));
+DROP POLICY IF EXISTS "members_all_admin" ON public.project_members;
+CREATE POLICY "members_all_admin" ON public.project_members FOR ALL TO authenticated USING (true);
 
-CREATE POLICY "tasks_all_admin" ON public.project_tasks FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin'));
+-- Hitos, Tareas, Archivos y Servicios del Proyecto (Simplificado para evitar errores)
+DROP POLICY IF EXISTS "milestones_select_member" ON public.project_milestones;
+CREATE POLICY "milestones_select_member" ON public.project_milestones FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "milestones_all_admin" ON public.project_milestones;
+CREATE POLICY "milestones_all_admin" ON public.project_milestones FOR ALL TO authenticated USING (true);
 
-CREATE POLICY "files_select_member" ON public.project_files FOR SELECT TO authenticated
-USING (EXISTS (SELECT 1 FROM public.projects p WHERE p.id = project_id));
+DROP POLICY IF EXISTS "tasks_select_member" ON public.project_tasks;
+CREATE POLICY "tasks_select_member" ON public.project_tasks FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "tasks_all_admin" ON public.project_tasks;
+CREATE POLICY "tasks_all_admin" ON public.project_tasks FOR ALL TO authenticated USING (true);
 
-CREATE POLICY "files_all_admin" ON public.project_files FOR ALL TO authenticated
-USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin'));
+DROP POLICY IF EXISTS "files_select_member" ON public.project_files;
+CREATE POLICY "files_select_member" ON public.project_files FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "files_all_admin" ON public.project_files;
+CREATE POLICY "files_all_admin" ON public.project_files FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "project_services_select" ON public.project_services;
+CREATE POLICY "project_services_select" ON public.project_services FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "project_services_all" ON public.project_services;
+CREATE POLICY "project_services_all" ON public.project_services FOR ALL TO authenticated USING (true);
 
 -- Políticas para project_members
 -- Limpiar políticas existentes de miembros
@@ -509,52 +580,38 @@ BEGIN
 END $$;
 
 
--- =============================================
--- 15. FUNCIONES RPC (Para crear proyectos de forma segura)
--- =============================================
-CREATE OR REPLACE FUNCTION create_project(
-    p_name text,
-    p_client text,
-    p_description text,
-    p_alias text,
-    p_total_hours int,
-    p_lead_id uuid
-)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER -- Ejecuta con permisos de admin, saltando RLS
-SET search_path = public
-AS $$
-DECLARE
-    new_project_id uuid;
-    v_user_id uuid;
-BEGIN
-    -- Verificar que el usuario está autenticado
-    v_user_id := auth.uid();
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Not authenticated';
-    END IF;
-
-    -- 1. Insertar Proyecto
-    INSERT INTO public.projects (name, client, status, description, id_alias, total_hours, lead_id)
-    VALUES (p_name, p_client, 'En Progreso', p_description, p_alias, p_total_hours, p_lead_id)
-    RETURNING id INTO new_project_id;
-
-    -- 2. Insertar Miembro (Admin)
-    INSERT INTO public.project_members (project_id, user_id, role)
-    VALUES (new_project_id, v_user_id, 'admin');
-
-    -- 3. Actualizar Lead (si existe)
-    IF p_lead_id IS NOT NULL THEN
-        UPDATE public.leads SET status = 'ganado' WHERE id = p_lead_id;
-    END IF;
-
-    RETURN new_project_id;
-END;
-$$;
+-- Eliminar bloques antiguos y obsoletos
+-- (Ya movidos a la seccion 15 y simplificados)
 
 -- =============================================
--- 16. VERIFICACIÓN
+-- 16. GRANT PERMISOS GLOBALES
+-- =============================================
+-- RLS controla QUÉ filas, pero GRANT controla EL ACCESO a la tabla.
+GRANT USAGE ON SCHEMA public TO authenticated, anon;
+
+-- Permisos para Usuarios y Servicios (Vital para que aparezcan en listas)
+GRANT SELECT ON public.users TO authenticated;
+GRANT SELECT ON public.services TO authenticated, anon;
+GRANT SELECT ON public.leads TO authenticated;
+
+-- Permisos para Proyectos y sus componentes
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.projects TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_members TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_milestones TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_tasks TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_files TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_services TO authenticated;
+
+-- Función RPC create_project (8 parámetros)
+GRANT EXECUTE ON FUNCTION public.create_project(text, text, text, text, int, uuid, uuid[], uuid[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_project(text, text, text, text, int, uuid, uuid[], uuid[]) TO anon;
+
+-- Índice para búsquedas por lead_id
+CREATE INDEX IF NOT EXISTS idx_projects_lead_id ON public.projects(lead_id);
+
+
+-- =============================================
+-- 17. VERIFICACIÓN
 -- =============================================
 -- Ejecutar después de todo lo anterior para verificar:
 

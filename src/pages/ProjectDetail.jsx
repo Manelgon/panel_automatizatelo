@@ -29,12 +29,14 @@ import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function ProjectDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
+    const { showNotification } = useNotifications();
 
     const [project, setProject] = useState(null);
     const [milestones, setMilestones] = useState([]);
@@ -132,9 +134,10 @@ export default function ProjectDetail() {
             if (error) throw error;
             setMilestoneModal(false);
             setNewMilestone({ title: '', target_date: '', status: 'pending' });
+            showNotification('Hito añadido correctamente');
             fetchProjectData();
         } catch (error) {
-            alert(`Error: ${error.message}`);
+            showNotification(`Error: ${error.message}`, 'error');
         } finally {
             setFormLoading(false);
         }
@@ -150,9 +153,10 @@ export default function ProjectDetail() {
             if (error) throw error;
             setTaskModal(false);
             setNewTask({ title: '', priority: 'Media', assigned_to: '' });
+            showNotification('Tarea creada correctamente');
             fetchProjectData();
         } catch (error) {
-            alert(`Error: ${error.message}`);
+            showNotification(`Error: ${error.message}`, 'error');
         } finally {
             setFormLoading(false);
         }

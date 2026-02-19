@@ -24,11 +24,13 @@ import Sidebar from '../components/Sidebar';
 import CustomSelect from '../components/CustomSelect';
 import DataTable from '../components/DataTable';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function Leads() {
     const navigate = useNavigate();
     const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
+    const { showNotification } = useNotifications();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [leadsList, setLeadsList] = useState([]);
@@ -130,7 +132,7 @@ export default function Leads() {
             // Redirect to projects immediately. Status update will happen upon successful project creation.
             navigate(`/projects?convert=${lead.id}`);
         } catch (err) {
-            alert(`Error al convertir: ${err.message}`);
+            showNotification(`Error al convertir: ${err.message}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -148,10 +150,11 @@ export default function Leads() {
 
             setFormData(defaultForm);
             setIsModalOpen(false);
+            showNotification('Lead creado con éxito');
             fetchLeads();
         } catch (err) {
             console.error('Error creating lead:', err);
-            alert(`Error al crear lead: ${err.message}`);
+            showNotification(`Error al crear lead: ${err.message}`, 'error');
         } finally {
             setLoading(false);
         }

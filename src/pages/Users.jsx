@@ -34,10 +34,12 @@ import CustomSelect from '../components/CustomSelect';
 import DataTable from '../components/DataTable';
 
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function Users() {
     const { darkMode, toggleTheme } = useTheme();
     const { user: currentUser, profile: currentProfile } = useAuth();
+    const { showNotification, confirm } = useNotifications();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [usersList, setUsersList] = useState([]);
@@ -119,10 +121,44 @@ export default function Users() {
             // 3. Reset form and close modal
             setFormData(defaultForm);
             setIsModalOpen(false);
+            showNotification('Miembro del equipo creado con éxito');
             fetchUsers();
         } catch (err) {
             console.error('Error creating user:', err);
-            alert(`Error al crear usuario: ${err.message}`);
+            showNotification(`Error al crear usuario: ${err.message}`, 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteUser = async (user) => {
+        if (user.id === currentUser.id) {
+            showNotification('No puedes eliminarte a ti mismo', 'error');
+            return;
+        }
+
+        const confirmed = await confirm({
+            title: '¿Eliminar Miembro?',
+            message: `¿Estás seguro de que deseas eliminar a ${user.name}? Esta acción no se puede deshacer.`,
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) return;
+
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('users')
+                .delete()
+                .eq('id', user.id);
+
+            if (error) throw error;
+            showNotification('Usuario eliminado correctamente');
+            fetchUsers();
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            showNotification(`Error al eliminar: ${err.message}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -353,7 +389,10 @@ export default function Users() {
                                     <button className="p-2 text-variable-muted hover:text-primary transition-colors glass rounded-xl border-variable">
                                         <Settings size={18} />
                                     </button>
-                                    <button className="p-2 text-variable-muted hover:text-rose-500 transition-colors glass rounded-xl border-variable">
+                                    <button
+                                        onClick={() => handleDeleteUser(user)}
+                                        className="p-2 text-variable-muted hover:text-rose-500 transition-colors glass rounded-xl border-variable"
+                                    >
                                         <Trash2 size={18} />
                                     </button>
                                 </div>
