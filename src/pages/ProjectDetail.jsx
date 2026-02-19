@@ -26,7 +26,14 @@ import {
     ChevronDown,
     ChevronUp,
     DollarSign,
-    Percent
+    Percent,
+    CreditCard,
+    Banknote,
+    Building2,
+    Smartphone,
+    Wallet,
+    TrendingDown,
+    TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useParams, useNavigate } from 'react-router-dom';
@@ -69,6 +76,12 @@ export default function ProjectDetail() {
     const [newBudgetLine, setNewBudgetLine] = useState({ description: '', unit_price: '', quantity: 1, iva_percent: 21 });
     const [invoices, setInvoices] = useState([]);
     const [invoiceLoading, setInvoiceLoading] = useState(false);
+
+    // Payments state
+    const [payments, setPayments] = useState([]);
+    const [paymentModal, setPaymentModal] = useState(false);
+    const [newPayment, setNewPayment] = useState({ amount: '', payment_method: 'transferencia', notes: '' });
+    const [paymentsExpanded, setPaymentsExpanded] = useState(true);
 
     const fetchProjectData = async () => {
         try {
@@ -146,6 +159,14 @@ export default function ProjectDetail() {
             .eq('project_id', id)
             .order('created_at', { ascending: false });
         setInvoices(invData || []);
+
+        // Fetch payments
+        const { data: payData } = await supabase
+            .from('project_payments')
+            .select('*, created_by_user:created_by(first_name, second_name)')
+            .eq('project_id', id)
+            .order('payment_date', { ascending: false });
+        setPayments(payData || []);
     };
 
     useEffect(() => {
@@ -162,6 +183,7 @@ export default function ProjectDetail() {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_files', filter: `project_id=eq.${id}` }, fetchProjectData)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_services', filter: `project_id=eq.${id}` }, fetchBudgetData)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_budget_lines', filter: `project_id=eq.${id}` }, fetchBudgetData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_payments', filter: `project_id=eq.${id}` }, fetchBudgetData)
                 .subscribe();
 
             return () => { supabase.removeChannel(channel); };
@@ -464,6 +486,214 @@ export default function ProjectDetail() {
         doc.save(`Factura - ${project?.name} - ${alias} - ${dateStr}.pdf`);
     };
 
+    // ═══════════════════════════════════════
+    // PAGOS / COBROS
+    // ═══════════════════════════════════════
+
+    const PAYMENT_METHODS = [
+        { value: 'efectivo', label: 'Efectivo', icon: Banknote, color: 'text-emerald-500' },
+        { value: 'tarjeta', label: 'Tarjeta', icon: CreditCard, color: 'text-blue-500' },
+        { value: 'transferencia', label: 'Transferencia', icon: Building2, color: 'text-violet-500' },
+        { value: 'bizum', label: 'Bizum', icon: Smartphone, color: 'text-cyan-500' },
+        { value: 'otro', label: 'Otro', icon: Wallet, color: 'text-amber-500' },
+    ];
+
+    const totalInvoiced = invoices.reduce((sum, inv) => sum + parseFloat(inv.total || 0), 0);
+    const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    const pendingBalance = totalInvoiced - totalPaid;
+    const paidPercent = totalInvoiced > 0 ? Math.min((totalPaid / totalInvoiced) * 100, 100) : 0;
+
+    const getPaymentMethodInfo = (method) => PAYMENT_METHODS.find(m => m.value === method) || PAYMENT_METHODS[4];
+
+    // Generar PDF de recibo
+    const generateReceiptPDF = (paymentData) => {
+        const doc = new jsPDF();
+        const pName = project?.name || 'Proyecto';
+        const pAlias = project?.id_alias || '';
+        const pClient = project?.client || 'Cliente';
+        const payMethod = getPaymentMethodInfo(paymentData.payment_method);
+
+        // Header
+        doc.setFillColor(30, 30, 40);
+        doc.rect(0, 0, 220, 42, 'F');
+        doc.setTextColor(80, 200, 120);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('RECIBO DE PAGO', 15, 22);
+        doc.setFontSize(10);
+        doc.setTextColor(180, 180, 190);
+        doc.text(`N.\u00ba ${paymentData.payment_number}`, 15, 32);
+        doc.text(`Fecha: ${new Date(paymentData.payment_date).toLocaleDateString('es-ES')}`, 15, 38);
+
+        // Company info (right side)
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Autom\u00e1t\u00edzatelo', 195, 18, { align: 'right' });
+        doc.setFontSize(8);
+        doc.setTextColor(180, 180, 190);
+        doc.text('automatizatelo.com', 195, 25, { align: 'right' });
+
+        // Project / Client info
+        doc.setTextColor(60, 60, 70);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PROYECTO:', 15, 55);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${pName}${pAlias ? ` (${pAlias})` : ''}`, 50, 55);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CLIENTE:', 15, 62);
+        doc.setFont('helvetica', 'normal');
+        doc.text(pClient, 50, 62);
+
+        // Payment details box
+        doc.setFillColor(245, 250, 245);
+        doc.roundedRect(15, 75, 180, 60, 4, 4, 'F');
+        doc.setDrawColor(80, 200, 120);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(15, 75, 180, 60, 4, 4, 'S');
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(60, 60, 70);
+        doc.text('IMPORTE RECIBIDO:', 25, 90);
+        doc.setFontSize(28);
+        doc.setTextColor(80, 200, 120);
+        doc.text(`\u20ac${parseFloat(paymentData.amount).toFixed(2)}`, 25, 108);
+
+        doc.setFontSize(10);
+        doc.setTextColor(80, 80, 90);
+        doc.setFont('helvetica', 'bold');
+        doc.text('M\u00e9todo de Pago:', 120, 90);
+        doc.setFont('helvetica', 'normal');
+        doc.text(payMethod.label, 120, 100);
+
+        if (paymentData.notes) {
+            doc.setFont('helvetica', 'bold');
+            doc.text('Notas:', 120, 115);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            const splitNotes = doc.splitTextToSize(paymentData.notes, 65);
+            doc.text(splitNotes, 120, 123);
+        }
+
+        // Balance summary
+        const summaryY = 150;
+        doc.setDrawColor(200, 200, 210);
+        doc.line(15, summaryY, 195, summaryY);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(80, 80, 90);
+        doc.text('RESUMEN DE CUENTA', 15, summaryY + 10);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Total Facturado:', 15, summaryY + 22);
+        doc.text(`\u20ac${totalInvoiced.toFixed(2)}`, 195, summaryY + 22, { align: 'right' });
+
+        const totalPaidWithCurrent = totalPaid + parseFloat(paymentData.amount || 0);
+        doc.text('Total Cobrado (inc. este pago):', 15, summaryY + 32);
+        doc.setTextColor(80, 200, 120);
+        doc.text(`\u20ac${totalPaidWithCurrent.toFixed(2)}`, 195, summaryY + 32, { align: 'right' });
+
+        doc.setDrawColor(80, 200, 120);
+        doc.setLineWidth(0.5);
+        doc.line(15, summaryY + 36, 195, summaryY + 36);
+
+        const remainingBalance = totalInvoiced - totalPaidWithCurrent;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        if (remainingBalance <= 0) {
+            doc.setTextColor(80, 200, 120);
+            doc.text('SALDO PENDIENTE:', 15, summaryY + 46);
+            doc.text('\u20ac0.00 - PAGADO COMPLETO \u2713', 195, summaryY + 46, { align: 'right' });
+        } else {
+            doc.setTextColor(220, 120, 50);
+            doc.text('SALDO PENDIENTE:', 15, summaryY + 46);
+            doc.text(`\u20ac${remainingBalance.toFixed(2)}`, 195, summaryY + 46, { align: 'right' });
+        }
+
+        // Footer
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 160);
+        doc.text('Este recibo ha sido generado autom\u00e1ticamente por el Panel de Autom\u00e1t\u00edzatelo.', 105, 285, { align: 'center' });
+
+        return doc;
+    };
+
+    const handleRegisterPayment = async (e) => {
+        e.preventDefault();
+        const amount = parseFloat(newPayment.amount);
+        if (!amount || amount <= 0) {
+            showNotification('Introduce un importe v\u00e1lido', 'error');
+            return;
+        }
+        if (totalInvoiced <= 0) {
+            showNotification('No hay facturas emitidas para registrar pagos', 'error');
+            return;
+        }
+        setFormLoading(true);
+        try {
+            // Generate payment number
+            const paymentCount = payments.length + 1;
+            const alias = project.id_alias || project.id.substring(0, 8).toUpperCase();
+            const paymentNumber = `REC-${alias}-${String(paymentCount).padStart(3, '0')}`;
+            const today = new Date().toISOString().split('T')[0];
+
+            // Insert payment in DB
+            const { data: payment, error: payErr } = await supabase
+                .from('project_payments')
+                .insert([{
+                    project_id: id,
+                    payment_number: paymentNumber,
+                    payment_date: today,
+                    amount: amount,
+                    payment_method: newPayment.payment_method,
+                    notes: newPayment.notes || null,
+                    created_by: currentProfile?.id || null
+                }])
+                .select()
+                .single();
+            if (payErr) throw payErr;
+
+            // Create file name
+            const dateStr = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+            const fileName = `Recibo - ${project.name} - ${alias} - ${dateStr}`;
+
+            // Save to project files
+            await supabase.from('project_files').insert([{
+                project_id: id,
+                name: fileName,
+                size: `\u20ac${amount.toFixed(2)}`,
+                file_type: 'RECIBO',
+                url: `payment:${payment.id}`
+            }]);
+
+            // Generate and download receipt PDF
+            const doc = generateReceiptPDF(payment);
+            doc.save(`${fileName}.pdf`);
+
+            setPaymentModal(false);
+            setNewPayment({ amount: '', payment_method: 'transferencia', notes: '' });
+            showNotification(`Pago ${paymentNumber} registrado correctamente \u2705`);
+            fetchBudgetData();
+            fetchProjectData();
+        } catch (error) {
+            showNotification(`Error registrando pago: ${error.message}`, 'error');
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
+    const handleRedownloadReceipt = (paymentId) => {
+        const pay = payments.find(p => p.id === paymentId);
+        if (!pay) { showNotification('Recibo no encontrado', 'error'); return; }
+        const doc = generateReceiptPDF(pay);
+        const alias = project?.id_alias || project?.id?.substring(0, 8).toUpperCase() || '';
+        const dateStr = new Date(pay.payment_date).toLocaleDateString('es-ES').replace(/\//g, '-');
+        doc.save(`Recibo - ${project?.name} - ${alias} - ${dateStr}.pdf`);
+    };
+
     if (loading && !project) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#0F0716]">
@@ -691,25 +921,30 @@ export default function ProjectDetail() {
                                 {files.length === 0 && <p className="text-xs text-variable-muted italic">No hay archivos adjuntos.</p>}
                                 {files.map((file) => {
                                     const isInvoice = file.file_type === 'FACTURA' && file.url?.startsWith('invoice:');
+                                    const isReceipt = file.file_type === 'RECIBO' && file.url?.startsWith('payment:');
                                     const invoiceId = isInvoice ? file.url.replace('invoice:', '') : null;
+                                    const paymentId = isReceipt ? file.url.replace('payment:', '') : null;
                                     return (
                                         <div key={file.id} className="flex items-center gap-4 group cursor-pointer text-variable-main" onClick={() => {
                                             if (isInvoice) handleRedownloadInvoice(invoiceId);
+                                            else if (isReceipt) handleRedownloadReceipt(paymentId);
                                             else if (file.url) window.open(file.url, '_blank');
                                         }}>
                                             <div className={`p-3 border rounded-2xl transition-colors ${isInvoice
-                                                    ? 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/20'
+                                                ? 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/20'
+                                                : isReceipt
+                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500 group-hover:bg-emerald-500/20'
                                                     : 'bg-white/5 border-variable group-hover:text-primary'
                                                 }`}>
-                                                {isInvoice ? <Receipt size={20} /> : <Download size={20} />}
+                                                {isInvoice ? <Receipt size={20} /> : isReceipt ? <Banknote size={20} /> : <Download size={20} />}
                                             </div>
                                             <div className="flex-1 overflow-hidden">
                                                 <p className="text-sm font-bold truncate">{file.name}</p>
-                                                <p className={`text-[10px] font-bold uppercase ${isInvoice ? 'text-primary' : 'text-variable-muted'
+                                                <p className={`text-[10px] font-bold uppercase ${isInvoice ? 'text-primary' : isReceipt ? 'text-emerald-500' : 'text-variable-muted'
                                                     }`}>{file.size || '---'} • {file.file_type || 'FILE'}</p>
                                             </div>
-                                            {isInvoice && (
-                                                <div className="p-2 bg-primary/10 text-primary rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" title="Descargar PDF">
+                                            {(isInvoice || isReceipt) && (
+                                                <div className={`p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity ${isReceipt ? 'bg-emerald-500/10 text-emerald-500' : 'bg-primary/10 text-primary'}`} title="Descargar PDF">
                                                     <Download size={14} />
                                                 </div>
                                             )}
@@ -849,6 +1084,139 @@ export default function ProjectDetail() {
                         )}
                     </div>
                 </section>
+
+                {/* ══════════════════════════════════════════════ */}
+                {/* SECCIÓN COBROS / PAGOS                           */}
+                {/* ══════════════════════════════════════════════ */}
+                {invoices.length > 0 && (
+                    <section className="mt-10">
+                        <div className="glass rounded-[2.5rem] p-8 sm:p-10">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                                <button onClick={() => setPaymentsExpanded(!paymentsExpanded)} className="flex items-center gap-3 group">
+                                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
+                                        <Banknote size={22} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-variable-main flex items-center gap-2">
+                                            Cobros / Pagos
+                                            {paymentsExpanded ? <ChevronUp size={18} className="text-variable-muted" /> : <ChevronDown size={18} className="text-variable-muted" />}
+                                        </h3>
+                                        <p className="text-xs text-variable-muted italic">Registro de pagos recibidos del cliente</p>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => setPaymentModal(true)}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:brightness-110 transition-all shadow-lg shadow-emerald-500/20"
+                                >
+                                    <Plus size={14} /> Registrar Cobro
+                                </button>
+                            </div>
+
+                            {paymentsExpanded && (
+                                <div className="space-y-6">
+                                    {/* Balance Cards */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Receipt size={16} className="text-primary" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Total Facturado</p>
+                                            </div>
+                                            <p className="text-2xl font-black text-variable-main">€{totalInvoiced.toFixed(2)}</p>
+                                            <p className="text-[9px] text-variable-muted mt-1">{invoices.length} factura{invoices.length !== 1 ? 's' : ''} emitida{invoices.length !== 1 ? 's' : ''}</p>
+                                        </div>
+                                        <div className="p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <TrendingUp size={16} className="text-emerald-500" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Total Cobrado</p>
+                                            </div>
+                                            <p className="text-2xl font-black text-variable-main">€{totalPaid.toFixed(2)}</p>
+                                            <p className="text-[9px] text-variable-muted mt-1">{payments.length} pago{payments.length !== 1 ? 's' : ''} registrado{payments.length !== 1 ? 's' : ''}</p>
+                                        </div>
+                                        <div className={`p-5 rounded-2xl border ${pendingBalance <= 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/5 border-amber-500/20'}`}>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <TrendingDown size={16} className={pendingBalance <= 0 ? 'text-emerald-500' : 'text-amber-500'} />
+                                                <p className={`text-[10px] font-black uppercase tracking-widest ${pendingBalance <= 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                                    {pendingBalance <= 0 ? 'Pagado Completo' : 'Pendiente de Cobro'}
+                                                </p>
+                                            </div>
+                                            <p className={`text-2xl font-black ${pendingBalance <= 0 ? 'text-emerald-500' : 'text-variable-main'}`}>
+                                                {pendingBalance <= 0 ? '✓ €0.00' : `€${pendingBalance.toFixed(2)}`}
+                                            </p>
+                                            <p className="text-[9px] text-variable-muted mt-1">{Math.round(paidPercent)}% del total facturado</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-xs font-bold">
+                                            <span className="text-variable-muted uppercase tracking-widest">Progreso de Cobro</span>
+                                            <span className="text-emerald-500">{Math.round(paidPercent)}%</span>
+                                        </div>
+                                        <div className="h-3 bg-white/5 border border-variable rounded-full overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${paidPercent}%` }}
+                                                transition={{ duration: 1.2, ease: 'easeOut' }}
+                                                className={`h-full rounded-full ${paidPercent >= 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-emerald-500 to-emerald-400'}`}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Payment History */}
+                                    {payments.length === 0 ? (
+                                        <div className="py-12 text-center border-2 border-dashed border-variable rounded-3xl">
+                                            <Banknote size={32} className="mx-auto text-variable-muted mb-3 opacity-50" />
+                                            <p className="text-sm text-variable-muted">No hay pagos registrados aún.</p>
+                                            <p className="text-xs text-variable-muted italic mt-1">Registra el primer cobro para empezar a controlar el balance.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black text-variable-muted uppercase tracking-widest">Historial de Cobros ({payments.length})</p>
+                                            {payments.map((pay) => {
+                                                const methodInfo = getPaymentMethodInfo(pay.payment_method);
+                                                const MethodIcon = methodInfo.icon;
+                                                return (
+                                                    <div key={pay.id} onClick={() => handleRedownloadReceipt(pay.id)} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-variable hover:bg-white/[0.08] cursor-pointer transition-all group">
+                                                        <div className={`p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20`}>
+                                                            <MethodIcon size={18} className={methodInfo.color} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm font-bold text-variable-main">{pay.payment_number}</p>
+                                                                <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase ${methodInfo.color} bg-white/5 border border-current/10`}>
+                                                                    {methodInfo.label}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 mt-1">
+                                                                <span className="text-[9px] text-variable-muted font-bold">
+                                                                    {new Date(pay.payment_date).toLocaleDateString('es-ES')}
+                                                                </span>
+                                                                {pay.notes && (
+                                                                    <span className="text-[9px] text-variable-muted italic truncate">
+                                                                        {pay.notes}
+                                                                    </span>
+                                                                )}
+                                                                {pay.created_by_user && (
+                                                                    <span className="text-[8px] text-variable-muted italic">
+                                                                        por {pay.created_by_user.first_name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-lg font-black text-emerald-500">€{parseFloat(pay.amount).toFixed(2)}</span>
+                                                        <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" title="Descargar Recibo">
+                                                            <Download size={14} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                )}
             </main>
 
             {/* MODALS */}
@@ -959,6 +1327,85 @@ export default function ProjectDetail() {
                                 )}
                                 <button disabled={formLoading} type="submit" className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-xl shadow-primary/30 hover:brightness-110 transition-all">
                                     {formLoading ? 'Guardando...' : 'Añadir Línea'}
+                                </button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* MODAL: REGISTRAR COBRO */}
+                {paymentModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setPaymentModal(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-md glass rounded-[2.5rem] p-10 shadow-2xl overflow-visible">
+                            <h2 className="text-2xl font-bold mb-2 text-variable-main text-center">Registrar Cobro</h2>
+                            <p className="text-xs text-variable-muted text-center mb-8 italic">Registra un pago recibido del cliente</p>
+                            <form onSubmit={handleRegisterPayment} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1">Importe (€)</label>
+                                    <input
+                                        required
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        value={newPayment.amount}
+                                        onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })}
+                                        className="w-full bg-white/5 border border-variable rounded-2xl px-5 py-4 text-variable-main text-xl font-bold focus:outline-none focus:border-emerald-500/50"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1">Método de Pago</label>
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {PAYMENT_METHODS.map(method => {
+                                            const Icon = method.icon;
+                                            const isSelected = newPayment.payment_method === method.value;
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={method.value}
+                                                    onClick={() => setNewPayment({ ...newPayment, payment_method: method.value })}
+                                                    className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all ${isSelected
+                                                        ? 'bg-emerald-500/10 border-emerald-500/40 scale-105 shadow-lg shadow-emerald-500/10'
+                                                        : 'bg-white/5 border-variable hover:bg-white/10'
+                                                        }`}
+                                                >
+                                                    <Icon size={18} className={isSelected ? 'text-emerald-500' : 'text-variable-muted'} />
+                                                    <span className={`text-[8px] font-black uppercase tracking-wider ${isSelected ? 'text-emerald-500' : 'text-variable-muted'}`}>{method.label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-emerald-500 uppercase tracking-widest ml-1">Notas (opcional)</label>
+                                    <textarea
+                                        value={newPayment.notes}
+                                        onChange={e => setNewPayment({ ...newPayment, notes: e.target.value })}
+                                        className="w-full bg-white/5 border border-variable rounded-2xl px-5 py-4 text-variable-main focus:outline-none focus:border-emerald-500/50 text-sm resize-none"
+                                        rows={2}
+                                        placeholder="Ej: Pago parcial primer mes..."
+                                    />
+                                </div>
+                                {/* Preview */}
+                                {newPayment.amount && parseFloat(newPayment.amount) > 0 && (
+                                    <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-sm space-y-2">
+                                        <div className="flex justify-between text-variable-muted">
+                                            <span>Importe del cobro:</span>
+                                            <span className="font-bold text-emerald-500">€{parseFloat(newPayment.amount).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-variable-muted">
+                                            <span>Ya cobrado anteriormente:</span>
+                                            <span className="font-bold text-variable-main">€{totalPaid.toFixed(2)}</span>
+                                        </div>
+                                        <div className={`flex justify-between font-black pt-2 border-t border-emerald-500/20 ${(pendingBalance - parseFloat(newPayment.amount)) <= 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                            <span>{(pendingBalance - parseFloat(newPayment.amount)) <= 0 ? '✓ Pagado Completo' : 'Quedará pendiente:'}</span>
+                                            <span>€{Math.max(0, pendingBalance - parseFloat(newPayment.amount)).toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <button disabled={formLoading} type="submit" className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold shadow-xl shadow-emerald-500/30 hover:brightness-110 transition-all">
+                                    {formLoading ? 'Registrando...' : 'Registrar Cobro'}
                                 </button>
                             </form>
                         </motion.div>

@@ -418,6 +418,23 @@ CREATE TABLE IF NOT EXISTS public.project_invoices (
 
 CREATE INDEX IF NOT EXISTS idx_invoices_project ON public.project_invoices(project_id);
 
+-- Pagos / Cobros del Proyecto
+CREATE TABLE IF NOT EXISTS public.project_payments (
+    id              uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id      uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
+    invoice_id      uuid          REFERENCES public.project_invoices(id) ON DELETE SET NULL,
+    payment_number  text          NOT NULL,
+    payment_date    date          DEFAULT CURRENT_DATE,
+    amount          decimal(10,2) NOT NULL DEFAULT 0,
+    payment_method  text          NOT NULL DEFAULT 'transferencia', -- efectivo, tarjeta, transferencia, bizum, otro
+    notes           text,
+    created_by      uuid          REFERENCES public.users(id) ON DELETE SET NULL,
+    created_at      timestamptz   DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payments_project ON public.project_payments(project_id);
+CREATE INDEX IF NOT EXISTS idx_payments_invoice ON public.project_payments(invoice_id);
+
 
 -- =============================================
 -- 15. FUNCIONES RPC (Para crear proyectos de forma segura)
@@ -508,6 +525,7 @@ ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_budget_lines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_payments ENABLE ROW LEVEL SECURITY;
 
 -- Limpiar políticas existentes
 DROP POLICY IF EXISTS "projects_select_member" ON public.projects;
@@ -587,6 +605,12 @@ CREATE POLICY "invoices_select" ON public.project_invoices FOR SELECT TO authent
 DROP POLICY IF EXISTS "invoices_all" ON public.project_invoices;
 CREATE POLICY "invoices_all" ON public.project_invoices FOR ALL TO authenticated USING (true);
 
+-- Políticas para project_payments
+DROP POLICY IF EXISTS "payments_select" ON public.project_payments;
+CREATE POLICY "payments_select" ON public.project_payments FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "payments_all" ON public.project_payments;
+CREATE POLICY "payments_all" ON public.project_payments FOR ALL TO authenticated USING (true);
+
 -- Políticas para project_members
 -- Limpiar políticas existentes de miembros
 DROP POLICY IF EXISTS "members_select" ON public.project_members;
@@ -658,6 +682,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'project_invoices') THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.project_invoices;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'project_payments') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.project_payments;
+    END IF;
 END $$;
 
 
@@ -684,6 +711,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_files TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_services TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_budget_lines TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_invoices TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_payments TO authenticated;
 
 -- Función RPC create_project (8 parámetros)
 GRANT EXECUTE ON FUNCTION public.create_project(text, text, text, text, int, uuid, uuid[], uuid[]) TO authenticated;
