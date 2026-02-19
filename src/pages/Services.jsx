@@ -298,7 +298,7 @@ export default function Services() {
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-xl glass rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 overflow-y-auto max-h-[90vh] shadow-2xl"
+                            className="relative w-full max-w-xl glass rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 shadow-2xl overflow-visible"
                         >
                             <button onClick={handleCloseModal} className="absolute top-6 right-6 sm:top-8 sm:right-8 text-variable-muted hover:text-primary transition-colors z-10">
                                 <X size={24} />
@@ -376,6 +376,7 @@ export default function Services() {
                                 >
                                     {loading ? 'Guardando...' : <><ShieldCheck size={20} /> Guardar Servicio</>}
                                 </button>
+                                <div className="h-4" /> {/* Extra bottom spacing */}
                             </form>
                         </motion.div>
                     </div>

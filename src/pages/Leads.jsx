@@ -273,7 +273,7 @@ export default function Leads() {
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-2xl glass rounded-[2rem] sm:rounded-[3rem] p-8 sm:p-12 overflow-y-auto max-h-[90vh] min-h-[600px] shadow-2xl flex flex-col"
+                            className="relative w-full max-w-2xl glass rounded-[2rem] sm:rounded-[3rem] p-8 sm:p-12 min-h-[600px] shadow-2xl flex flex-col overflow-visible"
                         >
                             <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 sm:top-8 sm:right-8 text-variable-muted hover:text-primary transition-colors z-10">
                                 <X size={24} />
@@ -341,10 +341,11 @@ export default function Leads() {
                                 <button
                                     disabled={loading}
                                     type="submit"
-                                    className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-primary/30 mt-4 flex items-center justify-center gap-2"
+                                    className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-primary/30 mt-8 flex items-center justify-center gap-2"
                                 >
                                     {loading ? 'Procesando...' : <><ShieldCheck size={20} /> Crear Lead</>}
                                 </button>
+                                <div className="h-10" /> {/* Extra bottom spacing */}
                             </form>
                         </motion.div>
                     </div>
