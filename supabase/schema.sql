@@ -18,6 +18,13 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
+-- Tipo para estado de cuenta
+DO $$ BEGIN
+    CREATE TYPE public.user_status AS ENUM ('active', 'banned');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
+
 
 -- =============================================
 -- 2. TABLA: users (Perfiles de usuario)
@@ -25,20 +32,41 @@ END $$;
 -- Vinculada a auth.users por id (uuid)
 
 CREATE TABLE IF NOT EXISTS public.users (
-    id          uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email       text        NOT NULL UNIQUE,
-    avatar_url  text,
-    role        user_role   DEFAULT 'user',
-    name        text,
-    first_name  text,
-    second_name text,
-    created_at  timestamptz DEFAULT now(),
-    updated_at  timestamptz DEFAULT now()
+    id            uuid          PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email         text          NOT NULL UNIQUE,
+    avatar_url    text,
+    role          user_role     DEFAULT 'user',
+    name          text,
+    first_name    text,
+    second_name   text,
+    birth_date    date,
+    phone_prefix  text          DEFAULT '+34',
+    phone         text,
+    country       text          DEFAULT 'España',
+    province      text,
+    city          text,
+    address       text,
+    status        user_status   DEFAULT 'active',
+    created_at    timestamptz   DEFAULT now(),
+    updated_at    timestamptz   DEFAULT now()
 );
+
+-- Si la tabla ya existe, añadir columnas nuevas (idempotente)
+DO $$ BEGIN
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS birth_date    date;
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone_prefix  text DEFAULT '+34';
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone         text;
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS country       text DEFAULT 'España';
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS province      text;
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS city          text;
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS address       text;
+    ALTER TABLE public.users ADD COLUMN IF NOT EXISTS status        user_status DEFAULT 'active';
+END $$;
 
 -- Índices para búsquedas frecuentes
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
+CREATE INDEX IF NOT EXISTS idx_users_status ON public.users(status);
 
 -- Trigger para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION public.update_updated_at()

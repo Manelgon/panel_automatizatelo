@@ -17,7 +17,11 @@ import {
     CheckCircle2,
     X,
     ShieldCheck,
-    UserCircle
+    UserCircle,
+    Phone,
+    MapPin,
+    Calendar,
+    Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -36,16 +40,45 @@ export default function Users() {
     const [loading, setLoading] = useState(false);
     const [usersList, setUsersList] = useState([]);
 
-    const [formData, setFormData] = useState({
-        name: '',
-        first_name: '',
-        second_name: '',
-        email: '',
-        password: '',
-        role: 'user'
-    });
+    const defaultForm = {
+        name: '', first_name: '', second_name: '',
+        email: '', password: '', role: 'user',
+        birth_date: '', phone_prefix: '+34', phone: '',
+        country: 'España', province: '', city: '',
+        address: '', status: 'active'
+    };
+    const [formData, setFormData] = useState(defaultForm);
 
     const [fetchError, setFetchError] = useState(null);
+
+    // Prefijos telefónicos comunes
+    const phonePrefixes = [
+        { code: '+34', country: '🇪🇸 España' },
+        { code: '+1', country: '🇺🇸 USA' },
+        { code: '+44', country: '🇬🇧 UK' },
+        { code: '+33', country: '🇫🇷 Francia' },
+        { code: '+49', country: '🇩🇪 Alemania' },
+        { code: '+39', country: '🇮🇹 Italia' },
+        { code: '+351', country: '🇵🇹 Portugal' },
+        { code: '+52', country: '🇲🇽 México' },
+        { code: '+54', country: '🇦🇷 Argentina' },
+        { code: '+57', country: '🇨🇴 Colombia' },
+        { code: '+56', country: '🇨🇱 Chile' },
+        { code: '+55', country: '🇧🇷 Brasil' },
+    ];
+
+    // Provincias de España
+    const spanishProvinces = [
+        'Álava', 'Albacete', 'Alicante', 'Almería', 'Asturias', 'Ávila',
+        'Badajoz', 'Barcelona', 'Burgos', 'Cáceres', 'Cádiz', 'Cantabria',
+        'Castellón', 'Ciudad Real', 'Córdoba', 'A Coruña', 'Cuenca',
+        'Girona', 'Granada', 'Guadalajara', 'Guipúzcoa', 'Huelva', 'Huesca',
+        'Illes Balears', 'Jaén', 'León', 'Lleida', 'Lugo', 'Madrid',
+        'Málaga', 'Murcia', 'Navarra', 'Ourense', 'Palencia', 'Las Palmas',
+        'Pontevedra', 'La Rioja', 'Salamanca', 'Segovia', 'Sevilla', 'Soria',
+        'Tarragona', 'Santa Cruz de Tenerife', 'Teruel', 'Toledo', 'Valencia',
+        'Valladolid', 'Vizcaya', 'Zamora', 'Zaragoza', 'Ceuta', 'Melilla'
+    ];
 
     const handleCreateUser = async (e) => {
         e.preventDefault();
@@ -69,14 +102,22 @@ export default function Users() {
                     first_name: formData.first_name,
                     second_name: formData.second_name,
                     role: formData.role,
+                    birth_date: formData.birth_date || null,
+                    phone_prefix: formData.phone_prefix,
+                    phone: formData.phone || null,
+                    country: formData.country,
+                    province: formData.province || null,
+                    city: formData.city || null,
+                    address: formData.address || null,
+                    status: formData.status,
                 });
 
             if (profileError) throw profileError;
 
             // 3. Reset form and close modal
-            setFormData({ name: '', first_name: '', second_name: '', email: '', password: '', role: 'user' });
+            setFormData(defaultForm);
             setIsModalOpen(false);
-            fetchUsers(); // Refresh the list
+            fetchUsers();
         } catch (err) {
             console.error('Error creating user:', err);
             alert(`Error al crear usuario: ${err.message}`);
@@ -261,62 +302,156 @@ export default function Users() {
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-lg glass rounded-[2.5rem] p-10 overflow-hidden shadow-2xl"
+                            className="relative w-full max-w-2xl glass rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] shadow-2xl"
                         >
-                            <button onClick={() => setIsModalOpen(false)} className="absolute top-8 right-8 text-variable-muted hover:text-primary transition-colors">
+                            <button onClick={() => setIsModalOpen(false)} className="absolute top-8 right-8 text-variable-muted hover:text-primary transition-colors z-10">
                                 <X size={24} />
                             </button>
 
                             <h2 className="text-3xl font-bold font-display mb-2 text-variable-main">Añadir Miembro</h2>
                             <p className="text-variable-muted mb-8 italic">Configura un nuevo acceso al panel administrativo</p>
 
-                            <form onSubmit={handleCreateUser} className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
+                            <form onSubmit={handleCreateUser} className="space-y-5">
+                                {/* --- Datos personales --- */}
+                                <p className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b border-variable pb-2">Datos Personales</p>
+
+                                <div className="grid grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Nombre</label>
-                                        <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-6 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Ej: Juan" />
+                                        <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Juan" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">1er Apellido</label>
-                                        <input required value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-6 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Ej: Pérez" />
+                                        <input required value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Pérez" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">2do Apellido</label>
+                                        <input value={formData.second_name} onChange={(e) => setFormData({ ...formData, second_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="García" />
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">2do Apellido</label>
-                                    <input required value={formData.second_name} onChange={(e) => setFormData({ ...formData, second_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-6 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Ej: García" />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Email de Empresa</label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
-                                        <input required type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-14 pr-6 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="juan.perez@automatizatelo.com" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Fecha de Nacimiento</label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
+                                            <input type="date" value={formData.birth_date} onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Teléfono</label>
+                                        <div className="flex gap-2">
+                                            <select value={formData.phone_prefix} onChange={(e) => setFormData({ ...formData, phone_prefix: e.target.value })} className="bg-white/5 border border-variable rounded-2xl px-3 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all w-[120px] appearance-none cursor-pointer">
+                                                {phonePrefixes.map((p) => (
+                                                    <option key={p.code} value={p.code}>{p.country} {p.code}</option>
+                                                ))}
+                                            </select>
+                                            <div className="relative flex-1">
+                                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
+                                                <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="612 345 678" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Contraseña de acceso</label>
-                                    <input required type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-6 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="••••••••" />
-                                </div>
+                                {/* --- Acceso --- */}
+                                <p className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b border-variable pb-2 pt-2">Acceso</p>
 
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Privilegios</label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {['user', 'editor', 'admin'].map((role) => (
-                                            <button
-                                                key={role}
-                                                type="button"
-                                                onClick={() => setFormData({ ...formData, role })}
-                                                className={`py-3 rounded-2xl font-bold text-[10px] uppercase transition-all border ${formData.role === role ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-variable text-variable-muted hover:border-primary/30'
-                                                    }`}
-                                            >
-                                                {role}
-                                            </button>
-                                        ))}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Email de Empresa</label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
+                                            <input required type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="juan@automatizatelo.com" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Contraseña</label>
+                                        <input required type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="••••••••" />
                                     </div>
                                 </div>
 
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Privilegios</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {['user', 'editor', 'admin'].map((role) => (
+                                                <button key={role} type="button" onClick={() => setFormData({ ...formData, role })}
+                                                    className={`py-2.5 rounded-2xl font-bold text-[10px] uppercase transition-all border ${formData.role === role ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-variable text-variable-muted hover:border-primary/30'}`}>
+                                                    {role}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Estado</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[{ value: 'active', label: 'Activo', color: 'emerald' }, { value: 'banned', label: 'Baneado', color: 'rose' }].map((s) => (
+                                                <button key={s.value} type="button" onClick={() => setFormData({ ...formData, status: s.value })}
+                                                    className={`py-2.5 rounded-2xl font-bold text-[10px] uppercase transition-all border ${formData.status === s.value
+                                                            ? s.value === 'active' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-500' : 'bg-rose-500/20 border-rose-500 text-rose-500'
+                                                            : 'bg-white/5 border-variable text-variable-muted hover:border-primary/30'
+                                                        }`}>
+                                                    {s.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* --- Ubicación --- */}
+                                <p className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b border-variable pb-2 pt-2">Ubicación</p>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">País</label>
+                                        <div className="relative">
+                                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
+                                            <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value, province: '' })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all appearance-none cursor-pointer">
+                                                <option value="España">🇪🇸 España</option>
+                                                <option value="Portugal">🇵🇹 Portugal</option>
+                                                <option value="Francia">🇫🇷 Francia</option>
+                                                <option value="Italia">🇮🇹 Italia</option>
+                                                <option value="Alemania">🇩🇪 Alemania</option>
+                                                <option value="Reino Unido">🇬🇧 Reino Unido</option>
+                                                <option value="México">🇲🇽 México</option>
+                                                <option value="Argentina">🇦🇷 Argentina</option>
+                                                <option value="Colombia">🇨🇴 Colombia</option>
+                                                <option value="Chile">🇨🇱 Chile</option>
+                                                <option value="Otro">🌍 Otro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Provincia</label>
+                                        {formData.country === 'España' ? (
+                                            <select value={formData.province} onChange={(e) => setFormData({ ...formData, province: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all appearance-none cursor-pointer">
+                                                <option value="">Seleccionar...</option>
+                                                {spanishProvinces.map((p) => (
+                                                    <option key={p} value={p}>{p}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input value={formData.province} onChange={(e) => setFormData({ ...formData, province: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Provincia / Estado" />
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Ciudad</label>
+                                        <input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Madrid" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Dirección</label>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
+                                            <input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Calle Mayor, 1" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* --- Submit --- */}
                                 <button
                                     disabled={loading}
                                     type="submit"
