@@ -4,20 +4,20 @@
     "framework": "vite",
     "rewrites": [
         {
-            "source": "/auth/:path*",
-            "destination": "https://ssdbss.automatizatelo.com/auth/:path*"
+            "source": "/auth/(.*)",
+            "destination": "https://ssdbss.automatizatelo.com/auth/$1"
         },
         {
-            "source": "/rest/:path*",
-            "destination": "https://ssdbss.automatizatelo.com/rest/:path*"
+            "source": "/rest/(.*)",
+            "destination": "https://ssdbss.automatizatelo.com/rest/$1"
         },
         {
-            "source": "/realtime/:path*",
-            "destination": "https://ssdbss.automatizatelo.com/realtime/:path*"
+            "source": "/realtime/(.*)",
+            "destination": "https://ssdbss.automatizatelo.com/realtime/$1"
         },
         {
-            "source": "/storage/:path*",
-            "destination": "https://ssdbss.automatizatelo.com/storage/:path*"
+            "source": "/storage/(.*)",
+            "destination": "https://ssdbss.automatizatelo.com/storage/$1"
         },
         {
             "source": "/(.*)",
