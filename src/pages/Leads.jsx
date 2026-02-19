@@ -61,7 +61,11 @@ export default function Leads() {
             .order('name', { ascending: true });
 
         if (error) {
-            console.error('Error fetching services:', error);
+            console.error('Error fetching services in leads:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            });
         } else if (data) {
             setServices(data || []);
         }

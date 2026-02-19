@@ -53,7 +53,12 @@ export default function Services() {
             if (error) throw error;
             setServicesList(data || []);
         } catch (error) {
-            console.error('Error fetching services:', error);
+            console.error('Error fetching services:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
             setFetchError(error);
         } finally {
             setLoading(false);
@@ -79,7 +84,9 @@ export default function Services() {
             fetchServices();
         } catch (err) {
             console.error('Error creating service:', err);
-            alert(`Error al crear servicio: ${err.message}`);
+            const msg = err.message || (typeof err === 'string' ? err : 'Error desconocido');
+            const details = err.details ? ` (${err.details})` : '';
+            alert(`Error al crear servicio: ${msg}${details}`);
         } finally {
             setLoading(false);
         }
@@ -185,8 +192,8 @@ export default function Services() {
                                 <button
                                     onClick={() => toggleServiceStatus(service.id, service.is_active)}
                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${service.is_active
-                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-                                            : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
+                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                                        : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
                                         }`}
                                 >
                                     {service.is_active ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
@@ -279,8 +286,8 @@ export default function Services() {
                                             type="button"
                                             onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                                             className={`w-full py-3 rounded-2xl font-bold text-sm transition-all border ${formData.is_active
-                                                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500'
-                                                    : 'bg-rose-500/10 border-rose-500 text-rose-500'
+                                                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500'
+                                                : 'bg-rose-500/10 border-rose-500 text-rose-500'
                                                 }`}
                                         >
                                             {formData.is_active ? 'Servicio Activo' : 'Servicio Inactivo'}
