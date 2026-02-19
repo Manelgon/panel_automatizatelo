@@ -20,7 +20,7 @@
             "destination": "https://ssdbss.automatizatelo.com/storage/:path*"
         },
         {
-            "source": "/((?!auth|rest|realtime|storage|assets|_next).*)",
+            "source": "/(.*)",
             "destination": "/index.html"
         }
     ]
