@@ -1,21 +1,34 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronUp, ChevronDown, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import {
+    ChevronUp,
+    ChevronDown,
+    ChevronsLeft,
+    ChevronLeft,
+    ChevronRight,
+    ChevronsRight,
+    Columns3,
+    Eye,
+    EyeOff,
+} from 'lucide-react';
 
 /**
- * DataTable — Reusable sortable + paginated table.
+ * DataTable — Reusable sortable + paginated table with column visibility toggle.
  *
  * Props:
- *  - columns    : [{ key, label, sortable?, align?, render?(row) }]
- *  - data       : array of row objects
- *  - loading    : boolean
- *  - emptyIcon  : optional JSX for the empty-state icon
- *  - emptyTitle : string shown when no data
- *  - emptySub   : string subtitle
- *  - rowKey     : string — property used as React key (default "id")
- *  - defaultSort: { key, dir } (default none)
- *  - onRowClick : optional callback(row)
+ *  - tableId      : string — unique id used to persist column visibility in localStorage
+ *  - columns      : [{ key, label, sortable?, align?, render?(row), hideable? }]
+ *                   hideable defaults to true. Set to false to prevent hiding (e.g. actions).
+ *  - data         : array of row objects
+ *  - loading      : boolean
+ *  - emptyIcon    : optional JSX for the empty-state icon
+ *  - emptyTitle   : string shown when no data
+ *  - emptySub     : string subtitle
+ *  - rowKey       : string — property used as React key (default "id")
+ *  - defaultSort  : { key, dir } (default none)
+ *  - onRowClick   : optional callback(row)
  */
 export default function DataTable({
+    tableId = 'default',
     columns = [],
     data = [],
     loading = false,
@@ -26,9 +39,67 @@ export default function DataTable({
     defaultSort,
     onRowClick,
 }) {
-    // ---- Sorting ----
+    // ================================================================
+    // COLUMN VISIBILITY  (persisted in localStorage)
+    // ================================================================
+    const storageKey = `datatable-cols-${tableId}`;
+
+    const getInitialVisibility = () => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Validate: make sure every column key exists in the saved config.
+                // If a new column was added after the user saved, default it to visible.
+                const result = {};
+                columns.forEach((col) => {
+                    result[col.key] = parsed[col.key] !== undefined ? parsed[col.key] : true;
+                });
+                return result;
+            }
+        } catch { /* ignore corrupt localStorage */ }
+        // Default: all columns visible
+        const result = {};
+        columns.forEach((col) => { result[col.key] = true; });
+        return result;
+    };
+
+    const [colVisibility, setColVisibility] = useState(getInitialVisibility);
+    const [colMenuOpen, setColMenuOpen] = useState(false);
+    const colMenuRef = useRef(null);
+
+    // Persist to localStorage whenever visibility changes
+    useEffect(() => {
+        localStorage.setItem(storageKey, JSON.stringify(colVisibility));
+    }, [colVisibility, storageKey]);
+
+    // Close menu on outside click
+    useEffect(() => {
+        const handler = (e) => {
+            if (colMenuRef.current && !colMenuRef.current.contains(e.target)) {
+                setColMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const toggleColumn = (key) => {
+        setColVisibility((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    // Visible columns (filtered)
+    const visibleColumns = columns.filter((col) => colVisibility[col.key] !== false);
+
+    // Count of hideable columns that are currently visible
+    const hideableColumns = columns.filter((col) => col.hideable !== false);
+    const visibleHideableCount = hideableColumns.filter((col) => colVisibility[col.key] !== false).length;
+
+    // ================================================================
+    // SORTING
+    // ================================================================
     const [sortKey, setSortKey] = useState(defaultSort?.key ?? null);
-    const [sortDir, setSortDir] = useState(defaultSort?.dir ?? 'asc'); // 'asc' | 'desc'
+    const [sortDir, setSortDir] = useState(defaultSort?.dir ?? 'asc');
 
     const handleSort = (key) => {
         if (sortKey === key) {
@@ -48,7 +119,6 @@ export default function DataTable({
             let va = a[sortKey];
             let vb = b[sortKey];
 
-            // Handle null / undefined
             if (va == null) va = '';
             if (vb == null) vb = '';
 
@@ -72,29 +142,172 @@ export default function DataTable({
         });
     }, [data, sortKey, sortDir, columns]);
 
-    // ---- Pagination ----
+    // ================================================================
+    // PAGINATION
+    // ================================================================
     const pageSizeOptions = [10, 20, 50, 100];
     const [pageSize, setPageSize] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Reset page when data changes
     const totalPages = Math.max(1, Math.ceil(sortedData.length / pageSize));
     const safePage = Math.min(currentPage, totalPages);
     if (safePage !== currentPage) setCurrentPage(safePage);
 
     const paged = sortedData.slice((safePage - 1) * pageSize, safePage * pageSize);
-
     const goTo = (p) => setCurrentPage(Math.max(1, Math.min(totalPages, p)));
 
-    // ---- Render ----
+    // ================================================================
+    // RENDER
+    // ================================================================
     return (
         <div className="glass rounded-[2.5rem] p-8">
+            {/* ----- TOOLBAR (column selector) ----- */}
+            <div className="flex justify-end mb-4">
+                <div ref={colMenuRef} className="relative">
+                    <button
+                        type="button"
+                        onClick={() => setColMenuOpen((v) => !v)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border"
+                        style={{
+                            borderColor: colMenuOpen ? 'var(--primary)' : 'rgba(243,121,27,0.25)',
+                            backgroundColor: colMenuOpen ? 'rgba(243,121,27,0.1)' : 'rgba(255,255,255,0.03)',
+                            color: colMenuOpen ? 'var(--primary)' : 'var(--text-muted)',
+                            boxShadow: colMenuOpen
+                                ? '0 0 0 3px rgba(243,121,27,0.1), 0 0 12px rgba(243,121,27,0.08)'
+                                : 'none',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!colMenuOpen) {
+                                e.currentTarget.style.borderColor = 'rgba(243,121,27,0.5)';
+                                e.currentTarget.style.color = 'var(--primary)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!colMenuOpen) {
+                                e.currentTarget.style.borderColor = 'rgba(243,121,27,0.25)';
+                                e.currentTarget.style.color = 'var(--text-muted)';
+                            }
+                        }}
+                    >
+                        <Columns3 size={15} />
+                        Columnas
+                        <span
+                            className="ml-1 px-1.5 py-0.5 rounded-lg text-[10px] font-black"
+                            style={{
+                                backgroundColor: 'rgba(243,121,27,0.15)',
+                                color: 'var(--primary)',
+                            }}
+                        >
+                            {visibleHideableCount}/{hideableColumns.length}
+                        </span>
+                    </button>
+
+                    {/* Dropdown panel */}
+                    {colMenuOpen && (
+                        <div
+                            className="absolute right-0 z-[80] mt-2 w-64 rounded-2xl overflow-hidden shadow-2xl"
+                            style={{
+                                border: '1.5px solid rgba(243,121,27,0.35)',
+                                backgroundColor: 'var(--bg-main)',
+                                backdropFilter: 'blur(24px)',
+                                WebkitBackdropFilter: 'blur(24px)',
+                            }}
+                        >
+                            {/* Header */}
+                            <div
+                                className="px-4 py-3 border-b flex items-center justify-between"
+                                style={{ borderColor: 'rgba(243,121,27,0.15)' }}
+                            >
+                                <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+                                    Mostrar / Ocultar
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const reset = {};
+                                        columns.forEach((col) => { reset[col.key] = true; });
+                                        setColVisibility(reset);
+                                    }}
+                                    className="text-[10px] font-bold uppercase tracking-widest transition-colors"
+                                    style={{ color: 'var(--text-muted)' }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--primary)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+                                >
+                                    Mostrar todas
+                                </button>
+                            </div>
+
+                            {/* Column toggles */}
+                            <ul className="custom-select-list overflow-y-auto py-1" style={{ maxHeight: '260px' }}>
+                                {columns.map((col) => {
+                                    const isHideable = col.hideable !== false;
+                                    const isVisible = colVisibility[col.key] !== false;
+
+                                    return (
+                                        <li key={col.key}>
+                                            <button
+                                                type="button"
+                                                disabled={!isHideable}
+                                                onClick={() => isHideable && toggleColumn(col.key)}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors duration-150"
+                                                style={{
+                                                    color: !isHideable
+                                                        ? 'var(--text-muted)'
+                                                        : isVisible
+                                                            ? 'var(--text-main)'
+                                                            : 'var(--text-muted)',
+                                                    opacity: !isHideable ? 0.5 : 1,
+                                                    cursor: isHideable ? 'pointer' : 'not-allowed',
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    if (isHideable) {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(243,121,27,0.08)';
+                                                    }
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                }}
+                                            >
+                                                {/* Toggle icon */}
+                                                <span
+                                                    className="shrink-0 size-5 rounded-lg flex items-center justify-center transition-all"
+                                                    style={{
+                                                        backgroundColor: isVisible
+                                                            ? 'rgba(243,121,27,0.2)'
+                                                            : 'rgba(255,255,255,0.05)',
+                                                        border: isVisible
+                                                            ? '1.5px solid var(--primary)'
+                                                            : '1.5px solid rgba(255,255,255,0.1)',
+                                                    }}
+                                                >
+                                                    {isVisible
+                                                        ? <Eye size={12} style={{ color: 'var(--primary)' }} />
+                                                        : <EyeOff size={12} style={{ color: 'var(--text-muted)' }} />
+                                                    }
+                                                </span>
+                                                <span className="flex-1 text-left truncate">{col.label}</span>
+                                                {!isHideable && (
+                                                    <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                                                        Fija
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ----- TABLE ----- */}
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                    {/* ----- HEAD ----- */}
+                    {/* HEAD */}
                     <thead className="text-variable-muted text-xs uppercase tracking-[0.2em] font-bold border-b border-variable">
                         <tr>
-                            {columns.map((col) => (
+                            {visibleColumns.map((col) => (
                                 <th
                                     key={col.key}
                                     className={`pb-6 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''} ${col.sortable !== false ? 'cursor-pointer select-none group' : ''}`}
@@ -122,11 +335,11 @@ export default function DataTable({
                         </tr>
                     </thead>
 
-                    {/* ----- BODY ----- */}
+                    {/* BODY */}
                     <tbody className="divide-y divide-variable">
                         {loading && data.length === 0 ? (
                             <tr>
-                                <td colSpan={columns.length} className="py-20 text-center">
+                                <td colSpan={visibleColumns.length} className="py-20 text-center">
                                     <div className="flex flex-col items-center gap-4">
                                         <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                                         <p className="text-variable-muted font-medium">Conectando con Supabase...</p>
@@ -135,7 +348,7 @@ export default function DataTable({
                             </tr>
                         ) : data.length === 0 ? (
                             <tr>
-                                <td colSpan={columns.length} className="py-20 text-center">
+                                <td colSpan={visibleColumns.length} className="py-20 text-center">
                                     <div className="flex flex-col items-center gap-4 text-variable-muted">
                                         {emptyIcon}
                                         <p className="font-medium">{emptyTitle}</p>
@@ -150,7 +363,7 @@ export default function DataTable({
                                     className={`group hover:bg-white/[0.02] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                                     onClick={() => onRowClick?.(row)}
                                 >
-                                    {columns.map((col) => (
+                                    {visibleColumns.map((col) => (
                                         <td
                                             key={col.key}
                                             className={`py-6 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}
@@ -205,7 +418,6 @@ export default function DataTable({
                             <ChevronLeft size={16} />
                         </PageBtn>
 
-                        {/* Page numbers */}
                         {getPageNumbers(safePage, totalPages).map((p, i) =>
                             p === '...' ? (
                                 <span key={`dots-${i}`} className="px-1 text-variable-muted text-xs">…</span>

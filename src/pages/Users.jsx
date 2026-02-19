@@ -55,18 +55,18 @@ export default function Users() {
 
     // Prefijos telefónicos comunes
     const phonePrefixes = [
-        { code: '+34', country: '🇪🇸 España' },
-        { code: '+1', country: '🇺🇸 USA' },
-        { code: '+44', country: '🇬🇧 UK' },
-        { code: '+33', country: '🇫🇷 Francia' },
-        { code: '+49', country: '🇩🇪 Alemania' },
-        { code: '+39', country: '🇮🇹 Italia' },
-        { code: '+351', country: '🇵🇹 Portugal' },
-        { code: '+52', country: '🇲🇽 México' },
-        { code: '+54', country: '🇦🇷 Argentina' },
-        { code: '+57', country: '🇨🇴 Colombia' },
-        { code: '+56', country: '🇨🇱 Chile' },
-        { code: '+55', country: '🇧🇷 Brasil' },
+        { code: '+34', iso: 'ES' },
+        { code: '+1', iso: 'US' },
+        { code: '+44', iso: 'UK' },
+        { code: '+33', iso: 'FR' },
+        { code: '+49', iso: 'DE' },
+        { code: '+39', iso: 'IT' },
+        { code: '+351', iso: 'PT' },
+        { code: '+52', iso: 'MX' },
+        { code: '+54', iso: 'AR' },
+        { code: '+57', iso: 'CO' },
+        { code: '+56', iso: 'CL' },
+        { code: '+55', iso: 'BR' },
     ];
 
     // Provincias de España
@@ -216,6 +216,7 @@ export default function Users() {
                 </header>
 
                 <DataTable
+                    tableId="users"
                     loading={loading}
                     data={usersList}
                     rowKey="id"
@@ -227,6 +228,7 @@ export default function Users() {
                         {
                             key: 'name',
                             label: 'Usuario',
+                            hideable: false,
                             render: (user) => (
                                 <div className="flex items-center gap-4">
                                     <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
@@ -260,6 +262,78 @@ export default function Users() {
                             ),
                         },
                         {
+                            key: 'status',
+                            label: 'Estado',
+                            align: 'center',
+                            render: (user) => (
+                                <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${user.status === 'active'
+                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm shadow-emerald-500/5'
+                                    : user.status === 'banned'
+                                        ? 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-sm shadow-rose-500/5'
+                                        : 'bg-amber-500/10 text-amber-500 border-amber-500/20 shadow-sm shadow-amber-500/5'
+                                    }`}>
+                                    {user.status === 'active' ? 'Activo' : user.status === 'banned' ? 'Baneado' : user.status || '—'}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'phone',
+                            label: 'Teléfono',
+                            render: (user) => (
+                                <span className="text-variable-muted text-sm font-medium whitespace-nowrap">
+                                    {user.phone ? `${user.phone_prefix || ''} ${user.phone}` : <span className="italic opacity-50">—</span>}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'birth_date',
+                            label: 'Nacimiento',
+                            render: (user) => (
+                                <span className="text-variable-muted text-sm">
+                                    {user.birth_date
+                                        ? new Date(user.birth_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+                                        : <span className="italic opacity-50">—</span>
+                                    }
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'country',
+                            label: 'País',
+                            render: (user) => (
+                                <span className="text-variable-muted text-sm font-medium">
+                                    {user.country || <span className="italic opacity-50">—</span>}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'province',
+                            label: 'Provincia',
+                            render: (user) => (
+                                <span className="text-variable-muted text-sm">
+                                    {user.province || <span className="italic opacity-50">—</span>}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'city',
+                            label: 'Ciudad',
+                            render: (user) => (
+                                <span className="text-variable-muted text-sm">
+                                    {user.city || <span className="italic opacity-50">—</span>}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'address',
+                            label: 'Dirección',
+                            render: (user) => (
+                                <span className="text-variable-muted text-sm truncate max-w-[200px] inline-block">
+                                    {user.address || <span className="italic opacity-50">—</span>}
+                                </span>
+                            ),
+                        },
+                        {
                             key: 'created_at',
                             label: 'Fecha Registro',
                             render: (user) => (
@@ -273,6 +347,7 @@ export default function Users() {
                             label: 'Acciones',
                             align: 'right',
                             sortable: false,
+                            hideable: false,
                             render: (user) => (
                                 <div className="flex justify-end gap-2">
                                     <button className="p-2 text-variable-muted hover:text-primary transition-colors glass rounded-xl border-variable">
@@ -344,8 +419,8 @@ export default function Users() {
                                             <CustomSelect
                                                 value={formData.phone_prefix}
                                                 onChange={(val) => setFormData({ ...formData, phone_prefix: val })}
-                                                options={phonePrefixes.map((p) => ({ value: p.code, label: `${p.country} ${p.code}` }))}
-                                                width="160px"
+                                                options={phonePrefixes.map((p) => ({ value: p.code, label: `${p.iso} ${p.code}` }))}
+                                                width="110px"
                                             />
                                             <div className="relative flex-1">
                                                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
@@ -411,17 +486,17 @@ export default function Users() {
                                             onChange={(val) => setFormData({ ...formData, country: val, province: '' })}
                                             icon={Globe}
                                             options={[
-                                                { value: 'España', label: '🇪🇸 España' },
-                                                { value: 'Portugal', label: '🇵🇹 Portugal' },
-                                                { value: 'Francia', label: '🇫🇷 Francia' },
-                                                { value: 'Italia', label: '🇮🇹 Italia' },
-                                                { value: 'Alemania', label: '🇩🇪 Alemania' },
-                                                { value: 'Reino Unido', label: '🇬🇧 Reino Unido' },
-                                                { value: 'México', label: '🇲🇽 México' },
-                                                { value: 'Argentina', label: '🇦🇷 Argentina' },
-                                                { value: 'Colombia', label: '🇨🇴 Colombia' },
-                                                { value: 'Chile', label: '🇨🇱 Chile' },
-                                                { value: 'Otro', label: '🌍 Otro' },
+                                                { value: 'España', label: 'España' },
+                                                { value: 'Portugal', label: 'Portugal' },
+                                                { value: 'Francia', label: 'Francia' },
+                                                { value: 'Italia', label: 'Italia' },
+                                                { value: 'Alemania', label: 'Alemania' },
+                                                { value: 'Reino Unido', label: 'Reino Unido' },
+                                                { value: 'México', label: 'México' },
+                                                { value: 'Argentina', label: 'Argentina' },
+                                                { value: 'Colombia', label: 'Colombia' },
+                                                { value: 'Chile', label: 'Chile' },
+                                                { value: 'Otro', label: 'Otro' },
                                             ]}
                                         />
                                     </div>
