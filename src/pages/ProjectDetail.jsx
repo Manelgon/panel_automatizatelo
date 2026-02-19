@@ -35,6 +35,8 @@ import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export default function ProjectDetail() {
     const { id } = useParams();
@@ -65,6 +67,8 @@ export default function ProjectDetail() {
     const [budgetExpanded, setBudgetExpanded] = useState(true);
     const [budgetLineModal, setBudgetLineModal] = useState(false);
     const [newBudgetLine, setNewBudgetLine] = useState({ description: '', unit_price: '', quantity: 1, iva_percent: 21 });
+    const [invoices, setInvoices] = useState([]);
+    const [invoiceLoading, setInvoiceLoading] = useState(false);
 
     const fetchProjectData = async () => {
         try {
@@ -134,6 +138,14 @@ export default function ProjectDetail() {
             .eq('project_id', id)
             .order('created_at', { ascending: true });
         setBudgetLines(lineData || []);
+
+        // Fetch invoices
+        const { data: invData } = await supabase
+            .from('project_invoices')
+            .select('*')
+            .eq('project_id', id)
+            .order('created_at', { ascending: false });
+        setInvoices(invData || []);
     };
 
     useEffect(() => {
@@ -231,20 +243,226 @@ export default function ProjectDetail() {
         else fetchBudgetData();
     };
 
-    // Cálculos de presupuesto
+    // Cálculos de presupuesto — separar facturadas vs pendientes
     const serviceLines = projectServices.map(ps => {
         const price = parseFloat(ps.services?.price) || 0;
-        return { description: ps.services?.name || 'Servicio', base: price, iva: price * 0.21, total: price * 1.21, isService: true, id: ps.id };
+        return { description: ps.services?.name || 'Servicio', base: price, iva: price * 0.21, total: price * 1.21, isService: true, id: ps.id, invoiced: !!ps.invoice_id, quantity: 1, unit_price: price, iva_percent: 21 };
     });
     const manualLines = budgetLines.map(bl => {
         const base = (parseFloat(bl.unit_price) || 0) * (parseInt(bl.quantity) || 1);
         const iva = base * ((parseFloat(bl.iva_percent) || 0) / 100);
-        return { description: bl.description, base, iva, total: base + iva, isService: false, id: bl.id, quantity: bl.quantity, unit_price: bl.unit_price, iva_percent: bl.iva_percent };
+        return { description: bl.description, base, iva, total: base + iva, isService: false, id: bl.id, quantity: bl.quantity, unit_price: bl.unit_price, iva_percent: bl.iva_percent, invoiced: !!bl.invoice_id };
     });
     const allBudgetLines = [...serviceLines, ...manualLines];
+    const uninvoicedLines = allBudgetLines.filter(l => !l.invoiced);
+    const invoicedLines = allBudgetLines.filter(l => l.invoiced);
     const budgetSubtotal = allBudgetLines.reduce((sum, l) => sum + l.base, 0);
     const budgetIVA = allBudgetLines.reduce((sum, l) => sum + l.iva, 0);
     const budgetTotal = allBudgetLines.reduce((sum, l) => sum + l.total, 0);
+    const uninvoicedSubtotal = uninvoicedLines.reduce((sum, l) => sum + l.base, 0);
+    const uninvoicedIVA = uninvoicedLines.reduce((sum, l) => sum + l.iva, 0);
+    const uninvoicedTotal = uninvoicedLines.reduce((sum, l) => sum + l.total, 0);
+
+    // Generar PDF de factura
+    const generateInvoicePDF = (invoiceData) => {
+        const doc = new jsPDF();
+        const pName = invoiceData.projectName || project?.name || 'Proyecto';
+        const pAlias = invoiceData.projectAlias || project?.id_alias || '';
+        const pClient = invoiceData.clientName || project?.client || 'Cliente';
+
+        // Header
+        doc.setFillColor(30, 30, 40);
+        doc.rect(0, 0, 220, 42, 'F');
+        doc.setTextColor(255, 140, 50);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('FACTURA', 15, 22);
+        doc.setFontSize(10);
+        doc.setTextColor(180, 180, 190);
+        doc.text(`N.º ${invoiceData.invoice_number}`, 15, 32);
+        doc.text(`Fecha: ${new Date(invoiceData.invoice_date).toLocaleDateString('es-ES')}`, 15, 38);
+
+        // Company info (right side)
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Automatízatelo', 195, 18, { align: 'right' });
+        doc.setFontSize(8);
+        doc.setTextColor(180, 180, 190);
+        doc.text('automatizatelo.com', 195, 25, { align: 'right' });
+
+        // Project / Client info
+        doc.setTextColor(60, 60, 70);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('PROYECTO:', 15, 55);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${pName}${pAlias ? ` (${pAlias})` : ''}`, 50, 55);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CLIENTE:', 15, 62);
+        doc.setFont('helvetica', 'normal');
+        doc.text(pClient, 50, 62);
+
+        // Table
+        const lines = invoiceData.line_items || [];
+        const tableRows = lines.map(l => [
+            l.description,
+            l.quantity?.toString() || '1',
+            `€${parseFloat(l.unit_price || 0).toFixed(2)}`,
+            `${l.iva_percent || 21}%`,
+            `€${parseFloat(l.base || 0).toFixed(2)}`,
+            `€${parseFloat(l.total || 0).toFixed(2)}`
+        ]);
+
+        doc.autoTable({
+            startY: 72,
+            head: [['Concepto', 'Cant.', 'Precio Unit.', 'IVA', 'Base', 'Total']],
+            body: tableRows,
+            headStyles: { fillColor: [255, 140, 50], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+            bodyStyles: { fontSize: 9, textColor: [50, 50, 60] },
+            alternateRowStyles: { fillColor: [245, 245, 248] },
+            columnStyles: {
+                0: { cellWidth: 60 },
+                1: { halign: 'center', cellWidth: 18 },
+                2: { halign: 'right', cellWidth: 28 },
+                3: { halign: 'center', cellWidth: 18 },
+                4: { halign: 'right', cellWidth: 28 },
+                5: { halign: 'right', cellWidth: 28 },
+            },
+            margin: { left: 15, right: 15 },
+        });
+
+        const finalY = doc.lastAutoTable.finalY + 10;
+
+        // Totals
+        doc.setDrawColor(200, 200, 210);
+        doc.line(120, finalY, 195, finalY);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 90);
+        doc.text('Subtotal (Base Imponible):', 120, finalY + 8);
+        doc.text(`€${parseFloat(invoiceData.subtotal).toFixed(2)}`, 195, finalY + 8, { align: 'right' });
+        doc.text('IVA Total:', 120, finalY + 16);
+        doc.text(`€${parseFloat(invoiceData.iva_total).toFixed(2)}`, 195, finalY + 16, { align: 'right' });
+
+        doc.setDrawColor(255, 140, 50);
+        doc.setLineWidth(0.5);
+        doc.line(120, finalY + 20, 195, finalY + 20);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 140, 50);
+        doc.text('TOTAL:', 120, finalY + 28);
+        doc.text(`€${parseFloat(invoiceData.total).toFixed(2)}`, 195, finalY + 28, { align: 'right' });
+
+        // Footer
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 160);
+        doc.text('Este documento ha sido generado automáticamente por el Panel de Automatízatelo.', 105, 285, { align: 'center' });
+
+        return doc;
+    };
+
+    const handleGenerateInvoice = async () => {
+        if (uninvoicedLines.length === 0) {
+            showNotification('No hay líneas pendientes de facturar', 'error');
+            return;
+        }
+        setInvoiceLoading(true);
+        try {
+            // Generate invoice number: FAC-{alias o id corto}-{contador}
+            const invoiceCount = invoices.length + 1;
+            const alias = project.id_alias || project.id.substring(0, 8).toUpperCase();
+            const invoiceNumber = `FAC-${alias}-${String(invoiceCount).padStart(3, '0')}`;
+            const today = new Date().toISOString().split('T')[0];
+
+            // Snapshot de líneas
+            const lineItemsSnapshot = uninvoicedLines.map(l => ({
+                description: l.description,
+                quantity: l.quantity || 1,
+                unit_price: l.unit_price,
+                iva_percent: l.iva_percent,
+                base: l.base,
+                iva: l.iva,
+                total: l.total,
+                type: l.isService ? 'servicio' : 'manual'
+            }));
+
+            // Crear factura en BD
+            const { data: invoice, error: invErr } = await supabase
+                .from('project_invoices')
+                .insert([{
+                    project_id: id,
+                    invoice_number: invoiceNumber,
+                    invoice_date: today,
+                    subtotal: uninvoicedSubtotal,
+                    iva_total: uninvoicedIVA,
+                    total: uninvoicedTotal,
+                    line_items: lineItemsSnapshot,
+                    status: 'emitida'
+                }])
+                .select()
+                .single();
+            if (invErr) throw invErr;
+
+            // Marcar servicios como facturados
+            const uninvoicedServiceIds = projectServices.filter(ps => !ps.invoice_id).map(ps => ps.id);
+            if (uninvoicedServiceIds.length > 0) {
+                await supabase.from('project_services').update({ invoice_id: invoice.id }).in('id', uninvoicedServiceIds);
+            }
+
+            // Marcar líneas manuales como facturadas
+            const uninvoicedBudgetIds = budgetLines.filter(bl => !bl.invoice_id).map(bl => bl.id);
+            if (uninvoicedBudgetIds.length > 0) {
+                await supabase.from('project_budget_lines').update({ invoice_id: invoice.id }).in('id', uninvoicedBudgetIds);
+            }
+
+            // Nombre del archivo
+            const dateStr = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+            const fileName = `Factura - ${project.name} - ${alias} - ${dateStr}`;
+
+            // Crear entrada en project_files
+            await supabase.from('project_files').insert([{
+                project_id: id,
+                name: fileName,
+                size: `${lineItemsSnapshot.length} líneas`,
+                file_type: 'FACTURA',
+                url: `invoice:${invoice.id}`
+            }]);
+
+            // Generar y descargar PDF
+            const invoiceData = {
+                ...invoice,
+                projectName: project.name,
+                projectAlias: project.id_alias,
+                clientName: project.client
+            };
+            const doc = generateInvoicePDF(invoiceData);
+            doc.save(`${fileName}.pdf`);
+
+            showNotification(`Factura ${invoiceNumber} generada correctamente ✅`);
+            fetchProjectData();
+            fetchBudgetData();
+        } catch (error) {
+            showNotification(`Error generando factura: ${error.message}`, 'error');
+        } finally {
+            setInvoiceLoading(false);
+        }
+    };
+
+    const handleRedownloadInvoice = (invoiceId) => {
+        const inv = invoices.find(i => i.id === invoiceId);
+        if (!inv) { showNotification('Factura no encontrada', 'error'); return; }
+        const invoiceData = {
+            ...inv,
+            projectName: project?.name,
+            projectAlias: project?.id_alias,
+            clientName: project?.client
+        };
+        const doc = generateInvoicePDF(invoiceData);
+        const alias = project?.id_alias || project?.id?.substring(0, 8).toUpperCase() || '';
+        const dateStr = new Date(inv.invoice_date).toLocaleDateString('es-ES').replace(/\//g, '-');
+        doc.save(`Factura - ${project?.name} - ${alias} - ${dateStr}.pdf`);
+    };
 
     if (loading && !project) {
         return (
@@ -471,15 +689,33 @@ export default function ProjectDetail() {
                             </h3>
                             <div className="space-y-4">
                                 {files.length === 0 && <p className="text-xs text-variable-muted italic">No hay archivos adjuntos.</p>}
-                                {files.map((file) => (
-                                    <div key={file.id} className="flex items-center gap-4 group cursor-pointer text-variable-main">
-                                        <div className="p-3 bg-white/5 border border-variable rounded-2xl group-hover:text-primary transition-colors"><Download size={20} /></div>
-                                        <div className="flex-1 overflow-hidden">
-                                            <p className="text-sm font-bold truncate">{file.name}</p>
-                                            <p className="text-[10px] text-variable-muted font-bold uppercase">{file.size || '---'} • {file.file_type || 'FILE'}</p>
+                                {files.map((file) => {
+                                    const isInvoice = file.file_type === 'FACTURA' && file.url?.startsWith('invoice:');
+                                    const invoiceId = isInvoice ? file.url.replace('invoice:', '') : null;
+                                    return (
+                                        <div key={file.id} className="flex items-center gap-4 group cursor-pointer text-variable-main" onClick={() => {
+                                            if (isInvoice) handleRedownloadInvoice(invoiceId);
+                                            else if (file.url) window.open(file.url, '_blank');
+                                        }}>
+                                            <div className={`p-3 border rounded-2xl transition-colors ${isInvoice
+                                                    ? 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/20'
+                                                    : 'bg-white/5 border-variable group-hover:text-primary'
+                                                }`}>
+                                                {isInvoice ? <Receipt size={20} /> : <Download size={20} />}
+                                            </div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <p className="text-sm font-bold truncate">{file.name}</p>
+                                                <p className={`text-[10px] font-bold uppercase ${isInvoice ? 'text-primary' : 'text-variable-muted'
+                                                    }`}>{file.size || '---'} • {file.file_type || 'FILE'}</p>
+                                            </div>
+                                            {isInvoice && (
+                                                <div className="p-2 bg-primary/10 text-primary rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" title="Descargar PDF">
+                                                    <Download size={14} />
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -507,8 +743,8 @@ export default function ProjectDetail() {
                                 <button onClick={() => setBudgetLineModal(true)} className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary/20 transition-all">
                                     <Plus size={14} /> Añadir Línea Manual
                                 </button>
-                                <button onClick={() => showNotification('Funcionalidad de factura próximamente', 'info')} className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:brightness-110 transition-all shadow-lg shadow-primary/20">
-                                    <Receipt size={14} /> Generar Factura
+                                <button disabled={invoiceLoading || uninvoicedLines.length === 0} onClick={handleGenerateInvoice} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20 ${uninvoicedLines.length === 0 ? 'bg-variable text-variable-muted cursor-not-allowed opacity-50' : 'bg-primary text-white hover:brightness-110'}`}>
+                                    <Receipt size={14} /> {invoiceLoading ? 'Generando...' : uninvoicedLines.length === 0 ? 'Todo Facturado' : `Facturar (${uninvoicedLines.length} líneas)`}
                                 </button>
                             </div>
                         </div>
@@ -533,70 +769,79 @@ export default function ProjectDetail() {
                                     </div>
                                 )}
 
-                                {/* Servicios contratados */}
-                                {serviceLines.map((line) => (
-                                    <div key={`svc-${line.id}`} className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center px-5 py-4 rounded-2xl bg-white/5 border border-variable hover:bg-white/[0.08] transition-colors">
+                                {/* Todas las líneas — con badge de estado */}
+                                {allBudgetLines.map((line) => (
+                                    <div key={`${line.isService ? 'svc' : 'man'}-${line.id}`} className={`grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center px-5 py-4 rounded-2xl border transition-colors ${line.invoiced ? 'bg-emerald-500/5 border-emerald-500/20 opacity-70' : 'bg-white/5 border-variable hover:bg-white/[0.08]'}`}>
                                         <div className="sm:col-span-5 flex items-center gap-3">
-                                            <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                                <Briefcase size={14} className="text-primary" />
+                                            <div className={`size-8 rounded-lg flex items-center justify-center flex-shrink-0 ${line.isService ? 'bg-primary/10' : 'bg-emerald-500/10'}`}>
+                                                {line.isService ? <Briefcase size={14} className="text-primary" /> : <DollarSign size={14} className="text-emerald-500" />}
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-variable-main">{line.description}</p>
-                                                <p className="text-[9px] text-primary font-bold uppercase tracking-widest">Servicio contratado</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className={`text-[9px] font-bold uppercase tracking-widest ${line.isService ? 'text-primary' : 'text-emerald-500'}`}>
+                                                        {line.isService ? 'Servicio contratado' : 'Línea manual'}
+                                                    </p>
+                                                    {line.invoiced && (
+                                                        <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-600 px-2 py-0.5 rounded-md uppercase">Facturada ✓</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="sm:col-span-1 text-right text-xs text-variable-muted font-bold">1</div>
-                                        <div className="sm:col-span-2 text-right text-xs text-variable-main font-bold">€{line.base.toFixed(2)}</div>
-                                        <div className="sm:col-span-1 text-right text-xs text-variable-muted font-bold">21%</div>
+                                        <div className="sm:col-span-1 text-right text-xs text-variable-muted font-bold">{line.quantity || 1}</div>
+                                        <div className="sm:col-span-2 text-right text-xs text-variable-main font-bold">€{parseFloat(line.unit_price || 0).toFixed(2)}</div>
+                                        <div className="sm:col-span-1 text-right text-xs text-variable-muted font-bold">{line.iva_percent}%</div>
                                         <div className="sm:col-span-2 text-right text-sm font-black text-variable-main">€{line.total.toFixed(2)}</div>
                                         <div className="sm:col-span-1 flex justify-end">
-                                            <button onClick={() => handleRemoveProjectService(line.id)} className="p-1.5 text-variable-muted hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-500/10" title="Quitar servicio">
-                                                <Trash2 size={14} />
-                                            </button>
+                                            {!line.invoiced && (
+                                                <button onClick={() => line.isService ? handleRemoveProjectService(line.id) : handleDeleteBudgetLine(line.id)} className="p-1.5 text-variable-muted hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-500/10" title="Eliminar">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
 
-                                {/* Líneas manuales */}
-                                {manualLines.map((line) => (
-                                    <div key={`man-${line.id}`} className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center px-5 py-4 rounded-2xl bg-white/5 border border-variable hover:bg-white/[0.08] transition-colors">
-                                        <div className="sm:col-span-5 flex items-center gap-3">
-                                            <div className="size-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                                                <DollarSign size={14} className="text-emerald-500" />
+                                {/* Facturas anteriores */}
+                                {invoices.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-variable">
+                                        <p className="text-[10px] font-black text-variable-muted uppercase tracking-widest mb-3">Facturas Emitidas ({invoices.length})</p>
+                                        {invoices.map(inv => (
+                                            <div key={inv.id} onClick={() => handleRedownloadInvoice(inv.id)} className="flex items-center gap-4 p-3 rounded-2xl bg-primary/5 border border-primary/10 hover:bg-primary/10 cursor-pointer transition-colors mb-2">
+                                                <div className="p-2 bg-primary/10 rounded-xl text-primary"><Receipt size={16} /></div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-variable-main">{inv.invoice_number}</p>
+                                                    <p className="text-[9px] text-variable-muted font-bold">{new Date(inv.invoice_date).toLocaleDateString('es-ES')} • {inv.line_items?.length || 0} líneas</p>
+                                                </div>
+                                                <span className="text-sm font-black text-primary">€{parseFloat(inv.total).toFixed(2)}</span>
+                                                <Download size={14} className="text-variable-muted" />
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-variable-main">{line.description}</p>
-                                                <p className="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Línea manual</p>
-                                            </div>
-                                        </div>
-                                        <div className="sm:col-span-1 text-right text-xs text-variable-muted font-bold">{line.quantity}</div>
-                                        <div className="sm:col-span-2 text-right text-xs text-variable-main font-bold">€{parseFloat(line.unit_price).toFixed(2)}</div>
-                                        <div className="sm:col-span-1 text-right text-xs text-variable-muted font-bold">{line.iva_percent}%</div>
-                                        <div className="sm:col-span-2 text-right text-sm font-black text-variable-main">€{line.total.toFixed(2)}</div>
-                                        <div className="sm:col-span-1 flex justify-end">
-                                            <button onClick={() => handleDeleteBudgetLine(line.id)} className="p-1.5 text-variable-muted hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-500/10" title="Eliminar línea">
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
+                                )}
 
                                 {/* Totales */}
                                 {allBudgetLines.length > 0 && (
                                     <div className="mt-6 pt-6 border-t border-variable">
                                         <div className="flex flex-col items-end gap-2">
-                                            <div className="flex justify-between w-full sm:w-72 text-sm">
-                                                <span className="text-variable-muted font-bold">Subtotal (Base)</span>
+                                            <div className="flex justify-between w-full sm:w-80 text-sm">
+                                                <span className="text-variable-muted font-bold">Total General (Base)</span>
                                                 <span className="text-variable-main font-bold">€{budgetSubtotal.toFixed(2)}</span>
                                             </div>
-                                            <div className="flex justify-between w-full sm:w-72 text-sm">
+                                            <div className="flex justify-between w-full sm:w-80 text-sm">
                                                 <span className="text-variable-muted font-bold">IVA Total</span>
                                                 <span className="text-variable-main font-bold">€{budgetIVA.toFixed(2)}</span>
                                             </div>
-                                            <div className="flex justify-between w-full sm:w-72 text-lg pt-2 border-t border-variable">
+                                            <div className="flex justify-between w-full sm:w-80 text-lg pt-2 border-t border-variable">
                                                 <span className="text-primary font-black uppercase tracking-widest text-sm">Total</span>
                                                 <span className="text-primary font-black">€{budgetTotal.toFixed(2)}</span>
                                             </div>
+                                            {uninvoicedLines.length > 0 && uninvoicedLines.length < allBudgetLines.length && (
+                                                <div className="flex justify-between w-full sm:w-80 text-sm mt-3 pt-3 border-t border-dashed border-amber-500/30">
+                                                    <span className="text-amber-500 font-bold text-xs uppercase">Pendiente de facturar</span>
+                                                    <span className="text-amber-500 font-black">€{uninvoicedTotal.toFixed(2)}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
