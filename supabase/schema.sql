@@ -254,13 +254,14 @@ CREATE TRIGGER set_updated_at_services
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 
 -- Limpiar políticas existentes
+DROP POLICY IF EXISTS "services_select_public" ON public.services;
 DROP POLICY IF EXISTS "services_select_authenticated" ON public.services;
 DROP POLICY IF EXISTS "services_all_admin" ON public.services;
 
--- SELECT: Todos los usuarios autenticados pueden ver servicios
-CREATE POLICY "services_select_authenticated"
+-- SELECT: Cualquiera (incluyendo visitantes de la web) puede ver los servicios
+CREATE POLICY "services_select_public"
     ON public.services FOR SELECT
-    TO authenticated
+    TO anon, authenticated
     USING (true);
 
 -- ALL: Solo administradores pueden insertar, actualizar o eliminar servicios
