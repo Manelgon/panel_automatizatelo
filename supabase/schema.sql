@@ -450,15 +450,12 @@ DROP POLICY IF EXISTS "members_select" ON public.project_members;
 DROP POLICY IF EXISTS "members_insert_self" ON public.project_members;
 DROP POLICY IF EXISTS "members_all_admin" ON public.project_members;
 
--- SELECT: Ver miembros si eres miembro o admin
+-- SELECT: Ver miembros si eres la propia persona o admin
 CREATE POLICY "members_select" 
     ON public.project_members FOR SELECT 
     TO authenticated 
     USING (
-        EXISTS (
-            SELECT 1 FROM public.projects p 
-            WHERE p.id = project_members.project_id
-        ) OR EXISTS (
+        auth.uid() = user_id OR EXISTS (
             SELECT 1 FROM public.users u 
             WHERE u.id = auth.uid() AND u.role = 'admin'
         )
