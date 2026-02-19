@@ -124,9 +124,17 @@ export default function Projects() {
         setLoading(true);
         try {
             // Prepare data - ensure lead_id is null if empty string
+            let finalAlias = formData.id_alias;
+            if (!finalAlias) {
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const randomDigits = Math.floor(1000 + Math.random() * 9000);
+                finalAlias = `PR-${dateStr}-${randomDigits}`;
+            }
+
             const insertData = {
                 ...formData,
-                lead_id: formData.lead_id || null
+                lead_id: formData.lead_id || null,
+                id_alias: finalAlias
             };
 
             // 1. Create the project
@@ -341,7 +349,7 @@ export default function Projects() {
                             <p className="text-variable-muted mb-8 italic text-sm sm:text-base">Inicializa un nuevo entorno de trabajo para tu cliente</p>
 
                             <form onSubmit={handleCreateProject} className="space-y-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div className={formData.lead_id ? "space-y-2" : "grid grid-cols-1 sm:grid-cols-2 gap-6"}>
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Nombre del Proyecto</label>
                                         <div className="relative">
@@ -349,29 +357,22 @@ export default function Projects() {
                                             <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base" placeholder="Ej: Rediseño Web" />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Cliente</label>
-                                        <div className="relative">
-                                            <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
-                                            <input required value={formData.client} onChange={(e) => setFormData({ ...formData, client: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base" placeholder="Empresa o Particular" />
+                                    {!formData.lead_id && (
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Cliente</label>
+                                            <div className="relative">
+                                                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
+                                                <input required value={formData.client} onChange={(e) => setFormData({ ...formData, client: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base" placeholder="Empresa o Particular" />
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Alias / ID</label>
-                                        <div className="relative">
-                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
-                                            <input value={formData.id_alias} onChange={(e) => setFormData({ ...formData, id_alias: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base" placeholder="PRJ-2024-XXX" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Horas Totales Estimadas</label>
-                                        <div className="relative">
-                                            <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
-                                            <input type="number" value={formData.total_hours} onChange={(e) => setFormData({ ...formData, total_hours: parseInt(e.target.value) || 0 })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base" placeholder="0" />
-                                        </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Horas Totales Estimadas</label>
+                                    <div className="relative">
+                                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
+                                        <input type="number" value={formData.total_hours} onChange={(e) => setFormData({ ...formData, total_hours: parseInt(e.target.value) || 0 })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base" placeholder="0" />
                                     </div>
                                 </div>
 

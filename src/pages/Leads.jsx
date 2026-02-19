@@ -33,7 +33,47 @@ export default function Leads() {
     const [loading, setLoading] = useState(false);
     const [leadsList, setLeadsList] = useState([]);
     const [services, setServices] = useState([]);
+    const [activeTab, setActiveTab] = useState('todos');
     const [fetchError, setFetchError] = useState(null);
+
+    const tabs = [
+        { id: 'todos', label: 'Todos' },
+        { id: 'pendiente', label: 'Pendientes' },
+        { id: 'contactado', label: 'Contactados' },
+        { id: 'ganado', label: 'Ganados/Clientes' },
+        { id: 'perdido', label: 'Perdidos' }
+    ];
+
+    const stats = {
+        todos: leadsList.length,
+        pendiente: leadsList.filter(l => (l.status || 'pendiente') === 'pendiente').length,
+        contactado: leadsList.filter(l => l.status === 'contactado').length,
+        ganado: leadsList.filter(l => l.status === 'ganado').length,
+        perdido: leadsList.filter(l => l.status === 'perdido').length
+    };
+
+    const filteredLeads = activeTab === 'todos'
+        ? leadsList
+        : leadsList.filter(l => (l.status || 'pendiente') === activeTab);
+
+    const fetchLeads = async () => {
+        setLoading(true);
+        setFetchError(null);
+        try {
+            const { data, error } = await supabase
+                .from('leads')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setLeadsList(data || []);
+        } catch (error) {
+            console.error('Error fetching leads:', error);
+            setFetchError(error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const defaultForm = {
         first_name: '',
@@ -84,20 +124,24 @@ export default function Leads() {
         ? serviceInterests
         : [{ value: 'otro', label: 'Otro' }];
 
-    const fetchLeads = async () => {
-        setFetchError(null);
-        const { data, error } = await supabase
-            .from('leads')
-            .select('*')
-            .order('created_at', { ascending: false });
+    const handleConvertToProject = async (lead) => {
+        try {
+            setLoading(true);
+            // 1. Update status to 'ganado' immediately
+            const { error } = await supabase
+                .from('leads')
+                .update({ status: 'ganado' })
+                .eq('id', lead.id);
 
-        if (error) {
-            console.error('Error fetching leads:', error);
-            setFetchError(error);
-        } else if (data) {
-            setLeadsList(data);
+            if (error) throw error;
+
+            // 2. Redirect to projects
+            navigate(`/projects?convert=${lead.id}`);
+        } catch (err) {
+            alert(`Error al convertir: ${err.message}`);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleCreateLead = async (e) => {
@@ -183,15 +227,35 @@ export default function Leads() {
                     </div>
                 </header>
 
+                {/* TABS DE ESTADO */}
+                <div className="flex flex-wrap gap-2 mb-8 bg-white/5 p-1.5 rounded-[1.5rem] border border-variable w-fit">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`px-6 py-2.5 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === tab.id
+                                    ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]'
+                                    : 'text-variable-muted hover:text-variable-main hover:bg-white/5'
+                                }`}
+                        >
+                            {tab.label}
+                            <span className={`px-2 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-variable/10 text-variable-muted'
+                                }`}>
+                                {stats[tab.id]}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+
                 <DataTable
                     tableId="leads"
                     loading={loading}
-                    data={leadsList}
+                    data={filteredLeads}
                     rowKey="id"
                     defaultSort={{ key: 'created_at', dir: 'desc' }}
                     emptyIcon={<UsersIcon size={40} className="opacity-20" />}
-                    emptyTitle="No se encontraron leads en la base de datos"
-                    emptySub="Los leads aparecerán aquí cuando se registren o importen"
+                    emptyTitle="No se encontraron leads en esta categoría"
+                    emptySub="Los leads aparecerán aquí según su estado en el embudo"
                     columns={[
                         {
                             key: 'first_name',
@@ -273,14 +337,16 @@ export default function Leads() {
                             align: 'right',
                             render: (lead) => (
                                 <div className="flex gap-2 justify-end">
-                                    <button
-                                        onClick={() => navigate(`/projects?convert=${lead.id}`)}
-                                        className="p-2 glass rounded-xl text-primary hover:bg-primary/10 transition-all flex items-center gap-2 pr-4 shadow-lg shadow-primary/5"
-                                        title="Convertir a Proyecto"
-                                    >
-                                        <div className="bg-primary/20 p-1 rounded-lg"><Rocket size={14} /></div>
-                                        <span className="text-[10px] font-black uppercase tracking-tighter">Convertir</span>
-                                    </button>
+                                    {lead.status !== 'ganado' && (
+                                        <button
+                                            onClick={() => handleConvertToProject(lead)}
+                                            className="p-2 glass rounded-xl text-primary hover:bg-primary/10 transition-all flex items-center gap-2 pr-4 shadow-lg shadow-primary/5 group"
+                                            title="Convertir a Proyecto"
+                                        >
+                                            <div className="bg-primary/20 p-1 rounded-lg group-hover:scale-110 transition-transform"><Rocket size={14} /></div>
+                                            <span className="text-[10px] font-black uppercase tracking-tighter">Convertir</span>
+                                        </button>
+                                    )}
                                 </div>
                             ),
                         }
