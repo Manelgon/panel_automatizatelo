@@ -25,6 +25,7 @@ import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import DataTable from '../components/DataTable';
+import CustomDropdown from '../components/CustomDropdown';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 
@@ -44,8 +45,6 @@ export default function Projects() {
     const [users, setUsers] = useState([]);
     const [services, setServices] = useState([]);
     const [fetchError, setFetchError] = useState(null);
-    const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
-    const [usersDropdownOpen, setUsersDropdownOpen] = useState(false);
 
     const defaultForm = {
         name: '',
@@ -434,40 +433,35 @@ export default function Projects() {
 
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Lead Relacionado (Opcional)</label>
-                                    <div className="relative">
-                                        <UsersIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
-                                        <select
-                                            value={formData.lead_id}
-                                            onChange={(e) => {
-                                                const leadId = e.target.value;
-                                                const selectedLead = leads.find(l => l.id === leadId);
-
-                                                let newAlias = formData.id_alias;
-                                                if (selectedLead) {
-                                                    const firstInitial = (selectedLead.first_name || '').charAt(0).toUpperCase();
-                                                    const lastInitial = (selectedLead.last_name || '').charAt(0).toUpperCase();
-                                                    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                                                    const randomDigits = Math.floor(1000 + Math.random() * 9000); // 4 digitos
-                                                    newAlias = `${firstInitial}${lastInitial}-${dateStr}-${randomDigits}`;
-                                                }
-
-                                                setFormData({
-                                                    ...formData,
-                                                    lead_id: leadId,
-                                                    client: selectedLead ? (selectedLead.company || `${selectedLead.first_name} ${selectedLead.last_name}`) : formData.client,
-                                                    id_alias: newAlias
-                                                });
-                                            }}
-                                            className="w-full bg-[#1a1321] border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base appearance-none"
-                                        >
-                                            <option value="">-- Seleccionar Lead --</option>
-                                            {leads.map(lead => (
-                                                <option key={lead.id} value={lead.id}>
-                                                    {lead.company ? `${lead.company} (${lead.first_name})` : `${lead.first_name} ${lead.last_name}`}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <CustomDropdown
+                                        icon={UsersIcon}
+                                        placeholder="-- Seleccionar Lead --"
+                                        value={formData.lead_id}
+                                        onChange={(leadId) => {
+                                            const selectedLead = leads.find(l => l.id === leadId);
+                                            let newAlias = formData.id_alias;
+                                            if (selectedLead) {
+                                                const firstInitial = (selectedLead.first_name || '').charAt(0).toUpperCase();
+                                                const lastInitial = (selectedLead.last_name || '').charAt(0).toUpperCase();
+                                                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                                                const randomDigits = Math.floor(1000 + Math.random() * 9000);
+                                                newAlias = `${firstInitial}${lastInitial}-${dateStr}-${randomDigits}`;
+                                            }
+                                            setFormData({
+                                                ...formData,
+                                                lead_id: leadId,
+                                                client: selectedLead ? (selectedLead.company || `${selectedLead.first_name} ${selectedLead.last_name}`) : formData.client,
+                                                id_alias: newAlias
+                                            });
+                                        }}
+                                        options={[
+                                            { value: '', label: '-- Sin Lead --' },
+                                            ...leads.map(lead => ({
+                                                value: lead.id,
+                                                label: lead.company ? `${lead.company} (${lead.first_name})` : `${lead.first_name} ${lead.last_name}`
+                                            }))
+                                        ]}
+                                    />
                                 </div>
 
                                 {/* ── SERVICIOS DROPDOWN ── */}
@@ -481,45 +475,22 @@ export default function Projects() {
                                                 .toLocaleString('es-ES', { minimumFractionDigits: 2 })}
                                         </div>
                                     </label>
-                                    <div className="relative">
-                                        <button type="button" onClick={() => { setServicesDropdownOpen(!servicesDropdownOpen); setUsersDropdownOpen(false); }} className="w-full flex items-center justify-between bg-white/5 border border-variable rounded-2xl px-4 py-3 text-sm text-variable-muted hover:border-primary/50 transition-all">
-                                            <span>{formData.selected_services.length === 0 ? 'Seleccionar servicios...' : `${formData.selected_services.length} servicio(s) seleccionado(s)`}</span>
-                                            <ChevronDown size={16} className={`transition-transform ${servicesDropdownOpen ? 'rotate-180' : ''}`} />
-                                        </button>
-                                        {servicesDropdownOpen && (
-                                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-primary/30 rounded-2xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar">
-                                                {services.length === 0 && <p className="text-[10px] text-gray-400 italic text-center py-4">No hay servicios activos.</p>}
-                                                {services.map(service => {
-                                                    const isSelected = formData.selected_services.includes(service.id);
-                                                    return (
-                                                        <div key={service.id} onClick={() => setFormData(prev => ({ ...prev, selected_services: isSelected ? prev.selected_services.filter(id => id !== service.id) : [...prev.selected_services, service.id] }))} className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-colors hover:bg-primary ${isSelected ? 'bg-primary/10' : ''}`}>
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-primary border-primary' : 'border-gray-300 group-hover:border-white/50'}`}>
-                                                                    {isSelected && <CheckCircle2 size={12} className="text-white" />}
-                                                                </div>
-                                                                <span className="text-xs font-bold text-gray-800 group-hover:text-white">{service.name}</span>
-                                                            </div>
-                                                            <span className="text-[10px] text-gray-500 font-bold group-hover:text-white/80">€{parseFloat(service.price || 0).toFixed(2)}</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {/* Chips de servicios seleccionados */}
-                                    {formData.selected_services.length > 0 && (
-                                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                                            {services.filter(s => formData.selected_services.includes(s.id)).slice(0, 2).map(s => (
-                                                <span key={s.id} className="inline-flex items-center gap-1.5 bg-primary/15 text-primary text-[10px] font-bold px-3 py-1.5 rounded-full">
-                                                    {s.name}
-                                                    <X size={10} className="cursor-pointer hover:text-red-400 transition-colors" onClick={() => setFormData(prev => ({ ...prev, selected_services: prev.selected_services.filter(id => id !== s.id) }))} />
-                                                </span>
-                                            ))}
-                                            {formData.selected_services.length > 2 && (
-                                                <span className="text-[10px] text-variable-muted font-bold bg-white/10 px-2.5 py-1.5 rounded-full">+{formData.selected_services.length - 2} más</span>
-                                            )}
-                                        </div>
-                                    )}
+                                    <CustomDropdown
+                                        multiple
+                                        placeholder="Seleccionar servicios..."
+                                        selected={formData.selected_services}
+                                        onToggle={(serviceId) => setFormData(prev => ({
+                                            ...prev,
+                                            selected_services: prev.selected_services.includes(serviceId)
+                                                ? prev.selected_services.filter(id => id !== serviceId)
+                                                : [...prev.selected_services, serviceId]
+                                        }))}
+                                        options={services.map(s => ({
+                                            value: s.id,
+                                            label: s.name,
+                                            right: `€${parseFloat(s.price || 0).toFixed(2)}`
+                                        }))}
+                                    />
                                 </div>
 
                                 {/* ── USUARIOS DROPDOWN ── */}
@@ -527,48 +498,24 @@ export default function Projects() {
                                     <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                                         <UsersIcon size={14} /> Asignar Miembros al Equipo
                                     </label>
-                                    <div className="relative">
-                                        <button type="button" onClick={() => { setUsersDropdownOpen(!usersDropdownOpen); setServicesDropdownOpen(false); }} className="w-full flex items-center justify-between bg-white/5 border border-variable rounded-2xl px-4 py-3 text-sm text-variable-muted hover:border-primary/50 transition-all">
-                                            <span>{formData.assigned_users.length === 0 ? 'Seleccionar miembros...' : `${formData.assigned_users.length} miembro(s) seleccionado(s)`}</span>
-                                            <ChevronDown size={16} className={`transition-transform ${usersDropdownOpen ? 'rotate-180' : ''}`} />
-                                        </button>
-                                        {usersDropdownOpen && (
-                                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-primary/30 rounded-2xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar">
-                                                {users.length === 0 && <p className="text-[10px] text-gray-400 italic text-center py-4">No se encontraron miembros.</p>}
-                                                {users.map(user => {
-                                                    const isSelected = formData.assigned_users.includes(user.id);
-                                                    return (
-                                                        <div key={user.id} onClick={() => setFormData(prev => ({ ...prev, assigned_users: isSelected ? prev.assigned_users.filter(id => id !== user.id) : [...prev.assigned_users, user.id] }))} className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-colors hover:bg-primary ${isSelected ? 'bg-primary/10' : ''}`}>
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-primary border-primary' : 'border-gray-300 group-hover:border-white/50'}`}>
-                                                                    {isSelected && <CheckCircle2 size={12} className="text-white" />}
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-xs font-bold text-gray-800 group-hover:text-white">{user.first_name} {user.second_name}</span>
-                                                                    <span className={`text-[8px] uppercase font-black tracking-widest group-hover:text-white/70 ${user.role === 'admin' ? 'text-rose-500' : 'text-gray-400'}`}>{user.role}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {/* Chips de usuarios seleccionados */}
-                                    {formData.assigned_users.length > 0 && (
-                                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                                            {users.filter(u => formData.assigned_users.includes(u.id)).slice(0, 2).map(u => (
-                                                <span key={u.id} className="inline-flex items-center gap-1.5 bg-primary/15 text-primary text-[10px] font-bold px-3 py-1.5 rounded-full">
-                                                    {u.first_name} {u.second_name}
-                                                    <X size={10} className="cursor-pointer hover:text-red-400 transition-colors" onClick={() => setFormData(prev => ({ ...prev, assigned_users: prev.assigned_users.filter(id => id !== u.id) }))} />
-                                                </span>
-                                            ))}
-                                            {formData.assigned_users.length > 2 && (
-                                                <span className="text-[10px] text-variable-muted font-bold bg-white/10 px-2.5 py-1.5 rounded-full">+{formData.assigned_users.length - 2} más</span>
-                                            )}
-                                        </div>
-                                    )}
-                                    <p className="text-[10px] text-variable-muted italic ml-1">* El creador del proyecto se asigna automáticamente como administrador del mismo.</p>
+                                    <CustomDropdown
+                                        multiple
+                                        placeholder="Seleccionar miembros..."
+                                        selected={formData.assigned_users}
+                                        onToggle={(userId) => setFormData(prev => ({
+                                            ...prev,
+                                            assigned_users: prev.assigned_users.includes(userId)
+                                                ? prev.assigned_users.filter(id => id !== userId)
+                                                : [...prev.assigned_users, userId]
+                                        }))}
+                                        options={users.map(u => ({
+                                            value: u.id,
+                                            label: `${u.first_name} ${u.second_name}`,
+                                            secondary: u.role,
+                                            secondaryColor: u.role === 'admin' ? 'text-rose-500' : 'text-gray-400'
+                                        }))}
+                                    />
+                                    <p className="text-[10px] text-variable-muted italic ml-1">* El creador del proyecto se asigna automaticamente como administrador del mismo.</p>
                                 </div>
 
                                 <div className="space-y-2">

@@ -30,7 +30,7 @@ import { supabase } from '../lib/supabase';
 import logo from '../assets/logo.png';
 
 import Sidebar from '../components/Sidebar';
-import CustomSelect from '../components/CustomSelect';
+import CustomDropdown from '../components/CustomDropdown';
 import DataTable from '../components/DataTable';
 
 import { useAuth } from '../context/AuthContext';
@@ -455,11 +455,11 @@ export default function Users() {
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Teléfono</label>
                                         <div className="flex gap-2">
-                                            <CustomSelect
+                                            <CustomDropdown
                                                 value={formData.phone_prefix}
                                                 onChange={(val) => setFormData({ ...formData, phone_prefix: val })}
                                                 options={phonePrefixes.map((p) => ({ value: p.code, label: `${p.iso} ${p.code}` }))}
-                                                width="110px"
+                                                className="w-32"
                                             />
                                             <div className="relative flex-1">
                                                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
@@ -520,7 +520,7 @@ export default function Users() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">País</label>
-                                        <CustomSelect
+                                        <CustomDropdown
                                             value={formData.country}
                                             onChange={(val) => setFormData({ ...formData, country: val, province: '' })}
                                             icon={Globe}
@@ -542,7 +542,7 @@ export default function Users() {
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Provincia</label>
                                         {formData.country === 'España' ? (
-                                            <CustomSelect
+                                            <CustomDropdown
                                                 value={formData.province}
                                                 onChange={(val) => setFormData({ ...formData, province: val })}
                                                 placeholder="Seleccionar..."
