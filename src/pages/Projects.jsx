@@ -487,19 +487,19 @@ export default function Projects() {
                                             <ChevronDown size={16} className={`transition-transform ${servicesDropdownOpen ? 'rotate-180' : ''}`} />
                                         </button>
                                         {servicesDropdownOpen && (
-                                            <div className="absolute z-50 w-full mt-2 bg-[var(--bg-card,#1a1321)] border border-variable rounded-2xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar">
-                                                {services.length === 0 && <p className="text-[10px] text-variable-muted italic text-center py-4">No hay servicios activos.</p>}
+                                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-primary/30 rounded-2xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar">
+                                                {services.length === 0 && <p className="text-[10px] text-gray-400 italic text-center py-4">No hay servicios activos.</p>}
                                                 {services.map(service => {
                                                     const isSelected = formData.selected_services.includes(service.id);
                                                     return (
-                                                        <div key={service.id} onClick={() => setFormData(prev => ({ ...prev, selected_services: isSelected ? prev.selected_services.filter(id => id !== service.id) : [...prev.selected_services, service.id] }))} className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors hover:bg-white/10 ${isSelected ? 'bg-primary/10' : ''}`}>
+                                                        <div key={service.id} onClick={() => setFormData(prev => ({ ...prev, selected_services: isSelected ? prev.selected_services.filter(id => id !== service.id) : [...prev.selected_services, service.id] }))} className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-colors hover:bg-primary ${isSelected ? 'bg-primary/10' : ''}`}>
                                                             <div className="flex items-center gap-3">
-                                                                <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-primary border-primary' : 'border-variable'}`}>
+                                                                <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-primary border-primary' : 'border-gray-300 group-hover:border-white/50'}`}>
                                                                     {isSelected && <CheckCircle2 size={12} className="text-white" />}
                                                                 </div>
-                                                                <span className="text-xs font-bold text-variable-main">{service.name}</span>
+                                                                <span className="text-xs font-bold text-gray-800 group-hover:text-white">{service.name}</span>
                                                             </div>
-                                                            <span className="text-[10px] text-variable-muted font-bold">€{parseFloat(service.price || 0).toFixed(2)}</span>
+                                                            <span className="text-[10px] text-gray-500 font-bold group-hover:text-white/80">€{parseFloat(service.price || 0).toFixed(2)}</span>
                                                         </div>
                                                     );
                                                 })}
@@ -533,19 +533,19 @@ export default function Projects() {
                                             <ChevronDown size={16} className={`transition-transform ${usersDropdownOpen ? 'rotate-180' : ''}`} />
                                         </button>
                                         {usersDropdownOpen && (
-                                            <div className="absolute z-50 w-full mt-2 bg-[var(--bg-card,#1a1321)] border border-variable rounded-2xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar">
-                                                {users.length === 0 && <p className="text-[10px] text-variable-muted italic text-center py-4">No se encontraron miembros.</p>}
+                                            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-primary/30 rounded-2xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar">
+                                                {users.length === 0 && <p className="text-[10px] text-gray-400 italic text-center py-4">No se encontraron miembros.</p>}
                                                 {users.map(user => {
                                                     const isSelected = formData.assigned_users.includes(user.id);
                                                     return (
-                                                        <div key={user.id} onClick={() => setFormData(prev => ({ ...prev, assigned_users: isSelected ? prev.assigned_users.filter(id => id !== user.id) : [...prev.assigned_users, user.id] }))} className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors hover:bg-white/10 ${isSelected ? 'bg-primary/10' : ''}`}>
+                                                        <div key={user.id} onClick={() => setFormData(prev => ({ ...prev, assigned_users: isSelected ? prev.assigned_users.filter(id => id !== user.id) : [...prev.assigned_users, user.id] }))} className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-colors hover:bg-primary ${isSelected ? 'bg-primary/10' : ''}`}>
                                                             <div className="flex items-center gap-3">
-                                                                <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-primary border-primary' : 'border-variable'}`}>
+                                                                <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-primary border-primary' : 'border-gray-300 group-hover:border-white/50'}`}>
                                                                     {isSelected && <CheckCircle2 size={12} className="text-white" />}
                                                                 </div>
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-xs font-bold text-variable-main">{user.first_name} {user.second_name}</span>
-                                                                    <span className={`text-[8px] uppercase font-black tracking-widest ${user.role === 'admin' ? 'text-rose-500' : 'text-variable-muted'}`}>{user.role}</span>
+                                                                    <span className="text-xs font-bold text-gray-800 group-hover:text-white">{user.first_name} {user.second_name}</span>
+                                                                    <span className={`text-[8px] uppercase font-black tracking-widest group-hover:text-white/70 ${user.role === 'admin' ? 'text-rose-500' : 'text-gray-400'}`}>{user.role}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
