@@ -291,7 +291,7 @@ CREATE TABLE IF NOT EXISTS public.projects (
     id            uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
     name          text          NOT NULL,
     client        text          NOT NULL,
-    status        text          DEFAULT 'En Progreso',
+    status        text          DEFAULT 'Pendiente',
     description   text,
     id_alias      text          UNIQUE, -- e.g., PRJ-2024-001
     total_hours   integer       DEFAULT 0,
@@ -301,27 +301,50 @@ CREATE TABLE IF NOT EXISTS public.projects (
     updated_at    timestamptz   DEFAULT now()
 );
 
--- Hitos del Proyecto
+-- Hitos del Proyecto y Calendario
 CREATE TABLE IF NOT EXISTS public.project_milestones (
     id            uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
+    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE, -- Ahora puede ser NULL para hitos personales o reuniones
+    assigned_to   uuid          REFERENCES public.users(id) ON DELETE SET NULL,
     title         text          NOT NULL,
-    target_date   date,
+    description   text,
+    target_date   date,         -- Mantener por compatibilidad antigua
+    start_date    timestamptz,  -- Nuevo formato para FullCalendar
+    end_date      timestamptz,
+    all_day       boolean       DEFAULT true,
     status        text          DEFAULT 'pending', -- pending, in_progress, completed
     created_at    timestamptz   DEFAULT now()
 );
+
+-- Migración para hacer project_id opcional y añadir nuevas columnas si la tabla ya existía
+DO $$ BEGIN
+    ALTER TABLE public.project_milestones ALTER COLUMN project_id DROP NOT NULL;
+    ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES public.users(id) ON DELETE SET NULL;
+    ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS description text;
+    ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS start_date timestamptz;
+    ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS end_date timestamptz;
+    ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS all_day boolean DEFAULT true;
+EXCEPTION
+    WHEN others THEN NULL;
+END $$;
 
 -- Tareas del Proyecto
 CREATE TABLE IF NOT EXISTS public.project_tasks (
     id            uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
     title         text          NOT NULL,
-    status        text          DEFAULT 'todo', -- todo, doing, done
-    priority      text          DEFAULT 'Media', -- Alta, Media, Baja
+    status        text          DEFAULT 'pending', -- pending, in_progress, review, done
+    priority      text          DEFAULT 'Media',   -- Crítica, Alta, Media, Baja
     assigned_to   uuid          REFERENCES public.users(id) ON DELETE SET NULL,
+    description   text,
     created_at    timestamptz   DEFAULT now(),
     updated_at    timestamptz   DEFAULT now()
 );
+
+-- Migrar valores antiguos (todo → pending, doing → in_progress)
+UPDATE public.project_tasks SET status = 'pending'     WHERE status = 'todo';
+UPDATE public.project_tasks SET status = 'in_progress' WHERE status = 'doing';
+
 
 -- Archivos del Proyecto
 CREATE TABLE IF NOT EXISTS public.project_files (
@@ -498,7 +521,7 @@ BEGIN
     IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
 
     INSERT INTO public.projects (name, client, status, description, id_alias, total_hours, lead_id)
-    VALUES (p_name, p_client, 'En Progreso', p_description, p_alias, p_total_hours, p_lead_id)
+    VALUES (p_name, p_client, 'Pendiente', p_description, p_alias, p_total_hours, p_lead_id)
     RETURNING id INTO new_project_id;
 
     -- Creador es admin
@@ -750,6 +773,119 @@ GRANT EXECUTE ON FUNCTION public.create_project(text, text, text, text, int, uui
 
 -- Índice para búsquedas por lead_id
 CREATE INDEX IF NOT EXISTS idx_projects_lead_id ON public.projects(lead_id);
+
+
+-- =============================================
+-- 18. GESTOR DE TAREAS — Subtareas y Comentarios
+-- =============================================
+
+-- Asegurar que project_tasks tiene los campos extendidos
+ALTER TABLE project_tasks
+  ADD COLUMN IF NOT EXISTS description TEXT,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Subtareas de cada tarea (estilo Jira)
+CREATE TABLE IF NOT EXISTS public.task_subtasks (
+    id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+    task_id    UUID        REFERENCES project_tasks(id) ON DELETE CASCADE NOT NULL,
+    title      TEXT        NOT NULL,
+    status     TEXT        DEFAULT 'pending' CHECK (status IN ('pending', 'done')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Comentarios / Actividad de cada tarea
+CREATE TABLE IF NOT EXISTS public.task_comments (
+    id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+    task_id    UUID        REFERENCES project_tasks(id) ON DELETE CASCADE NOT NULL,
+    user_id    UUID        REFERENCES public.users(id) ON DELETE SET NULL,
+    content    TEXT        NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices para rendimiento
+CREATE INDEX IF NOT EXISTS idx_task_subtasks_task_id   ON public.task_subtasks(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_comments_task_id   ON public.task_comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_project_tasks_project_id ON public.project_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_tasks_assigned   ON public.project_tasks(assigned_to);
+
+-- RLS
+ALTER TABLE public.task_subtasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.task_comments  ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    CREATE POLICY "Auth users can manage subtasks" ON public.task_subtasks
+        FOR ALL USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    CREATE POLICY "Auth users can manage comments" ON public.task_comments
+        FOR ALL USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.task_subtasks TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.task_comments  TO authenticated;
+
+-- =============================================
+-- 19. HISTORIAL DE ESTADOS DE TAREAS
+-- =============================================
+-- Registra cada transición de estado con timestamp
+-- Permite calcular: tiempo en cada estado, tiempo total hasta done, lead time, etc.
+
+CREATE TABLE IF NOT EXISTS public.task_status_logs (
+    id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+    task_id     UUID        REFERENCES public.project_tasks(id) ON DELETE CASCADE NOT NULL,
+    status      TEXT        NOT NULL,           -- nuevo estado al que transicionó
+    changed_at  TIMESTAMPTZ DEFAULT NOW(),
+    changed_by  UUID        REFERENCES public.users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_status_logs_task ON public.task_status_logs(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_status_logs_time ON public.task_status_logs(changed_at);
+
+-- RLS
+ALTER TABLE public.task_status_logs ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    CREATE POLICY "Auth users can manage status logs" ON public.task_status_logs
+        FOR ALL USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+GRANT SELECT, INSERT ON public.task_status_logs TO authenticated;
+
+-- =============================================
+-- 20. SPRINTS (iteraciones tipo Jira)
+-- =============================================
+-- Los sprints son períodos de trabajo acotados (1-2 semanas).
+-- Las tareas se asignan a sprints; los hitos son eventos de fecha independientes.
+
+CREATE TABLE IF NOT EXISTS public.project_sprints (
+    id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+    project_id  UUID        REFERENCES public.projects(id) ON DELETE CASCADE NOT NULL,
+    name        TEXT        NOT NULL,                       -- "Sprint 1", "MVP", etc.
+    goal        TEXT,                                       -- objetivo del sprint
+    start_date  DATE,
+    end_date    DATE,
+    status      TEXT        DEFAULT 'planning',             -- planning | active | completed
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Vincular tareas a sprints (NULL = Backlog)
+ALTER TABLE public.project_tasks
+    ADD COLUMN IF NOT EXISTS sprint_id UUID REFERENCES public.project_sprints(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_project_sprints_project ON public.project_sprints(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_tasks_sprint    ON public.project_tasks(sprint_id);
+
+-- RLS
+ALTER TABLE public.project_sprints ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    CREATE POLICY "Auth users can manage sprints" ON public.project_sprints
+        FOR ALL USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_sprints TO authenticated;
 
 
 -- =============================================

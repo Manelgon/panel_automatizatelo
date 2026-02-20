@@ -6,6 +6,8 @@ import Users from './pages/Users';
 import Leads from './pages/Leads';
 import Services from './pages/Services';
 import Projects from './pages/Projects';
+import Tasks from './pages/Tasks';
+import Calendar from './pages/Calendar';
 import Login from './pages/Login';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -84,6 +86,18 @@ function App() {
                             <Route path="/projects" element={
                                 <ProtectedRoute>
                                     <Projects />
+                                </ProtectedRoute>
+                            } />
+
+                            <Route path="/tasks" element={
+                                <ProtectedRoute requireAdmin={false}>
+                                    <Tasks />
+                                </ProtectedRoute>
+                            } />
+
+                            <Route path="/calendar" element={
+                                <ProtectedRoute requireAdmin={false}>
+                                    <Calendar />
                                 </ProtectedRoute>
                             } />
 

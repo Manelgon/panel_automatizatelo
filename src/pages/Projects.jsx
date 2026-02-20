@@ -50,7 +50,7 @@ export default function Projects() {
         name: '',
         client: '',
         description: '',
-        status: 'En Progreso',
+        status: 'Pendiente',
         total_hours: 0,
         id_alias: '',
         lead_id: '',
@@ -293,9 +293,10 @@ export default function Projects() {
                             key: 'status',
                             label: 'Estado',
                             render: (project) => (
-                                <span className={`text-[10px] font-black px-3 py-1 rounded-lg border uppercase ${project.status === 'Completado'
-                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                                    : 'bg-primary/10 text-primary border-primary/20'
+                                <span className={`text-[10px] font-black px-3 py-1 rounded-lg border uppercase ${project.status === 'Finalizado' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                        project.status === 'Cancelado' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                            project.status === 'Pendiente' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                'bg-primary/10 text-primary border-primary/20'
                                     }`}>
                                     {project.status}
                                 </span>

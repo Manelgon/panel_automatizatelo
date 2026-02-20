@@ -8,7 +8,9 @@ import {
     Settings,
     LogOut,
     Target,
-    Briefcase
+    Briefcase,
+    ListTodo,
+    Calendar as CalendarIcon
 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
@@ -67,6 +69,8 @@ export default function Sidebar() {
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
                     <SidebarItem icon={Briefcase} to="/services" label="Servicios" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
+                    <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
+                    <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario / Hitos" />
                     <SidebarItem icon={FileText} label="Documentos" />
                 </div>
 
