@@ -14,7 +14,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { LoadingProvider } from './context/LoadingContext';
 
-// Componente para proteger rutas
 const ProtectedRoute = ({ children, requireAdmin = true }) => {
     const { user, profile, loading } = useAuth();
 
@@ -26,20 +25,24 @@ const ProtectedRoute = ({ children, requireAdmin = true }) => {
         );
     }
 
+    // No user session → go to login
     if (!user) {
         return <Navigate to="/login" />;
     }
 
-    // Modificado para ser permisivo: Solo bloquea si hay perfil y NO es admin
-    if (requireAdmin && profile && profile.role !== 'admin') {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[#0F0716] text-white p-10 text-center font-display">
-                <div>
-                    <h1 className="text-4xl font-bold mb-4 text-primary">Acceso Denegado</h1>
-                    <p className="text-xl text-gray-400">No tienes permisos de administrador para ver esta sección.</p>
+    // Admin routes require profile with admin role
+    if (requireAdmin) {
+        // If profile hasn't loaded or role isn't admin → block access
+        if (!profile || profile.role !== 'admin') {
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-[#0F0716] text-white p-10 text-center font-display">
+                    <div>
+                        <h1 className="text-4xl font-bold mb-4 text-primary">Acceso Denegado</h1>
+                        <p className="text-xl text-gray-400">No tienes permisos de administrador para ver esta sección.</p>
+                    </div>
                 </div>
-            </div>
-        );
+            );
+        }
     }
 
     return children;

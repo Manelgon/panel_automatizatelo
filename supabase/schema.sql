@@ -248,11 +248,11 @@ DROP POLICY IF EXISTS "services_select_public" ON public.services;
 DROP POLICY IF EXISTS "services_select_authenticated" ON public.services;
 DROP POLICY IF EXISTS "services_all_admin" ON public.services;
 
--- SELECT: Cualquiera (incluyendo visitantes de la web) puede ver los servicios
+-- SELECT: Solo usuarios autenticados pueden ver los servicios
 DROP POLICY IF EXISTS "services_select_public" ON public.services;
 CREATE POLICY "services_select_public"
     ON public.services FOR SELECT
-    TO anon, authenticated
+    TO authenticated
     USING (true);
 
 -- ALL: Permitir a cualquier admin gestionar servicios
@@ -752,7 +752,7 @@ GRANT USAGE ON SCHEMA public TO authenticated, anon;
 
 -- Permisos para Usuarios y Servicios (Vital para que aparezcan en listas)
 GRANT SELECT ON public.users TO authenticated;
-GRANT SELECT ON public.services TO authenticated, anon;
+GRANT SELECT ON public.services TO authenticated;
 GRANT SELECT ON public.leads TO authenticated;
 
 -- Permisos para Proyectos y sus componentes
@@ -769,7 +769,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_budgets TO authenticated;
 
 -- Función RPC create_project (8 parámetros)
 GRANT EXECUTE ON FUNCTION public.create_project(text, text, text, text, int, uuid, uuid[], uuid[]) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.create_project(text, text, text, text, int, uuid, uuid[], uuid[]) TO anon;
+-- REMOVED: anon should NOT be able to create projects
+-- GRANT EXECUTE ON FUNCTION public.create_project(...) TO anon;
 
 -- Índice para búsquedas por lead_id
 CREATE INDEX IF NOT EXISTS idx_projects_lead_id ON public.projects(lead_id);

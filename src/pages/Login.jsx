@@ -42,45 +42,28 @@ export default function Login() {
         setLoading(true);
         setError(null);
 
-        console.log("Iniciando login con:", email);
-
         try {
-            // Timeout promise to prevent infinite loading
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Tiempo de espera agotado. Verifica tu conexión o la URL de Supabase.')), 30000)
+                setTimeout(() => reject(new Error('Tiempo de espera agotado. Verifica tu conexión.')), 30000)
             );
 
-            // 1. Auth Login logic wrapped in a function for race
             const loginLogic = async () => {
-                console.log("Llamando a signInWithPassword...");
                 const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                     email,
                     password,
                 });
 
-                if (authError) {
-                    console.error("Error en signInWithPassword:", authError);
-                    throw authError;
-                }
-                console.log("Login exitoso:", authData);
+                if (authError) throw authError;
 
-                // 2. Verificar rol en tabla 'users'
-                console.log("Verificando perfil en tabla users...");
-                const { data: profile, error: profileError } = await supabase
+                // Verificar rol en tabla 'users'
+                const { data: profile } = await supabase
                     .from('users')
                     .select('role')
                     .eq('id', authData.user.id)
                     .single();
 
-                if (profileError) {
-                    console.warn("Error al obtener perfil (puede ser normal si es login inicial):", profileError);
-                } else {
-                    console.log("Perfil encontrado:", profile);
-                }
-
-                // Validación permisiva
+                // Solo admins pueden acceder al panel
                 if (profile && profile.role !== 'admin') {
-                    console.warn("Rol no autorizado:", profile.role);
                     await supabase.auth.signOut();
                     throw new Error('Acceso denegado. Se requieren privilegios de Administrador.');
                 }
@@ -88,15 +71,10 @@ export default function Login() {
                 return true;
             };
 
-            // Race between login and timeout
             await Promise.race([loginLogic(), timeoutPromise]);
-
-            // 3. Éxito
-            console.log("Redirigiendo al dashboard...");
             navigate('/');
         } catch (err) {
-            console.error("Error capturado en handleLogin:", err);
-            setError(err.message || "Error desconocido al iniciar sesión");
+            setError(err.message || 'Error desconocido al iniciar sesión');
         } finally {
             setLoading(false);
         }
@@ -131,7 +109,7 @@ export default function Login() {
                         }`}>
                         {connectionStatus === 'checking' && 'Verificando conexión...'}
                         {connectionStatus === 'connected' && 'Conectado'}
-                        {connectionStatus === 'error' && `Error de conexión: ${import.meta.env.VITE_PUBLIC_SUPABASE_URL || 'No URL'}`}
+                        {connectionStatus === 'error' && 'Error de conexión con el servidor'}
                     </div>
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Email Corporativo</label>
