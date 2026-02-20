@@ -144,6 +144,21 @@
     scrollbar-color: rgba(243, 121, 27, 0.3) rgba(243, 121, 27, 0.04);
 }
 
+/* ---- Hide scrollbar (mobile nav) ---- */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* ---- Safe area for iPhones with notch/home indicator ---- */
+.safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Light mode scrollbar adjustments */
 .light ::-webkit-scrollbar-track {
     background: rgba(243, 121, 27, 0.06);
@@ -300,4 +315,19 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(180deg, rgba(243, 121, 27, 0.6), rgba(243, 121, 27, 0.3));
+}
+
+/* Hide scrollbar but keep scroll functionality (mobile nav) */
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Safe area for iOS home indicator */
+.safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }

@@ -10,10 +10,12 @@ import { motion } from 'framer-motion';
 import { X, Calendar as CalendarIcon, User, FolderOpen, AlignLeft, Clock } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { useNotifications } from '../context/NotificationContext';
+import { useGlobalLoading } from '../context/LoadingContext';
 
 export default function Calendar() {
     const { profile } = useAuth();
     const { showNotification } = useNotifications();
+    const { withLoading } = useGlobalLoading();
     const [milestones, setMilestones] = useState([]);
     const [projects, setProjects] = useState([]);
     const [users, setUsers] = useState([]);
@@ -175,50 +177,54 @@ export default function Calendar() {
     const handleSave = async (e) => {
         e.preventDefault();
 
-        try {
-            const payload = {
-                title: formData.title,
-                description: formData.description,
-                project_id: formData.project_id || null,
-                assigned_to: formData.assigned_to || null,
-                status: formData.status,
-                all_day: formData.all_day,
-                start_date: new Date(formData.start_date).toISOString(),
-                end_date: new Date(formData.end_date).toISOString(),
-                target_date: new Date(formData.start_date).toISOString().split('T')[0] // Fallback
-            };
+        await withLoading(async () => {
+            try {
+                const payload = {
+                    title: formData.title,
+                    description: formData.description,
+                    project_id: formData.project_id || null,
+                    assigned_to: formData.assigned_to || null,
+                    status: formData.status,
+                    all_day: formData.all_day,
+                    start_date: new Date(formData.start_date).toISOString(),
+                    end_date: new Date(formData.end_date).toISOString(),
+                    target_date: new Date(formData.start_date).toISOString().split('T')[0] // Fallback
+                };
 
-            if (selectedEvent) {
-                const { error } = await supabase.from('project_milestones').update(payload).eq('id', selectedEvent.id);
-                if (error) throw error;
-                showNotification('Hito actualizado');
-            } else {
-                const { error } = await supabase.from('project_milestones').insert([payload]);
-                if (error) throw error;
-                showNotification('Hito creado');
+                if (selectedEvent) {
+                    const { error } = await supabase.from('project_milestones').update(payload).eq('id', selectedEvent.id);
+                    if (error) throw error;
+                    showNotification('Hito actualizado');
+                } else {
+                    const { error } = await supabase.from('project_milestones').insert([payload]);
+                    if (error) throw error;
+                    showNotification('Hito creado');
+                }
+
+                setIsModalOpen(false);
+                fetchMilestones();
+            } catch (error) {
+                console.error('Error guardando hito:', error);
+                showNotification('Error al guardar. Verifica la conexión.', 'error');
             }
-
-            setIsModalOpen(false);
-            fetchMilestones();
-        } catch (error) {
-            console.error('Error guardando hito:', error);
-            showNotification('Error al guardar. Verifica la conexión.', 'error');
-        }
+        }, selectedEvent ? 'Actualizando hito...' : 'Creando hito...');
     };
 
     const handleDelete = async () => {
         if (!selectedEvent) return;
         if (!window.confirm('¿Eliminar este hito?')) return;
 
-        try {
-            const { error } = await supabase.from('project_milestones').delete().eq('id', selectedEvent.id);
-            if (error) throw error;
-            showNotification('Hito eliminado');
-            setIsModalOpen(false);
-            fetchMilestones();
-        } catch (error) {
-            console.error('Error al eliminar:', error);
-        }
+        await withLoading(async () => {
+            try {
+                const { error } = await supabase.from('project_milestones').delete().eq('id', selectedEvent.id);
+                if (error) throw error;
+                showNotification('Hito eliminado');
+                setIsModalOpen(false);
+                fetchMilestones();
+            } catch (error) {
+                console.error('Error al eliminar:', error);
+            }
+        }, 'Eliminando hito...');
     };
 
     if (loading) {
@@ -232,7 +238,7 @@ export default function Calendar() {
     return (
         <div className="min-h-screen font-display overflow-x-hidden flex" style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-main)' }}>
             <Sidebar />
-            <div className="flex-1 p-4 sm:p-8 transition-all relative z-10 min-h-screen">
+            <div className="flex-1 p-4 sm:p-8 pb-32 md:pb-8 transition-all relative z-10 min-h-screen overflow-y-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                     <div>
                         <h1 className="text-3xl font-black text-variable-main flex items-center gap-3">
@@ -257,7 +263,7 @@ export default function Calendar() {
                 </div>
 
                 {/* Layout Calendar */}
-                <div className="glass p-6 rounded-[2.5rem] border border-variable shadow-2xl relative z-20">
+                <div className="glass p-3 sm:p-6 rounded-[1.5rem] sm:rounded-[2.5rem] border border-variable shadow-2xl relative z-20">
                     <style>
                         {`
                         /* ═══ BASE ═══ */
@@ -335,6 +341,15 @@ export default function Calendar() {
                         .fc-timegrid-slot { height: 3em !important; }
                         .fc .fc-more-link { color: #f3791b !important; font-weight: bold; }
 
+                        /* ═══ MOBILE RESPONSIVE ═══ */
+                        @media (max-width: 640px) {
+                            .fc .fc-toolbar { flex-direction: column; gap: 0.5rem; }
+                            .fc .fc-toolbar-title { font-size: 1rem !important; }
+                            .fc .fc-button { font-size: 0.7rem !important; padding: 0.3rem 0.5rem !important; }
+                            .fc .fc-col-header-cell-cushion { font-size: 0.65rem; }
+                            .fc .fc-daygrid-day-number { font-size: 0.75rem !important; }
+                        }
+
                         /* ═══════════════════════════════════ */
                         /* MODO OSCURO (por defecto)           */
                         /* ═══════════════════════════════════ */
@@ -386,7 +401,9 @@ export default function Calendar() {
                         eventClick={handleEventClick}
                         eventDrop={handleEventDropOrResize}
                         eventResize={handleEventDropOrResize}
-                        height="80vh"
+                        height="auto"
+                        contentHeight="auto"
+                        aspectRatio={1.35}
                     />
                 </div>
 
@@ -394,7 +411,7 @@ export default function Calendar() {
                 {isModalOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-md glass rounded-[2.5rem] p-8 shadow-2xl overflow-visible">
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-md glass rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
 
                             <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 p-2 text-variable-muted hover:text-white rounded-full hover:bg-white/10 transition-colors">
                                 <X size={20} />

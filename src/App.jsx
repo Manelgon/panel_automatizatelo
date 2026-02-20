@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { LoadingProvider } from './context/LoadingContext';
 
 // Componente para proteger rutas
 const ProtectedRoute = ({ children, requireAdmin = true }) => {
@@ -48,64 +49,66 @@ function App() {
     return (
         <AuthProvider>
             <NotificationProvider>
-                <ThemeProvider>
-                    <Router>
-                        <Routes>
-                            <Route path="/login" element={<Login />} />
+                <LoadingProvider>
+                    <ThemeProvider>
+                        <Router>
+                            <Routes>
+                                <Route path="/login" element={<Login />} />
 
-                            <Route path="/" element={
-                                <ProtectedRoute>
-                                    <Dashboard />
-                                </ProtectedRoute>
-                            } />
+                                <Route path="/" element={
+                                    <ProtectedRoute>
+                                        <Dashboard />
+                                    </ProtectedRoute>
+                                } />
 
-                            <Route path="/users" element={
-                                <ProtectedRoute>
-                                    <Users />
-                                </ProtectedRoute>
-                            } />
+                                <Route path="/users" element={
+                                    <ProtectedRoute>
+                                        <Users />
+                                    </ProtectedRoute>
+                                } />
 
-                            <Route path="/leads" element={
-                                <ProtectedRoute>
-                                    <Leads />
-                                </ProtectedRoute>
-                            } />
+                                <Route path="/leads" element={
+                                    <ProtectedRoute>
+                                        <Leads />
+                                    </ProtectedRoute>
+                                } />
 
-                            <Route path="/services" element={
-                                <ProtectedRoute>
-                                    <Services />
-                                </ProtectedRoute>
-                            } />
+                                <Route path="/services" element={
+                                    <ProtectedRoute>
+                                        <Services />
+                                    </ProtectedRoute>
+                                } />
 
-                            <Route path="/projects/:id" element={
-                                <ProtectedRoute>
-                                    <ProjectDetail />
-                                </ProtectedRoute>
-                            } />
+                                <Route path="/projects/:id" element={
+                                    <ProtectedRoute>
+                                        <ProjectDetail />
+                                    </ProtectedRoute>
+                                } />
 
-                            <Route path="/projects" element={
-                                <ProtectedRoute>
-                                    <Projects />
-                                </ProtectedRoute>
-                            } />
+                                <Route path="/projects" element={
+                                    <ProtectedRoute>
+                                        <Projects />
+                                    </ProtectedRoute>
+                                } />
 
-                            <Route path="/tasks" element={
-                                <ProtectedRoute requireAdmin={false}>
-                                    <Tasks />
-                                </ProtectedRoute>
-                            } />
+                                <Route path="/tasks" element={
+                                    <ProtectedRoute requireAdmin={false}>
+                                        <Tasks />
+                                    </ProtectedRoute>
+                                } />
 
-                            <Route path="/calendar" element={
-                                <ProtectedRoute requireAdmin={false}>
-                                    <Calendar />
-                                </ProtectedRoute>
-                            } />
+                                <Route path="/calendar" element={
+                                    <ProtectedRoute requireAdmin={false}>
+                                        <Calendar />
+                                    </ProtectedRoute>
+                                } />
 
-                            {/* Redirect a login por defecto si no encuentra ruta */}
-                            <Route path="*" element={<Navigate to="/" />} />
-                        </Routes>
-                    </Router>
-                </ThemeProvider>
+                                {/* Redirect a login por defecto si no encuentra ruta */}
+                                <Route path="*" element={<Navigate to="/" />} />
+                            </Routes>
+                        </Router>
+                    </ThemeProvider>
+                </LoadingProvider>
             </NotificationProvider>
         </AuthProvider>
     );

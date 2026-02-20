@@ -35,11 +35,13 @@ import DataTable from '../components/DataTable';
 
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useGlobalLoading } from '../context/LoadingContext';
 
 export default function Users() {
     const { darkMode, toggleTheme } = useTheme();
     const { user: currentUser, profile: currentProfile } = useAuth();
     const { showNotification, confirm } = useNotifications();
+    const { withLoading } = useGlobalLoading();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [usersList, setUsersList] = useState([]);
@@ -87,48 +89,50 @@ export default function Users() {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         setLoading(true);
-        try {
-            // 1. Create auth user via Supabase Auth
-            const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
-                password: formData.password,
-            });
-
-            if (authError) throw authError;
-
-            // 2. Insert profile into public.users table
-            const { error: profileError } = await supabase
-                .from('users')
-                .insert({
-                    id: authData.user.id,
+        await withLoading(async () => {
+            try {
+                // 1. Create auth user via Supabase Auth
+                const { data: authData, error: authError } = await supabase.auth.signUp({
                     email: formData.email,
-                    name: formData.name,
-                    first_name: formData.first_name,
-                    second_name: formData.second_name,
-                    role: formData.role,
-                    birth_date: formData.birth_date || null,
-                    phone_prefix: formData.phone_prefix,
-                    phone: formData.phone || null,
-                    country: formData.country,
-                    province: formData.province || null,
-                    city: formData.city || null,
-                    address: formData.address || null,
-                    status: formData.status,
+                    password: formData.password,
                 });
 
-            if (profileError) throw profileError;
+                if (authError) throw authError;
 
-            // 3. Reset form and close modal
-            setFormData(defaultForm);
-            setIsModalOpen(false);
-            showNotification('Miembro del equipo creado con éxito');
-            fetchUsers();
-        } catch (err) {
-            console.error('Error creating user:', err);
-            showNotification(`Error al crear usuario: ${err.message}`, 'error');
-        } finally {
-            setLoading(false);
-        }
+                // 2. Insert profile into public.users table
+                const { error: profileError } = await supabase
+                    .from('users')
+                    .insert({
+                        id: authData.user.id,
+                        email: formData.email,
+                        name: formData.name,
+                        first_name: formData.first_name,
+                        second_name: formData.second_name,
+                        role: formData.role,
+                        birth_date: formData.birth_date || null,
+                        phone_prefix: formData.phone_prefix,
+                        phone: formData.phone || null,
+                        country: formData.country,
+                        province: formData.province || null,
+                        city: formData.city || null,
+                        address: formData.address || null,
+                        status: formData.status,
+                    });
+
+                if (profileError) throw profileError;
+
+                // 3. Reset form and close modal
+                setFormData(defaultForm);
+                setIsModalOpen(false);
+                showNotification('Miembro del equipo creado con éxito');
+                fetchUsers();
+            } catch (err) {
+                console.error('Error creating user:', err);
+                showNotification(`Error al crear usuario: ${err.message}`, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }, 'Creando miembro del equipo...');
     };
 
     const handleDeleteUser = async (user) => {
@@ -147,21 +151,23 @@ export default function Users() {
         if (!confirmed) return;
 
         setLoading(true);
-        try {
-            const { error } = await supabase
-                .from('users')
-                .delete()
-                .eq('id', user.id);
+        await withLoading(async () => {
+            try {
+                const { error } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', user.id);
 
-            if (error) throw error;
-            showNotification('Usuario eliminado correctamente');
-            fetchUsers();
-        } catch (err) {
-            console.error('Error deleting user:', err);
-            showNotification(`Error al eliminar: ${err.message}`, 'error');
-        } finally {
-            setLoading(false);
-        }
+                if (error) throw error;
+                showNotification('Usuario eliminado correctamente');
+                fetchUsers();
+            } catch (err) {
+                console.error('Error deleting user:', err);
+                showNotification(`Error al eliminar: ${err.message}`, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }, 'Eliminando usuario...');
     };
 
     const fetchUsers = async () => {

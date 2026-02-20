@@ -45,6 +45,7 @@ import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useGlobalLoading } from '../context/LoadingContext';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -54,6 +55,7 @@ export default function ProjectDetail() {
     const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
     const { showNotification } = useNotifications();
+    const { showLoading, hideLoading } = useGlobalLoading();
 
     const [project, setProject] = useState(null);
     const [milestones, setMilestones] = useState([]);
@@ -105,14 +107,16 @@ export default function ProjectDetail() {
     // GLOBAL action lock — blocks ALL interactions while any async operation runs
     const [actionLock, setActionLock] = useState(false);
 
-    // Helper that wraps any async function with the global lock
-    const withLock = async (fn) => {
+    // Helper that wraps any async function with the global lock + global loading overlay
+    const withLock = async (fn, loadingMsg = '') => {
         if (actionLock) return;
         setActionLock(true);
+        if (loadingMsg) showLoading(loadingMsg);
         try {
             await fn();
         } finally {
             setActionLock(false);
+            hideLoading();
         }
     };
 
@@ -261,7 +265,7 @@ export default function ProjectDetail() {
             setNewMilestone({ title: '', target_date: '', status: 'pending' });
             showNotification('Hito añadido correctamente');
             fetchProjectData();
-        });
+        }, 'Añadiendo hito...');
     };
 
     const handleAddTask = async (e) => {
@@ -280,7 +284,7 @@ export default function ProjectDetail() {
             setNewTask({ title: '', description: '', priority: 'Media', status: 'pending', assigned_to: '', sprint_id: '' });
             showNotification('Tarea añadida correctamente');
             fetchProjectData();
-        });
+        }, 'Añadiendo tarea...');
     };
 
     const handleAddBudgetLine = async (e) => {
@@ -304,7 +308,7 @@ export default function ProjectDetail() {
             setNewBudgetLine({ description: '', unit_price: '', quantity: 1, iva_percent: 21 });
             showNotification('Línea de presupuesto añadida');
             fetchBudgetData();
-        });
+        }, 'Añadiendo línea de presupuesto...');
     };
 
     const handleAddCatalogService = async (serviceId) => {
@@ -332,7 +336,7 @@ export default function ProjectDetail() {
             setIsCatalogMode(false);
             showNotification('Servicio añadido del catálogo');
             fetchBudgetData();
-        });
+        }, 'Añadiendo servicio...');
     };
 
     const handleDeleteBudgetLine = async (lineId) => {
@@ -344,7 +348,7 @@ export default function ProjectDetail() {
             const { error } = await supabase.from('project_budget_lines').delete().eq('id', lineId);
             if (error) throw error;
             fetchBudgetData();
-        });
+        }, 'Eliminando línea...');
     };
 
     const handleRemoveProjectService = async (serviceId) => {
@@ -356,7 +360,7 @@ export default function ProjectDetail() {
             const { error } = await supabase.from('project_services').delete().eq('project_id', id).eq('service_id', serviceId);
             if (error) throw error;
             fetchBudgetData();
-        });
+        }, 'Eliminando servicio...');
     };
 
     const handleSaveLine = async (lineId, isService) => {
@@ -382,7 +386,7 @@ export default function ProjectDetail() {
             setEditingLineId(null);
             setTempLine(null);
             fetchBudgetData();
-        });
+        }, 'Guardando cambios...');
     };
 
     const handleEditLine = (line) => {
@@ -613,7 +617,7 @@ export default function ProjectDetail() {
             showNotification(`Factura ${invoiceNumber} generada correctamente ✅`);
             fetchProjectData();
             fetchBudgetData();
-        });
+        }, 'Generando factura...');
     };
 
     const handleRedownloadInvoice = (invoiceId) => {
@@ -634,6 +638,7 @@ export default function ProjectDetail() {
     // Lógica real de generación (llamada tras confirmación o directamente si no hay activo)
     const doGenerateBudgetPDF = async (previousBudgetId = null) => {
         setInvoiceLoading(true);
+        showLoading('Generando presupuesto...');
         try {
             // Si hay un presupuesto anterior activo, marcarlo como denegado
             if (previousBudgetId) {
@@ -767,6 +772,7 @@ export default function ProjectDetail() {
             showNotification(`Error: ${error.message}`, 'error');
         } finally {
             setInvoiceLoading(false);
+            hideLoading();
         }
     };
 
@@ -927,7 +933,7 @@ export default function ProjectDetail() {
             } finally {
                 setBudgetActionLoading(null);
             }
-        });
+        }, 'Procesando presupuesto...');
     };
 
     // ═══════════════════════════════════════
@@ -1120,7 +1126,7 @@ export default function ProjectDetail() {
             showNotification(`Pago ${paymentNumber} registrado correctamente \u2705`);
             fetchBudgetData();
             fetchProjectData();
-        });
+        }, 'Registrando pago...');
     };
 
     const handleRedownloadReceipt = (paymentId) => {
@@ -1181,17 +1187,7 @@ export default function ProjectDetail() {
 
     return (
         <div className="flex min-h-screen transition-colors duration-300 overflow-hidden">
-            {/* ══════════════════════════════════════════════════ */}
-            {/* GLOBAL ACTION LOCK OVERLAY — bloquea toda la UI  */}
-            {/* ══════════════════════════════════════════════════ */}
-            {actionLock && (
-                <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="flex flex-col items-center gap-4 p-8 glass rounded-3xl border border-primary/20 shadow-2xl shadow-primary/10">
-                        <div className="size-14 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                        <p className="text-sm font-bold text-variable-muted tracking-widest uppercase animate-pulse">Procesando...</p>
-                    </div>
-                </div>
-            )}
+            {/* Global loading overlay is now handled by LoadingContext */}
 
             <Sidebar />
 
@@ -1616,7 +1612,7 @@ export default function ProjectDetail() {
                                     <p className="text-xs text-variable-muted italic">Líneas de servicio contratadas y extras manuales</p>
                                 </div>
                             </button>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                 {hasPendingBudget && (
                                     <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] text-amber-500 font-bold uppercase tracking-wider animate-pulse">
                                         <AlertTriangle size={12} /> Presupuesto Pendiente (Edición Bloqueada)

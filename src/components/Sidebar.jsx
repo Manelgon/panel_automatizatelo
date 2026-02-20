@@ -33,7 +33,7 @@ const SidebarItem = ({ icon: Icon, to = "#", label, activeOverride }) => {
         <Link
             to={to}
             title={label}
-            className={`p-4 rounded-2xl transition-all duration-300 flex items-center justify-center ${active ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
+            className={`p-3 md:p-4 rounded-2xl transition-all duration-300 flex items-center justify-center flex-shrink-0 ${active ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
         >
             <Icon size={24} />
         </Link>
@@ -92,15 +92,25 @@ export default function Sidebar() {
             </aside>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 glass border-t border-variable z-[100] px-6 flex items-center justify-between">
-                <SidebarItem icon={LayoutDashboard} to="/" label="H" />
-                <SidebarItem icon={Users} to="/users" label="U" />
-                <div className="size-12 -mt-10 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/40 border-4 border-variable">
-                    <img src={logo} alt="L" className="size-6 object-contain brightness-0 invert" />
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-variable z-[100] safe-area-bottom">
+                <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto no-scrollbar">
+                    <SidebarItem icon={LayoutDashboard} to="/" label="Dashboard" />
+                    <SidebarItem icon={Users} to="/users" label="Usuarios" />
+                    <SidebarItem icon={Target} to="/leads" label="Leads" />
+                    <SidebarItem icon={Briefcase} to="/services" label="Servicios" />
+                    <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
+                    <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
+                    <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario" />
+                    <SidebarItem icon={FileText} label="Documentos" />
+                    <SidebarItem icon={Settings} label="Config" />
+                    <button
+                        onClick={handleSignOut}
+                        className="p-3 rounded-xl text-variable-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all flex-shrink-0 flex items-center justify-center"
+                        title="Cerrar Sesión"
+                    >
+                        <LogOut size={22} />
+                    </button>
                 </div>
-                <SidebarItem icon={Target} to="/leads" label="L" />
-                <SidebarItem icon={Briefcase} to="/services" label="S" />
-                <SidebarItem icon={FolderOpen} to="/projects" label="P" />
             </nav>
         </>
     );

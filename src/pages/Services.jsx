@@ -25,11 +25,13 @@ import Sidebar from '../components/Sidebar';
 import DataTable from '../components/DataTable';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useGlobalLoading } from '../context/LoadingContext';
 
 export default function Services() {
     const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
     const { showNotification, confirm } = useNotifications();
+    const { withLoading } = useGlobalLoading();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [servicesList, setServicesList] = useState([]);
@@ -71,37 +73,39 @@ export default function Services() {
     const handleSaveService = async (e) => {
         e.preventDefault();
         setLoading(true);
-        try {
-            const serviceData = {
-                ...formData,
-                price: formData.price ? parseFloat(formData.price) : null
-            };
+        await withLoading(async () => {
+            try {
+                const serviceData = {
+                    ...formData,
+                    price: formData.price ? parseFloat(formData.price) : null
+                };
 
-            if (editingServiceId) {
-                const { error } = await supabase
-                    .from('services')
-                    .update(serviceData)
-                    .eq('id', editingServiceId);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase
-                    .from('services')
-                    .insert([serviceData]);
-                if (error) throw error;
+                if (editingServiceId) {
+                    const { error } = await supabase
+                        .from('services')
+                        .update(serviceData)
+                        .eq('id', editingServiceId);
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabase
+                        .from('services')
+                        .insert([serviceData]);
+                    if (error) throw error;
+                }
+
+                setFormData(defaultForm);
+                setEditingServiceId(null);
+                setIsModalOpen(false);
+                showNotification(`Servicio ${editingServiceId ? 'actualizado' : 'creado'} con éxito`);
+                fetchServices();
+            } catch (err) {
+                console.error('Error saving service:', err);
+                const msg = err.message || (typeof err === 'string' ? err : 'Error desconocido');
+                showNotification(`Error al guardar servicio: ${msg}`, 'error');
+            } finally {
+                setLoading(false);
             }
-
-            setFormData(defaultForm);
-            setEditingServiceId(null);
-            setIsModalOpen(false);
-            showNotification(`Servicio ${editingServiceId ? 'actualizado' : 'creado'} con éxito`);
-            fetchServices();
-        } catch (err) {
-            console.error('Error saving service:', err);
-            const msg = err.message || (typeof err === 'string' ? err : 'Error desconocido');
-            showNotification(`Error al guardar servicio: ${msg}`, 'error');
-        } finally {
-            setLoading(false);
-        }
+        }, editingServiceId ? 'Actualizando servicio...' : 'Creando servicio...');
     };
 
     const handleEditClick = (service) => {
@@ -126,21 +130,23 @@ export default function Services() {
         if (!confirmed) return;
 
         setLoading(true);
-        try {
-            const { error } = await supabase
-                .from('services')
-                .delete()
-                .eq('id', id);
+        await withLoading(async () => {
+            try {
+                const { error } = await supabase
+                    .from('services')
+                    .delete()
+                    .eq('id', id);
 
-            if (error) throw error;
-            showNotification('Servicio eliminado correctamente');
-            fetchServices();
-        } catch (err) {
-            console.error('Error deleting service:', err);
-            showNotification(`Error al eliminar: ${err.message}`, 'error');
-        } finally {
-            setLoading(false);
-        }
+                if (error) throw error;
+                showNotification('Servicio eliminado correctamente');
+                fetchServices();
+            } catch (err) {
+                console.error('Error deleting service:', err);
+                showNotification(`Error al eliminar: ${err.message}`, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }, 'Eliminando servicio...');
     };
 
     const handleCloseModal = () => {

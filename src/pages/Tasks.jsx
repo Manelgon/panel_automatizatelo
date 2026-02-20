@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import Sidebar from '../components/Sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGlobalLoading } from '../context/LoadingContext';
 
 /* ─── Constantes ─── */
 const PRIORITIES = [
@@ -507,6 +508,7 @@ function TaskCard({ task, onClick, onDragStart, onDragEnd, isDragging, sprints, 
 export default function Tasks() {
     const { profile: currentProfile } = useAuth();
     const { darkMode, toggleTheme } = useTheme();
+    const { withLoading } = useGlobalLoading();
 
     const [tasks, setTasks] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -629,21 +631,23 @@ export default function Tasks() {
         e.preventDefault();
         if (!newTask.title.trim() || !newTask.project_id) return;
         setCreating(true);
-        const sprintId = newTask.sprint_id || ((activeSprint !== 'backlog' && activeSprint !== 'all') ? activeSprint : null);
-        const payload = {
-            title: newTask.title.trim(),
-            description: newTask.description.trim() || null,
-            priority: newTask.priority,
-            status: newTask.status,
-            project_id: newTask.project_id,
-            assigned_to: newTask.assigned_to || null,
-            sprint_id: sprintId || null,
-        };
-        await supabase.from('project_tasks').insert([payload]);
-        setShowNewModal(false);
-        setNewTask({ title: '', description: '', priority: 'Media', status: 'pending', project_id: '', assigned_to: '', sprint_id: '' });
-        setCreating(false);
-        fetchData();
+        await withLoading(async () => {
+            const sprintId = newTask.sprint_id || ((activeSprint !== 'backlog' && activeSprint !== 'all') ? activeSprint : null);
+            const payload = {
+                title: newTask.title.trim(),
+                description: newTask.description.trim() || null,
+                priority: newTask.priority,
+                status: newTask.status,
+                project_id: newTask.project_id,
+                assigned_to: newTask.assigned_to || null,
+                sprint_id: sprintId || null,
+            };
+            await supabase.from('project_tasks').insert([payload]);
+            setShowNewModal(false);
+            setNewTask({ title: '', description: '', priority: 'Media', status: 'pending', project_id: '', assigned_to: '', sprint_id: '' });
+            setCreating(false);
+            fetchData();
+        }, 'Creando tarea...');
     };
 
     /* ─── Crear sprint ─── */
@@ -652,36 +656,38 @@ export default function Tasks() {
         if (!newSprint.name.trim() || !newSprint.project_id) return;
         setCreatingS(true);
 
-        try {
-            const payload = {
-                name: newSprint.name.trim(),
-                goal: newSprint.goal.trim() || null,
-                start_date: newSprint.start_date || null,
-                end_date: newSprint.end_date || null,
-                project_id: newSprint.project_id,
-                status: 'planning',
-            };
+        await withLoading(async () => {
+            try {
+                const payload = {
+                    name: newSprint.name.trim(),
+                    goal: newSprint.goal.trim() || null,
+                    start_date: newSprint.start_date || null,
+                    end_date: newSprint.end_date || null,
+                    project_id: newSprint.project_id,
+                    status: 'planning',
+                };
 
-            // Clean empty strings
-            if (payload.start_date === '') payload.start_date = null;
-            if (payload.end_date === '') payload.end_date = null;
+                // Clean empty strings
+                if (payload.start_date === '') payload.start_date = null;
+                if (payload.end_date === '') payload.end_date = null;
 
-            const { error } = await supabase.from('project_sprints').insert([payload]);
+                const { error } = await supabase.from('project_sprints').insert([payload]);
 
-            if (error) {
-                console.error('Supabase error:', error);
-                throw error;
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw error;
+                }
+
+                setShowSprintModal(false);
+                setNewSprint({ name: '', goal: '', start_date: '', end_date: '', project_id: '' });
+                fetchData();
+            } catch (err) {
+                console.error('Detailed error:', err);
+                alert(`Error al crear el sprint: ${err.message || 'Error desconocido'}`);
+            } finally {
+                setCreatingS(false);
             }
-
-            setShowSprintModal(false);
-            setNewSprint({ name: '', goal: '', start_date: '', end_date: '', project_id: '' });
-            fetchData();
-        } catch (err) {
-            console.error('Detailed error:', err);
-            alert(`Error al crear el sprint: ${err.message || 'Error desconocido'}`);
-        } finally {
-            setCreatingS(false);
-        }
+        }, 'Creando sprint...');
     };
 
     /* ─── Mover tarea al sprint activo desde Backlog ─── */
@@ -727,18 +733,18 @@ export default function Tasks() {
                         </div>
                         <p className="text-sm text-variable-muted ml-12">Gestor de tareas al estilo Jira</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button onClick={fetchData} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all" title="Refrescar">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <button onClick={fetchData} className="p-2.5 sm:p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all" title="Refrescar">
                             <RefreshCw size={18} />
                         </button>
-                        <button onClick={toggleTheme} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all">
+                        <button onClick={toggleTheme} className="p-2.5 sm:p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all">
                             {darkMode ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
-                        <button onClick={() => setShowSprintModal(true)} className="flex items-center gap-2 px-4 py-3 glass border border-primary/30 text-primary rounded-2xl font-bold text-sm hover:bg-primary/10 transition-all">
-                            <Zap size={15} /> Nuevo Sprint
+                        <button onClick={() => setShowSprintModal(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 glass border border-primary/30 text-primary rounded-2xl font-bold text-xs sm:text-sm hover:bg-primary/10 transition-all">
+                            <Zap size={15} /> <span className="hidden sm:inline">Nuevo</span> Sprint
                         </button>
-                        <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-5 py-3 bg-primary text-white rounded-2xl font-bold text-sm hover:brightness-110 transition-all shadow-lg shadow-primary/20">
-                            <Plus size={16} /> Nueva Tarea
+                        <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-primary text-white rounded-2xl font-bold text-xs sm:text-sm hover:brightness-110 transition-all shadow-lg shadow-primary/20">
+                            <Plus size={16} /> <span className="hidden sm:inline">Nueva</span> Tarea
                         </button>
                     </div>
                 </div>
@@ -771,26 +777,25 @@ export default function Tasks() {
 
                 {/* Info del sprint activo */}
                 {currentSprintObj && (
-                    <div className="glass rounded-2xl p-4 mb-4 flex items-center gap-4 border border-primary/20">
+                    <div className="glass rounded-2xl p-3 sm:p-4 mb-4 flex flex-wrap items-center gap-2 sm:gap-4 border border-primary/20">
                         <div className="p-2 bg-primary/10 rounded-xl text-primary"><Target size={16} /></div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-[120px]">
                             <p className="text-xs font-black text-variable-main">{currentSprintObj.name}</p>
-                            {currentSprintObj.goal && <p className="text-[10px] text-variable-muted">{currentSprintObj.goal}</p>}
+                            {currentSprintObj.goal && <p className="text-[10px] text-variable-muted line-clamp-1">{currentSprintObj.goal}</p>}
                         </div>
                         {currentSprintObj.start_date && (
-                            <span className="text-[10px] text-variable-muted font-bold">
+                            <span className="text-[10px] text-variable-muted font-bold hidden sm:inline">
                                 {new Date(currentSprintObj.start_date).toLocaleDateString('es-ES')} — {new Date(currentSprintObj.end_date).toLocaleDateString('es-ES')}
                             </span>
                         )}
                         {daysLeft !== null && (
-                            <span className={`text-xs font-black px-3 py-1 rounded-xl ${daysLeft < 0 ? 'bg-red-500/20 text-red-400' : daysLeft <= 3 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
+                            <span className={`text-[10px] sm:text-xs font-black px-2 sm:px-3 py-1 rounded-xl ${daysLeft < 0 ? 'bg-red-500/20 text-red-400' : daysLeft <= 3 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
                                 }`}>
-                                {daysLeft < 0 ? `Terminado hace ${Math.abs(daysLeft)}d` : `${daysLeft} días restantes`}
+                                {daysLeft < 0 ? `${Math.abs(daysLeft)}d atrás` : `${daysLeft}d`}
                             </span>
                         )}
                         <button onClick={async () => {
                             if (currentSprintObj.status === 'active') {
-                                // Validar que todas las tareas estén en 'done'
                                 const sprintTasks = tasks.filter(t => t.sprint_id === currentSprintObj.id);
                                 const incomplete = sprintTasks.filter(t => t.status !== 'done');
                                 if (incomplete.length > 0) {
@@ -802,7 +807,7 @@ export default function Tasks() {
                             await supabase.from('project_sprints').update({ status: next }).eq('id', currentSprintObj.id);
                             fetchData();
                         }} className="text-[10px] font-bold text-primary hover:underline whitespace-nowrap">
-                            {currentSprintObj.status === 'planning' ? '▶ Iniciar sprint' : currentSprintObj.status === 'active' ? '✓ Completar sprint' : null}
+                            {currentSprintObj.status === 'planning' ? '▶ Iniciar' : currentSprintObj.status === 'active' ? '✓ Completar' : null}
                         </button>
                     </div>
                 )}

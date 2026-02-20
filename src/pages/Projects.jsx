@@ -28,11 +28,13 @@ import DataTable from '../components/DataTable';
 import CustomDropdown from '../components/CustomDropdown';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useGlobalLoading } from '../context/LoadingContext';
 
 export default function Projects() {
     const { darkMode } = useTheme();
     const { profile: currentProfile } = useAuth();
     const { showNotification, confirm } = useNotifications();
+    const { withLoading } = useGlobalLoading();
     const navigate = useNavigate();
     const { search } = useLocation();
     const query = new URLSearchParams(search);
@@ -152,54 +154,56 @@ export default function Projects() {
     const handleCreateProject = async (e) => {
         e.preventDefault();
         setLoading(true);
-        try {
-            // Prepare data - ensure lead_id is null if empty string
-            let finalAlias = formData.id_alias;
-            if (!finalAlias) {
-                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                const randomDigits = Math.floor(1000 + Math.random() * 9000);
-                finalAlias = `PR-${dateStr}-${randomDigits}`;
+        await withLoading(async () => {
+            try {
+                // Prepare data - ensure lead_id is null if empty string
+                let finalAlias = formData.id_alias;
+                if (!finalAlias) {
+                    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+                    finalAlias = `PR-${dateStr}-${randomDigits}`;
+                }
+
+                const insertData = {
+                    ...formData,
+                    lead_id: formData.lead_id || null,
+                    id_alias: finalAlias
+                };
+
+                // 1. Call RPC function to create project safely
+                const { data: projectId, error: rpcError } = await supabase
+                    .rpc('create_project', {
+                        p_name: formData.name,
+                        p_client: formData.client,
+                        p_description: formData.description || '',
+                        p_alias: finalAlias,
+                        p_total_hours: parseInt(formData.total_hours) || 0,
+                        p_lead_id: formData.lead_id || null,
+                        p_assigned_users: formData.assigned_users,
+                        p_service_ids: formData.selected_services
+                    });
+
+                if (rpcError) throw rpcError;
+
+                // 3. Update lead status if applicable
+
+                setFormData(defaultForm);
+                setIsModalOpen(false);
+                fetchProjects();
+
+                // Clean URL if we were converting
+                if (convertLeadId) {
+                    navigate('/projects', { replace: true });
+                }
+
+                showNotification('Proyecto creado con éxito y Lead convertido');
+            } catch (err) {
+                console.error('Error creating project:', err);
+                showNotification(`Error al crear proyecto: ${err.message}`, 'error');
+            } finally {
+                setLoading(false);
             }
-
-            const insertData = {
-                ...formData,
-                lead_id: formData.lead_id || null,
-                id_alias: finalAlias
-            };
-
-            // 1. Call RPC function to create project safely
-            const { data: projectId, error: rpcError } = await supabase
-                .rpc('create_project', {
-                    p_name: formData.name,
-                    p_client: formData.client,
-                    p_description: formData.description || '',
-                    p_alias: finalAlias,
-                    p_total_hours: parseInt(formData.total_hours) || 0,
-                    p_lead_id: formData.lead_id || null,
-                    p_assigned_users: formData.assigned_users,
-                    p_service_ids: formData.selected_services
-                });
-
-            if (rpcError) throw rpcError;
-
-            // 3. Update lead status if applicable
-
-            setFormData(defaultForm);
-            setIsModalOpen(false);
-            fetchProjects();
-
-            // Clean URL if we were converting
-            if (convertLeadId) {
-                navigate('/projects', { replace: true });
-            }
-
-            showNotification('Proyecto creado con éxito y Lead convertido');
-        } catch (err) {
-            console.error('Error creating project:', err);
-            showNotification(`Error al crear proyecto: ${err.message}`, 'error');
-        } finally {
-            setLoading(false);
-        }
+        }, 'Creando proyecto...');
     };
 
     const handleDeleteProject = async (id) => {
@@ -213,21 +217,23 @@ export default function Projects() {
         if (!confirmed) return;
 
         setLoading(true);
-        try {
-            const { error } = await supabase
-                .from('projects')
-                .delete()
-                .eq('id', id);
+        await withLoading(async () => {
+            try {
+                const { error } = await supabase
+                    .from('projects')
+                    .delete()
+                    .eq('id', id);
 
-            if (error) throw error;
-            showNotification('Proyecto eliminado correctamente');
-            fetchProjects();
-        } catch (err) {
-            console.error('Error deleting project:', err);
-            showNotification(`Error al eliminar: ${err.message}`, 'error');
-        } finally {
-            setLoading(false);
-        }
+                if (error) throw error;
+                showNotification('Proyecto eliminado correctamente');
+                fetchProjects();
+            } catch (err) {
+                console.error('Error deleting project:', err);
+                showNotification(`Error al eliminar: ${err.message}`, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }, 'Eliminando proyecto...');
     };
 
     return (
@@ -294,9 +300,9 @@ export default function Projects() {
                             label: 'Estado',
                             render: (project) => (
                                 <span className={`text-[10px] font-black px-3 py-1 rounded-lg border uppercase ${project.status === 'Finalizado' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                        project.status === 'Cancelado' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                            project.status === 'Pendiente' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                'bg-primary/10 text-primary border-primary/20'
+                                    project.status === 'Cancelado' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                        project.status === 'Pendiente' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                            'bg-primary/10 text-primary border-primary/20'
                                     }`}>
                                     {project.status}
                                 </span>

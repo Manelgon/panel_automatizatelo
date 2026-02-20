@@ -25,12 +25,14 @@ import CustomSelect from '../components/CustomSelect';
 import DataTable from '../components/DataTable';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useGlobalLoading } from '../context/LoadingContext';
 
 export default function Leads() {
     const navigate = useNavigate();
     const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
     const { showNotification } = useNotifications();
+    const { withLoading } = useGlobalLoading();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [leadsList, setLeadsList] = useState([]);
@@ -129,8 +131,9 @@ export default function Leads() {
     const handleConvertToProject = async (lead) => {
         try {
             setLoading(true);
-            // Redirect to projects immediately. Status update will happen upon successful project creation.
-            navigate(`/projects?convert=${lead.id}`);
+            await withLoading(async () => {
+                navigate(`/projects?convert=${lead.id}`);
+            }, 'Convirtiendo lead a proyecto...');
         } catch (err) {
             showNotification(`Error al convertir: ${err.message}`, 'error');
         } finally {
@@ -141,23 +144,25 @@ export default function Leads() {
     const handleCreateLead = async (e) => {
         e.preventDefault();
         setLoading(true);
-        try {
-            const { error } = await supabase
-                .from('leads')
-                .insert([formData]);
+        await withLoading(async () => {
+            try {
+                const { error } = await supabase
+                    .from('leads')
+                    .insert([formData]);
 
-            if (error) throw error;
+                if (error) throw error;
 
-            setFormData(defaultForm);
-            setIsModalOpen(false);
-            showNotification('Lead creado con éxito');
-            fetchLeads();
-        } catch (err) {
-            console.error('Error creating lead:', err);
-            showNotification(`Error al crear lead: ${err.message}`, 'error');
-        } finally {
-            setLoading(false);
-        }
+                setFormData(defaultForm);
+                setIsModalOpen(false);
+                showNotification('Lead creado con éxito');
+                fetchLeads();
+            } catch (err) {
+                console.error('Error creating lead:', err);
+                showNotification(`Error al crear lead: ${err.message}`, 'error');
+            } finally {
+                setLoading(false);
+            }
+        }, 'Creando nuevo lead...');
     };
 
     useEffect(() => {
