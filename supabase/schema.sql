@@ -623,7 +623,8 @@ CREATE POLICY "budget_lines_all" ON public.project_budget_lines FOR ALL TO authe
 
 DROP POLICY IF EXISTS "project_budgets_select" ON public.project_budgets;
 CREATE POLICY "project_budgets_select" ON public.project_budgets FOR SELECT TO authenticated USING (true);
-DROP POLICY IF EXISTS "project_budgets_all" ON public.project_budgets FOR ALL TO authenticated USING (true);
+DROP POLICY IF EXISTS "project_budgets_all" ON public.project_budgets;
+CREATE POLICY "project_budgets_all" ON public.project_budgets FOR ALL TO authenticated USING (true);
 
 -- Políticas para project_invoices
 DROP POLICY IF EXISTS "invoices_select" ON public.project_invoices;
