@@ -42,8 +42,8 @@ import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function ProjectDetail() {
     const { id } = useParams();
@@ -410,7 +410,7 @@ export default function ProjectDetail() {
             `€${parseFloat(l.total || 0).toFixed(2)}`
         ]);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: 72,
             head: [['Concepto', 'Cant.', 'Precio Unit.', 'IVA', 'Base', 'Total']],
             body: tableRows,
@@ -602,7 +602,7 @@ export default function ProjectDetail() {
                 `€${parseFloat(l.total || 0).toFixed(2)}`
             ]);
 
-            doc.autoTable({
+            autoTable(doc, {
                 startY: 72,
                 head: [['Concepto', 'Cant.', 'Precio Unit.', 'IVA', 'Base', 'Total']],
                 body: tableRows,
@@ -733,7 +733,7 @@ export default function ProjectDetail() {
             `€${parseFloat(l.total || 0).toFixed(2)}`
         ]);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: 72,
             head: [['Concepto', 'Cant.', 'Precio Unit.', 'IVA', 'Base', 'Total']],
             body: tableRows,
