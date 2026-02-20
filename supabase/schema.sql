@@ -193,11 +193,18 @@ CREATE POLICY "leads_select_authenticated"
     TO authenticated
     USING (true);
 
--- INSERT: Cualquiera puede crear un lead (formulario público del sitio web)
+-- INSERT: Formulario público puede crear leads, pero con validación anti-spam
 CREATE POLICY "leads_insert_anon"
     ON public.leads FOR INSERT
     TO anon, authenticated
-    WITH CHECK (true);
+    WITH CHECK (
+        first_name IS NOT NULL AND length(first_name) > 0 AND length(first_name) < 100
+        AND last_name IS NOT NULL AND length(last_name) > 0 AND length(last_name) < 100
+        AND email IS NOT NULL AND length(email) > 3 AND length(email) < 255
+        AND phone IS NOT NULL AND length(phone) > 5 AND length(phone) < 30
+        AND (score IS NULL OR score = 0)
+        AND (status IS NULL OR status = 'pendiente')
+    );
 
 -- UPDATE: Solo usuarios autenticados pueden editar leads
 CREATE POLICY "leads_update_authenticated"
@@ -890,20 +897,70 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.project_sprints TO authenticated;
 
 
 -- =============================================
--- 17. VERIFICACIÓN
+-- 21. SECURITY HARDENING — Revocar accesos anónimos
+-- =============================================
+-- Solo el INSERT de leads debe estar accesible para anon
+-- (formulario público del sitio web). Todo lo demás: solo authenticated.
+
+REVOKE ALL ON public.users FROM anon;
+REVOKE ALL ON public.services FROM anon;
+REVOKE ALL ON public.projects FROM anon;
+REVOKE ALL ON public.project_members FROM anon;
+REVOKE ALL ON public.project_milestones FROM anon;
+REVOKE ALL ON public.project_tasks FROM anon;
+REVOKE ALL ON public.project_files FROM anon;
+REVOKE ALL ON public.project_services FROM anon;
+REVOKE ALL ON public.project_budget_lines FROM anon;
+REVOKE ALL ON public.project_invoices FROM anon;
+REVOKE ALL ON public.project_payments FROM anon;
+REVOKE ALL ON public.project_budgets FROM anon;
+REVOKE ALL ON public.project_sprints FROM anon;
+REVOKE ALL ON public.task_subtasks FROM anon;
+REVOKE ALL ON public.task_comments FROM anon;
+REVOKE ALL ON public.task_status_logs FROM anon;
+
+-- Mantener acceso mínimo para anon:
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT INSERT ON public.leads TO anon;
+
+-- Activar RLS en TODAS las tablas públicas (por si alguna se escapó)
+DO $$
+DECLARE
+    tbl RECORD;
+BEGIN
+    FOR tbl IN
+        SELECT tablename
+        FROM pg_tables
+        WHERE schemaname = 'public'
+        AND tablename NOT LIKE 'pg_%'
+    LOOP
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', tbl.tablename);
+    END LOOP;
+END $$;
+
+
+-- =============================================
+-- 22. VERIFICACIÓN
 -- =============================================
 -- Ejecutar después de todo lo anterior para verificar:
 
 -- Ver tablas creadas
-SELECT table_name FROM information_schema.tables 
+SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
 
 -- Ver políticas activas
-SELECT tablename, policyname, cmd, roles 
-FROM pg_policies 
+SELECT tablename, policyname, cmd, roles
+FROM pg_policies
 WHERE schemaname = 'public';
 
+-- Ver GRANTs para anon (debería ser mínimo: solo INSERT leads)
+SELECT grantee, table_name, privilege_type
+FROM information_schema.table_privileges
+WHERE grantee = 'anon' AND table_schema = 'public'
+ORDER BY table_name;
+
 -- Ver triggers (debe estar vacío para auth.users)
-SELECT trigger_name, event_object_table 
-FROM information_schema.triggers 
+SELECT trigger_name, event_object_table
+FROM information_schema.triggers
 WHERE event_object_schema = 'auth';
+

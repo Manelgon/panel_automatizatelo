@@ -15,8 +15,9 @@ import { NotificationProvider } from './context/NotificationContext';
 import { LoadingProvider } from './context/LoadingContext';
 
 const ProtectedRoute = ({ children, requireAdmin = true }) => {
-    const { user, profile, loading } = useAuth();
+    const { user, profile, loading, profileLoading } = useAuth();
 
+    // Session is still loading
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#0F0716]">
@@ -30,9 +31,17 @@ const ProtectedRoute = ({ children, requireAdmin = true }) => {
         return <Navigate to="/login" />;
     }
 
+    // Profile is still loading → show spinner (not "Acceso Denegado")
+    if (profileLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#0F0716]">
+                <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+            </div>
+        );
+    }
+
     // Admin routes require profile with admin role
     if (requireAdmin) {
-        // If profile hasn't loaded or role isn't admin → block access
         if (!profile || profile.role !== 'admin') {
             return (
                 <div className="min-h-screen flex items-center justify-center bg-[#0F0716] text-white p-10 text-center font-display">

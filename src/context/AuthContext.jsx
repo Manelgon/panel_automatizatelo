@@ -7,11 +7,11 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [profileLoading, setProfileLoading] = useState(false);
 
     useEffect(() => {
         const getSession = async () => {
             try {
-                // Short timeout (5s) - if Supabase doesn't respond quickly, go to login
                 const sessionPromise = supabase.auth.getSession();
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Session check timeout')), 5000)
@@ -21,7 +21,6 @@ export const AuthProvider = ({ children }) => {
                 const { data: { session }, error } = result;
 
                 if (error) {
-                    console.error("Error getting session:", error);
                     setLoading(false);
                     return;
                 }
@@ -29,7 +28,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(session?.user ?? null);
 
                 if (session?.user) {
-                    // Profile fetch with short timeout - don't block the UI
+                    setProfileLoading(true);
                     try {
                         await Promise.race([
                             fetchProfile(session.user.id),
@@ -37,13 +36,13 @@ export const AuthProvider = ({ children }) => {
                                 setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
                             )
                         ]);
-                    } catch (profileErr) {
-                        console.warn("Profile fetch timeout, continuing without profile:", profileErr.message);
+                    } catch (_) {
+                        // Profile fetch timed out, continue
+                    } finally {
+                        setProfileLoading(false);
                     }
                 }
-            } catch (err) {
-                console.warn("Session check timed out or failed:", err.message);
-                // On timeout, just proceed to login - don't hang
+            } catch (_) {
                 setUser(null);
                 setProfile(null);
             } finally {
@@ -53,14 +52,17 @@ export const AuthProvider = ({ children }) => {
 
         getSession();
 
-        // Listen for auth state changes (login, logout, token refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             setUser(session?.user ?? null);
             if (session?.user) {
-                // Fire and forget - don't await indefinitely
-                fetchProfile(session.user.id).catch(err =>
-                    console.warn("Profile fetch failed on auth change:", err.message)
-                );
+                setProfileLoading(true);
+                try {
+                    await fetchProfile(session.user.id);
+                } catch (_) {
+                    // Profile fetch failed
+                } finally {
+                    setProfileLoading(false);
+                }
             } else {
                 setProfile(null);
             }
@@ -79,8 +81,6 @@ export const AuthProvider = ({ children }) => {
 
         if (!error && data) {
             setProfile(data);
-        } else if (error) {
-            console.warn("Error fetching profile:", error.message);
         }
     };
 
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+        <AuthContext.Provider value={{ user, profile, loading, profileLoading, signOut }}>
             {children}
         </AuthContext.Provider>
     );
