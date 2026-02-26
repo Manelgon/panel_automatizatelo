@@ -363,8 +363,22 @@ export default function Leads() {
                             )
                         },
                         {
+                            key: 'process_tags',
+                            label: 'Etiquetas',
+                            render: (lead) => (
+                                <div className="flex flex-wrap gap-1">
+                                    {(lead.process_tags || []).map((tag, i) => (
+                                        <span key={i} className="px-2 py-0.5 rounded-md bg-variable/5 border border-variable/10 text-[9px] uppercase font-bold text-variable-muted">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                    {(!lead.process_tags || lead.process_tags.length === 0) && <span className="text-variable-muted/30">—</span>}
+                                </div>
+                            ),
+                        },
+                        {
                             key: 'score',
-                            label: 'Calidad',
+                            label: 'Calidad / Score',
                             align: 'center',
                             render: (lead) => (
                                 <div className="flex gap-1 justify-center">
