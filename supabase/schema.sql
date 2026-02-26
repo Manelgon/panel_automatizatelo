@@ -118,6 +118,17 @@ CREATE TRIGGER set_updated_at_leads
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at();
 
+-- Alter leads for new schema requirements
+DO $$ BEGIN
+    ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS ip_address text;
+    ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS city text;
+    ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS country text;
+    ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS device_type text;
+    ALTER TABLE public.leads DROP CONSTRAINT IF EXISTS leads_status_check;
+    ALTER TABLE public.leads ADD CONSTRAINT leads_status_check CHECK (status IN ('pendiente', 'contactado', 'ganado', 'perdido'));
+EXCEPTION
+    WHEN duplicate_column THEN NULL;
+END $$;
 
 -- =============================================
 -- 4. ELIMINAR TRIGGERS PROBLEMÁTICOS
@@ -202,8 +213,6 @@ CREATE POLICY "leads_insert_anon"
         AND last_name IS NOT NULL AND length(last_name) > 0 AND length(last_name) < 100
         AND email IS NOT NULL AND length(email) > 3 AND length(email) < 255
         AND phone IS NOT NULL AND length(phone) > 5 AND length(phone) < 30
-        AND (score IS NULL OR score = 0)
-        AND (status IS NULL OR status = 'pendiente')
     );
 
 -- UPDATE: Solo usuarios autenticados pueden editar leads
@@ -217,6 +226,67 @@ CREATE POLICY "leads_delete_authenticated"
     ON public.leads FOR DELETE
     TO authenticated
     USING (true);
+
+
+-- =============================================
+-- 7. TABLA: service_segmentation (Cualificación del Lead)
+-- =============================================
+CREATE TABLE IF NOT EXISTS public.service_segmentation (
+    id                      uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id                 uuid        NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    company_size            text,       -- '1-10', '11-50', '50+'
+    automation_goal         text,
+    UNIQUE(lead_id)
+);
+
+ALTER TABLE public.service_segmentation ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "service_segmentation_select" ON public.service_segmentation;
+CREATE POLICY "service_segmentation_select" ON public.service_segmentation FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "service_segmentation_insert" ON public.service_segmentation;
+CREATE POLICY "service_segmentation_insert" ON public.service_segmentation FOR INSERT TO authenticated, anon WITH CHECK (true);
+DROP POLICY IF EXISTS "service_segmentation_update" ON public.service_segmentation;
+CREATE POLICY "service_segmentation_update" ON public.service_segmentation FOR UPDATE TO authenticated USING (true);
+DROP POLICY IF EXISTS "service_segmentation_delete" ON public.service_segmentation;
+CREATE POLICY "service_segmentation_delete" ON public.service_segmentation FOR DELETE TO authenticated USING (true);
+
+-- Permisos
+GRANT ALL ON TABLE public.service_segmentation TO anon, authenticated, service_role;
+
+-- =============================================
+-- 8. TABLA: funnel_flows (Embudos y Estados)
+-- =============================================
+CREATE TABLE IF NOT EXISTS public.funnel_flows (
+    id                          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id                     uuid        NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    flow_name                   text        DEFAULT 'manual',
+    current_status              text        DEFAULT 'nuevo' CHECK (current_status IN ('nuevo', 'en_proceso', 'contactado', 'convertido', 'perdido')),
+    activity                    text        DEFAULT 'lead_inactivo' CHECK (activity IN ('lead_activo', 'lead_inactivo')),
+    received_keyword            text,
+    process_tags                jsonb       DEFAULT '[]'::jsonb,
+    last_interaction_date       timestamptz DEFAULT now(),
+    created_at                  timestamptz DEFAULT now(),
+    updated_at                  timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.funnel_flows ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "funnel_flows_select" ON public.funnel_flows;
+CREATE POLICY "funnel_flows_select" ON public.funnel_flows FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "funnel_flows_insert" ON public.funnel_flows;
+CREATE POLICY "funnel_flows_insert" ON public.funnel_flows FOR INSERT TO authenticated, anon WITH CHECK (true);
+DROP POLICY IF EXISTS "funnel_flows_update" ON public.funnel_flows;
+CREATE POLICY "funnel_flows_update" ON public.funnel_flows FOR UPDATE TO authenticated USING (true);
+DROP POLICY IF EXISTS "funnel_flows_delete" ON public.funnel_flows;
+CREATE POLICY "funnel_flows_delete" ON public.funnel_flows FOR DELETE TO authenticated USING (true);
+
+-- Permisos
+GRANT ALL ON TABLE public.funnel_flows TO anon, authenticated, service_role;
+
+DROP TRIGGER IF EXISTS set_updated_at_funnel_flows ON public.funnel_flows;
+CREATE TRIGGER set_updated_at_funnel_flows
+    BEFORE UPDATE ON public.funnel_flows
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 
 -- =============================================
@@ -255,11 +325,11 @@ DROP POLICY IF EXISTS "services_select_public" ON public.services;
 DROP POLICY IF EXISTS "services_select_authenticated" ON public.services;
 DROP POLICY IF EXISTS "services_all_admin" ON public.services;
 
--- SELECT: Solo usuarios autenticados pueden ver los servicios
+-- SELECT: Cualquiera (public) puede ver los servicios
 DROP POLICY IF EXISTS "services_select_public" ON public.services;
 CREATE POLICY "services_select_public"
     ON public.services FOR SELECT
-    TO authenticated
+    TO public
     USING (true);
 
 -- ALL: Permitir a cualquier admin gestionar servicios
@@ -718,6 +788,12 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'services') THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.services;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'service_segmentation') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.service_segmentation;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'funnel_flows') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.funnel_flows;
     END IF;
     
     -- Nuevas tablas de proyectos

@@ -42,23 +42,25 @@ export default function Leads() {
 
     const tabs = [
         { id: 'todos', label: 'Todos' },
-        { id: 'pendiente', label: 'Pendientes' },
+        { id: 'nuevo', label: 'Nuevos' },
+        { id: 'en_proceso', label: 'En Proceso' },
         { id: 'contactado', label: 'Contactados' },
-        { id: 'ganado', label: 'Ganados/Clientes' },
+        { id: 'convertido', label: 'Convertidos' },
         { id: 'perdido', label: 'Perdidos' }
     ];
 
     const stats = {
         todos: leadsList.length,
-        pendiente: leadsList.filter(l => (l.status || 'pendiente') === 'pendiente').length,
-        contactado: leadsList.filter(l => l.status === 'contactado').length,
-        ganado: leadsList.filter(l => l.status === 'ganado').length,
-        perdido: leadsList.filter(l => l.status === 'perdido').length
+        nuevo: leadsList.filter(l => (l.current_status || 'nuevo') === 'nuevo').length,
+        en_proceso: leadsList.filter(l => l.current_status === 'en_proceso').length,
+        contactado: leadsList.filter(l => l.current_status === 'contactado').length,
+        convertido: leadsList.filter(l => l.current_status === 'convertido').length,
+        perdido: leadsList.filter(l => l.current_status === 'perdido').length
     };
 
     const filteredLeads = activeTab === 'todos'
         ? leadsList
-        : leadsList.filter(l => (l.status || 'pendiente') === activeTab);
+        : leadsList.filter(l => (l.current_status || 'nuevo') === activeTab);
 
     const fetchLeads = async () => {
         setLoading(true);
@@ -66,11 +68,35 @@ export default function Leads() {
         try {
             const { data, error } = await supabase
                 .from('leads')
-                .select('*')
+                .select(`
+                    *,
+                    service_segmentation(*),
+                    funnel_flows(*)
+                `)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setLeadsList(data || []);
+
+            const flatData = (data || []).map(lead => {
+                const segArray = lead.service_segmentation || [];
+                const flowArray = lead.funnel_flows || [];
+                const seg = Array.isArray(segArray) ? (segArray[0] || {}) : segArray;
+                const flow = Array.isArray(flowArray) ? (flowArray[0] || {}) : flowArray;
+
+                return {
+                    ...lead,
+                    company_size: seg.company_size || '',
+                    automation_goal: seg.automation_goal || '',
+                    flow_name: flow.flow_name || 'Panel Administrativo',
+                    current_status: flow.current_status || 'nuevo',
+                    activity: flow.activity || 'lead_inactivo',
+                    received_keyword: flow.received_keyword || '',
+                    process_tags: flow.process_tags || [],
+                    last_interaction_date: flow.last_interaction_date || lead.created_at
+                };
+            });
+
+            setLeadsList(flatData);
         } catch (error) {
             console.error('Error fetching leads:', error);
             setFetchError(error);
@@ -146,11 +172,39 @@ export default function Leads() {
         setLoading(true);
         await withLoading(async () => {
             try {
-                const { error } = await supabase
+                // 1. Insert lead and get ID
+                const { data: newLead, error: leadError } = await supabase
                     .from('leads')
-                    .insert([formData]);
+                    .insert([{
+                        first_name: formData.first_name,
+                        last_name: formData.last_name,
+                        email: formData.email,
+                        phone: formData.phone,
+                        client_type: formData.client_type,
+                        service_interest: formData.service_interest,
+                        source: formData.source,
+                        status: 'pendiente' // MUST match the check constraint
+                    }])
+                    .select('id')
+                    .single();
 
-                if (error) throw error;
+                if (leadError) throw leadError;
+                const leadId = newLead.id;
+
+                // 2. Insert service_segmentation
+                await supabase.from('service_segmentation').insert([{
+                    lead_id: leadId,
+                    automation_goal: '' // Can be updated later by N8N or UI
+                }]);
+
+                // 3. Insert funnel flows
+                await supabase.from('funnel_flows').insert([{
+                    lead_id: leadId,
+                    flow_name: formData.source || 'manual',
+                    current_status: 'nuevo',
+                    activity: 'lead_inactivo',
+                    process_tags: ['nuevo']
+                }]);
 
                 setFormData(defaultForm);
                 setIsModalOpen(false);
@@ -169,23 +223,18 @@ export default function Leads() {
         fetchLeads();
         fetchServices();
 
-        const leadsChannel = supabase
-            .channel('leads-db-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
-                fetchLeads();
-            })
-            .subscribe();
-
-        const servicesChannel = supabase
-            .channel('services-leads-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, () => {
-                fetchServices();
-            })
-            .subscribe();
+        const tables = ['leads', 'service_segmentation', 'funnel_flows', 'services'];
+        const channels = tables.map(table =>
+            supabase.channel(`${table}-changes`)
+                .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+                    if (table === 'services') fetchServices();
+                    else fetchLeads();
+                })
+                .subscribe()
+        );
 
         return () => {
-            supabase.removeChannel(leadsChannel);
-            supabase.removeChannel(servicesChannel);
+            channels.forEach(ch => supabase.removeChannel(ch));
         };
     }, []);
 
@@ -289,12 +338,29 @@ export default function Leads() {
                         },
                         {
                             key: 'service_interest',
-                            label: 'Interés',
+                            label: 'Interés / Meta',
                             render: (lead) => (
-                                <span className="px-3 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[10px] uppercase font-black text-primary">
-                                    {lead.service_interest}
-                                </span>
+                                <div className="flex flex-col gap-1 items-start">
+                                    <span className="px-3 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[10px] uppercase font-black text-primary">
+                                        {lead.service_interest || 'N/A'}
+                                    </span>
+                                    {lead.automation_goal && (
+                                        <span className="text-xs text-variable-muted">Meta: {lead.automation_goal}</span>
+                                    )}
+                                </div>
                             ),
+                        },
+                        {
+                            key: 'flow_activity',
+                            label: 'Origen / Act.',
+                            render: (lead) => (
+                                <div className="flex items-center gap-2">
+                                    <div className={`size-2 rounded-full shadow-sm ${lead.activity === 'lead_activo' ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-gray-400/50'}`} title={lead.activity} />
+                                    <span className="text-[10px] uppercase font-bold text-variable-muted tracking-wide">
+                                        {lead.flow_name || 'Manual'}
+                                    </span>
+                                </div>
+                            )
                         },
                         {
                             key: 'score',
@@ -309,18 +375,21 @@ export default function Leads() {
                             ),
                         },
                         {
-                            key: 'status',
-                            label: 'Estado',
-                            render: (lead) => (
-                                <span className={`px-3 py-1 rounded-lg text-[10px] uppercase font-black border ${lead.status === 'ganado'
-                                    ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                                    : lead.status === 'perdido'
-                                        ? 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                                        : 'bg-primary/10 text-primary border-primary/20'
-                                    }`}>
-                                    {lead.status || 'pendiente'}
-                                </span>
-                            ),
+                            key: 'current_status',
+                            label: 'Embudo',
+                            render: (lead) => {
+                                const st = lead.current_status || 'nuevo';
+                                let bg = 'bg-primary/10 text-primary border-primary/20';
+                                if (st === 'convertido') bg = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+                                if (st === 'perdido') bg = 'bg-rose-500/10 text-rose-500 border-rose-500/20';
+                                if (st === 'contactado' || st === 'en_proceso') bg = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+
+                                return (
+                                    <span className={`px-3 py-1 rounded-lg text-[10px] uppercase font-black border ${bg}`}>
+                                        {st.replace('_', ' ')}
+                                    </span>
+                                );
+                            }
                         },
                         {
                             key: 'created_at',
