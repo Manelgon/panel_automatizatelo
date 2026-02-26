@@ -16,8 +16,9 @@ export default function Login() {
     useEffect(() => {
         const checkConnection = async () => {
             try {
-                // Always use relative path - both Vite (dev) and Vercel (prod) proxy to Supabase
-                const res = await fetch('/auth/v1/health', {
+                // Use the direct Supabase URL for health check
+                const supabaseUrl = import.meta.env.VITE_PUBLIC_SUPABASE_URL;
+                const res = await fetch(`${supabaseUrl}/auth/v1/health`, {
                     method: 'GET',
                     headers: {
                         'apikey': import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
@@ -8,81 +8,107 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [profileLoading, setProfileLoading] = useState(false);
+    const initializedRef = useRef(false);
+
+    // Fetch profile with timeout — never blocks the UI
+    const fetchProfileSafe = async (userId) => {
+        setProfileLoading(true);
+        try {
+            const profilePromise = supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+            );
+
+            const { data, error } = await Promise.race([profilePromise, timeoutPromise]);
+
+            if (!error && data) {
+                setProfile(data);
+            } else {
+                console.warn('[Auth] Profile fetch error:', error?.message);
+            }
+        } catch (err) {
+            console.warn('[Auth] Profile fetch failed:', err.message);
+        } finally {
+            setProfileLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const getSession = async () => {
-            try {
-                const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Session check timeout')), 5000)
-                );
+        // Use onAuthStateChange as the PRIMARY mechanism
+        // It reads from localStorage and fires immediately
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[Auth] onAuthStateChange:', event, 'user:', session?.user?.email ?? 'none');
+            initializedRef.current = true;
 
-                const result = await Promise.race([sessionPromise, timeoutPromise]);
-                const { data: { session }, error } = result;
-
-                if (error) {
-                    setLoading(false);
-                    return;
-                }
-
-                setUser(session?.user ?? null);
-
-                if (session?.user) {
-                    setProfileLoading(true);
-                    try {
-                        await Promise.race([
-                            fetchProfile(session.user.id),
-                            new Promise((_, reject) =>
-                                setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-                            )
-                        ]);
-                    } catch (_) {
-                        // Profile fetch timed out, continue
-                    } finally {
-                        setProfileLoading(false);
-                    }
-                }
-            } catch (_) {
+            if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
-            } finally {
+                setLoading(false);
+                return;
+            }
+
+            if (session?.user) {
+                setUser(session.user);
+                setLoading(false); // Unblock UI immediately
+                // Fetch profile in background — don't block rendering
+                fetchProfileSafe(session.user.id);
+            } else {
+                setUser(null);
+                setProfile(null);
+                setLoading(false);
+            }
+        });
+
+        // Also call getSession as a fallback, but with a timeout
+        // so it doesn't hang forever if the server is unreachable
+        const initSession = async () => {
+            try {
+                const { data, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    console.warn('[Auth] getSession error:', error.message);
+                }
+
+                // If onAuthStateChange hasn't fired yet, use this result
+                if (!initializedRef.current && data?.session?.user) {
+                    console.log('[Auth] getSession found user:', data.session.user.email);
+                    setUser(data.session.user);
+                    setLoading(false);
+                    fetchProfileSafe(data.session.user.id);
+                } else if (!initializedRef.current) {
+                    console.log('[Auth] getSession: no session found');
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.warn('[Auth] getSession failed:', err.message);
+                // Don't clear user — onAuthStateChange handles it
                 setLoading(false);
             }
         };
 
-        getSession();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                setProfileLoading(true);
-                try {
-                    await fetchProfile(session.user.id);
-                } catch (_) {
-                    // Profile fetch failed
-                } finally {
-                    setProfileLoading(false);
+        // Safety net: if nothing responds within 3 seconds, stop loading
+        const safetyTimer = setTimeout(() => {
+            setLoading((prev) => {
+                if (prev) {
+                    console.warn('[Auth] Safety timeout: forcing loading=false');
+                    return false;
                 }
-            } else {
-                setProfile(null);
-            }
-            setLoading(false);
-        });
+                return prev;
+            });
+        }, 3000);
 
-        return () => subscription.unsubscribe();
+        initSession();
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(safetyTimer);
+        };
     }, []);
-
-    const fetchProfile = async (userId) => {
-        const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', userId)
-            .single();
-
-        if (!error && data) {
-            setProfile(data);
-        }
-    };
 
     const signOut = async () => {
         await supabase.auth.signOut();
