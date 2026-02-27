@@ -241,11 +241,13 @@ export default function Calendar() {
             <div className="flex-1 p-4 sm:p-8 pb-32 md:pb-8 transition-all relative z-10 min-h-screen overflow-y-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                     <div>
-                        <h1 className="text-3xl font-black text-variable-main flex items-center gap-3">
-                            <CalendarIcon size={32} className="text-primary" />
-                            Calendario de Hitos
-                        </h1>
-                        <p className="text-sm text-variable-muted">Planifica fechas clave, reuniones y entregables.</p>
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="p-2 sm:p-2.5 bg-primary/10 rounded-xl sm:rounded-2xl text-primary">
+                                <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                            </div>
+                            <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight text-variable-main">Calendario de Hitos</h1>
+                        </div>
+                        <p className="text-sm text-variable-muted ml-11 sm:ml-14">Planifica fechas clave, reuniones y entregables.</p>
                     </div>
                     <button
                         onClick={() => {

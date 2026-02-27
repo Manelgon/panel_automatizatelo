@@ -194,8 +194,8 @@ export default function Services() {
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-32 md:pb-10">
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-2 text-variable-main">Catálogo de Servicios</h1>
-                        <p className="text-variable-muted">Gestiona los servicios y soluciones que ofreces a tus clientes</p>
+                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">Catálogo de Servicios</h1>
+                        <p className="text-variable-muted text-sm sm:text-base">Gestiona los servicios y soluciones que ofreces a tus clientes</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                         <button

@@ -243,10 +243,10 @@ export default function Projects() {
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-32 md:pb-10">
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
                     <div>
-                        <h1 className="text-3xl sm:text-4xl font-bold font-display tracking-tight text-variable-main">
+                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
                             Gestión de <span className="text-primary italic">Proyectos</span>
                         </h1>
-                        <p className="text-variable-muted mt-2 text-sm sm:text-base italic">Supervisa el progreso y recursos de tus activos comerciales</p>
+                        <p className="text-variable-muted text-sm sm:text-base italic">Supervisa el progreso y recursos de tus activos comerciales</p>
                     </div>
 
                     <button
