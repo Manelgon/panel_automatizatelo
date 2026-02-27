@@ -155,9 +155,33 @@ export default function Sidebar() {
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario" />
                     <SidebarItem icon={FileText} label="Documentos" />
-                    {/* Config group on mobile: direct links */}
-                    <SidebarItem icon={Users} to="/users" label="Equipo" />
-                    <SidebarItem icon={Briefcase} to="/services" label="Servicios" />
+
+                    {/* Configuración con popover hacia arriba */}
+                    <div className="relative flex-shrink-0">
+                        <button
+                            onClick={() => setConfigOpen(prev => !prev)}
+                            title="Configuración"
+                            className={`p-3 rounded-2xl transition-all duration-300 flex items-center justify-center ${isConfigActive || configOpen ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
+                        >
+                            <Settings size={22} />
+                        </button>
+
+                        {configOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setConfigOpen(false)} />
+                                <div className="absolute bottom-full mb-3 right-0 glass border border-variable rounded-2xl shadow-2xl z-50 overflow-hidden min-w-[200px]">
+                                    <div className="px-4 py-3 border-b border-variable">
+                                        <p className="text-[10px] uppercase font-black tracking-widest text-variable-muted">Configuración</p>
+                                    </div>
+                                    <div className="p-2 flex flex-col gap-1">
+                                        <SubMenuItem icon={Users} to="/users" label="Gestión de Equipo" onClick={() => setConfigOpen(false)} />
+                                        <SubMenuItem icon={Briefcase} to="/services" label="Catálogo de Servicios" onClick={() => setConfigOpen(false)} />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
                     <button
                         onClick={handleSignOut}
                         className="p-3 rounded-xl text-variable-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all flex-shrink-0 flex items-center justify-center"
@@ -167,6 +191,7 @@ export default function Sidebar() {
                     </button>
                 </div>
             </nav>
+
         </>
     );
 }
