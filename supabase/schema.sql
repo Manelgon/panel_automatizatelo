@@ -234,10 +234,18 @@ CREATE POLICY "leads_delete_authenticated"
 CREATE TABLE IF NOT EXISTS public.service_segmentation (
     id                      uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     lead_id                 uuid        NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
-    company_size            text,       -- '1-10', '11-50', '50+'
+    company_size            text,       -- '1', '2-10', '11-50', '51-200', '200+'
+    sector                  text,       -- 'logistica', 'retail', 'salud', 'legal', 'inmobiliaria', etc.
     automation_goal         text,
     UNIQUE(lead_id)
 );
+
+-- Añadir columnas nuevas si la tabla ya existe (idempotente)
+DO $$ BEGIN
+    ALTER TABLE public.service_segmentation ADD COLUMN IF NOT EXISTS sector text;
+    ALTER TABLE public.service_segmentation ADD COLUMN IF NOT EXISTS company_size text;
+EXCEPTION WHEN others THEN NULL;
+END $$;
 
 ALTER TABLE public.service_segmentation ENABLE ROW LEVEL SECURITY;
 
