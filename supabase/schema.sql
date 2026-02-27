@@ -430,6 +430,7 @@ CREATE TABLE IF NOT EXISTS public.project_milestones (
 -- Migración para hacer project_id opcional y añadir nuevas columnas si la tabla ya existía
 DO $$ BEGIN
     ALTER TABLE public.project_milestones ALTER COLUMN project_id DROP NOT NULL;
+    ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS lead_id uuid REFERENCES public.leads(id) ON DELETE SET NULL;
     ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES public.users(id) ON DELETE SET NULL;
     ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS description text;
     ALTER TABLE public.project_milestones ADD COLUMN IF NOT EXISTS start_date timestamptz;
