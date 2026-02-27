@@ -302,10 +302,9 @@ export default function Dashboard() {
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
                     <div>
                         <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
-                            {greeting}, <span className="text-primary">{userName}</span>
+                            {greeting}, <span className="text-primary italic">{userName}</span>
                         </h1>
                         <div className="flex items-center gap-2 text-variable-muted">
-                            <Clock size={14} />
                             <span className="text-xs">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                         </div>
                     </div>

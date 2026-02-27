@@ -101,35 +101,6 @@ export default function Sidebar() {
                             <Settings size={24} />
                         </button>
 
-                        {/* Popover submenu */}
-                        {configOpen && (
-                            <>
-                                {/* Backdrop */}
-                                <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setConfigOpen(false)}
-                                />
-                                <div className="absolute bottom-0 left-full ml-3 glass border border-variable rounded-2xl shadow-2xl z-50 overflow-hidden min-w-[200px]">
-                                    <div className="px-4 py-3 border-b border-variable">
-                                        <p className="text-[10px] uppercase font-black tracking-widest text-variable-muted">Configuración</p>
-                                    </div>
-                                    <div className="p-2 flex flex-col gap-1">
-                                        <SubMenuItem
-                                            icon={Users}
-                                            to="/users"
-                                            label="Gestión de Equipo"
-                                            onClick={() => setConfigOpen(false)}
-                                        />
-                                        <SubMenuItem
-                                            icon={Briefcase}
-                                            to="/services"
-                                            label="Catálogo de Servicios"
-                                            onClick={() => setConfigOpen(false)}
-                                        />
-                                    </div>
-                                </div>
-                            </>
-                        )}
                     </div>
 
                     <button
@@ -156,7 +127,7 @@ export default function Sidebar() {
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario" />
                     <SidebarItem icon={FileText} label="Documentos" />
 
-                    {/* Botón configuración — el popover está FUERA del overflow */}
+                    {/* Botón configuración */}
                     <button
                         onClick={() => setConfigOpen(prev => !prev)}
                         title="Configuración"
@@ -175,12 +146,19 @@ export default function Sidebar() {
                 </div>
             </nav>
 
-            {/* Mobile Config Popover — fuera del nav para evitar overflow-clip */}
+            {/* Submenu Popover (Common for Desktop and Mobile) */}
             {configOpen && (
                 <>
-                    <div className="fixed inset-0 z-[110]" onClick={() => setConfigOpen(false)} />
-                    <div className="fixed bottom-20 right-4 glass border border-variable rounded-2xl shadow-2xl z-[120] overflow-hidden min-w-[210px] md:hidden">
-                        <div className="px-4 py-3 border-b border-variable">
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 z-[998] bg-black/5 md:bg-transparent"
+                        onClick={() => setConfigOpen(false)}
+                    />
+                    <div className={`fixed glass border border-variable rounded-2xl shadow-2xl z-[999] overflow-hidden min-w-[220px] transition-all duration-300
+                        ${/* Desktop position */ 'md:bottom-auto md:top-[75%] md:left-32'}
+                        ${/* Mobile position */ 'bottom-24 right-4 md:right-auto'}
+                    `}>
+                        <div className="px-4 py-3 border-b border-variable bg-white/5 text-center md:text-left">
                             <p className="text-[10px] uppercase font-black tracking-widest text-variable-muted">Configuración</p>
                         </div>
                         <div className="p-2 flex flex-col gap-1">

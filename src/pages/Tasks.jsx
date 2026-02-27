@@ -725,13 +725,10 @@ export default function Tasks() {
                 {/* ─── Header ─── */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="p-2 sm:p-2.5 bg-primary/10 rounded-xl sm:rounded-2xl text-primary">
-                                <ListTodo className="w-5 h-5 sm:w-6 sm:h-6" />
-                            </div>
-                            <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight text-variable-main">Tareas &amp; Sprints</h1>
-                        </div>
-                        <p className="text-sm text-variable-muted ml-11 sm:ml-14">Gestor de tareas al estilo Jira</p>
+                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
+                            Tareas &amp; <span className="text-primary italic">Sprints</span>
+                        </h1>
+                        <p className="text-sm text-variable-muted">Gestor de tareas al estilo Jira</p>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                         <button onClick={fetchData} className="p-2.5 sm:p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all" title="Refrescar">
