@@ -389,15 +389,16 @@ CREATE TABLE IF NOT EXISTS public.projects (
 -- Hitos del Proyecto y Calendario
 CREATE TABLE IF NOT EXISTS public.project_milestones (
     id            uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE, -- Ahora puede ser NULL para hitos personales o reuniones
+    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
+    lead_id       uuid          REFERENCES public.leads(id) ON DELETE SET NULL,
     assigned_to   uuid          REFERENCES public.users(id) ON DELETE SET NULL,
     title         text          NOT NULL,
     description   text,
-    target_date   date,         -- Mantener por compatibilidad antigua
-    start_date    timestamptz,  -- Nuevo formato para FullCalendar
+    target_date   date,
+    start_date    timestamptz,
     end_date      timestamptz,
     all_day       boolean       DEFAULT true,
-    status        text          DEFAULT 'pending', -- pending, in_progress, completed
+    status        text          DEFAULT 'pending',
     created_at    timestamptz   DEFAULT now()
 );
 
@@ -467,6 +468,26 @@ DROP TRIGGER IF EXISTS set_updated_at_project_tasks ON public.project_tasks;
 CREATE TRIGGER set_updated_at_project_tasks
     BEFORE UPDATE ON public.project_tasks
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+-- Función: copia el lead_id del proyecto al hito automáticamente al insertar
+CREATE OR REPLACE FUNCTION public.set_milestone_lead_id()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.project_id IS NOT NULL AND NEW.lead_id IS NULL THEN
+        SELECT lead_id INTO NEW.lead_id
+        FROM public.projects
+        WHERE id = NEW.project_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_milestone_lead_id ON public.project_milestones;
+CREATE TRIGGER trg_milestone_lead_id
+    BEFORE INSERT ON public.project_milestones
+    FOR EACH ROW
+    EXECUTE FUNCTION public.set_milestone_lead_id();
+
 
 -- Servicios vinculados a un Proyecto
 CREATE TABLE IF NOT EXISTS public.project_services (

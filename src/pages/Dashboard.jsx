@@ -145,7 +145,7 @@ export default function Dashboard() {
                     supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(10),
                     supabase.from('projects').select('*').order('created_at', { ascending: false }),
                     supabase.from('project_tasks').select('*, projects(name)').order('created_at', { ascending: false }).limit(8),
-                    supabase.from('project_milestones').select('*, projects(name)').gte('target_date', new Date().toISOString().split('T')[0]).order('target_date', { ascending: true }).limit(6),
+                    supabase.from('project_milestones').select('*, projects(name)').gte('start_date', new Date().toISOString()).order('start_date', { ascending: true }).limit(6),
                     supabase.from('project_invoices').select('*').order('created_at', { ascending: false }),
                     supabase.from('project_payments').select('*').order('created_at', { ascending: false }),
                     supabase.from('users').select('id, first_name, second_name, email, avatar_url'),
@@ -527,7 +527,7 @@ export default function Dashboard() {
                                                 <p className={`text-sm font-bold ${isFirst ? 'text-primary' : 'text-variable-main'}`}>{m.title}</p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-[10px] text-variable-muted font-medium">
-                                                        {m.target_date ? new Date(m.target_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : 'Sin fecha'}
+                                                        {(() => { const d = m.start_date || m.target_date; return d ? new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Sin fecha'; })()}
                                                     </span>
                                                     {m.projects?.name && (
                                                         <span className="text-[9px] px-2 py-0.5 bg-primary/10 text-primary rounded-md font-bold">{m.projects.name}</span>
