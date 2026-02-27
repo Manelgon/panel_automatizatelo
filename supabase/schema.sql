@@ -118,6 +118,31 @@ CREATE TRIGGER set_updated_at_leads
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at();
 
+-- Sync lead status → funnel_flows current_status
+CREATE OR REPLACE FUNCTION public.sync_lead_status_to_funnel()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status = 'ganado' AND OLD.status IS DISTINCT FROM 'ganado' THEN
+        UPDATE public.funnel_flows
+        SET current_status = 'convertido', last_interaction_date = now()
+        WHERE lead_id = NEW.id;
+    END IF;
+    IF NEW.status = 'perdido' AND OLD.status IS DISTINCT FROM 'perdido' THEN
+        UPDATE public.funnel_flows
+        SET current_status = 'perdido', last_interaction_date = now()
+        WHERE lead_id = NEW.id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_lead_status ON public.leads;
+CREATE TRIGGER trg_sync_lead_status
+    AFTER UPDATE OF status ON public.leads
+    FOR EACH ROW
+    EXECUTE FUNCTION public.sync_lead_status_to_funnel();
+
+
 -- Alter leads for new schema requirements
 DO $$ BEGIN
     ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS ip_address text;
