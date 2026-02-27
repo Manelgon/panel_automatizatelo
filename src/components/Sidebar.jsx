@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom'; // Added useNavigate
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
     Users,
@@ -10,18 +10,14 @@ import {
     Target,
     Briefcase,
     ListTodo,
-    Calendar as CalendarIcon
+    Calendar as CalendarIcon,
+    ChevronRight
 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
 
 const SidebarItem = ({ icon: Icon, to = "#", label, activeOverride }) => {
     const location = useLocation();
-    // Simple logic: if to is provided and not #, check if path matches
-    // But exact match for '/'? current logic in Dashboard was manual active.
-    // Let's rely on location.pathname matching 'to'.
-    // Exception: for '/', exact match needed, otherwise true for all paths starting with /
-
     let active = false;
     if (activeOverride !== undefined) {
         active = activeOverride;
@@ -40,9 +36,31 @@ const SidebarItem = ({ icon: Icon, to = "#", label, activeOverride }) => {
     );
 };
 
+// Settings submenu item (smaller, for inside the popover)
+const SubMenuItem = ({ icon: Icon, to, label, onClick }) => {
+    const location = useLocation();
+    const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
+
+    return (
+        <Link
+            to={to}
+            onClick={onClick}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full ${active ? 'bg-primary text-white' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
+        >
+            <Icon size={18} />
+            <span className="text-sm font-semibold whitespace-nowrap">{label}</span>
+            {active && <ChevronRight size={14} className="ml-auto opacity-60" />}
+        </Link>
+    );
+};
+
 export default function Sidebar() {
     const { signOut } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [configOpen, setConfigOpen] = useState(false);
+
+    const isConfigActive = location.pathname.startsWith('/users') || location.pathname.startsWith('/services');
 
     const handleSignOut = async () => {
         try {
@@ -65,17 +83,54 @@ export default function Sidebar() {
 
                 <div className="flex flex-col gap-6 flex-1 w-full px-4 items-center">
                     <SidebarItem icon={LayoutDashboard} to="/" label="Dashboard" />
-                    <SidebarItem icon={Users} to="/users" label="Usuarios" />
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
-                    <SidebarItem icon={Briefcase} to="/services" label="Servicios" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario / Hitos" />
                     <SidebarItem icon={FileText} label="Documentos" />
                 </div>
 
-                <div className="mt-auto flex flex-col gap-6 items-center w-full px-4">
-                    <SidebarItem icon={Settings} label="Configuración" />
+                <div className="mt-auto flex flex-col gap-6 items-center w-full px-4 relative">
+                    {/* Configuración con submenu */}
+                    <div className="relative w-full flex justify-center">
+                        <button
+                            onClick={() => setConfigOpen(prev => !prev)}
+                            title="Configuración"
+                            className={`p-3 md:p-4 rounded-2xl transition-all duration-300 flex items-center justify-center flex-shrink-0 ${isConfigActive || configOpen ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
+                        >
+                            <Settings size={24} />
+                        </button>
+
+                        {/* Popover submenu */}
+                        {configOpen && (
+                            <>
+                                {/* Backdrop */}
+                                <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setConfigOpen(false)}
+                                />
+                                <div className="absolute bottom-0 left-full ml-3 glass border border-variable rounded-2xl shadow-2xl z-50 overflow-hidden min-w-[200px]">
+                                    <div className="px-4 py-3 border-b border-variable">
+                                        <p className="text-[10px] uppercase font-black tracking-widest text-variable-muted">Configuración</p>
+                                    </div>
+                                    <div className="p-2 flex flex-col gap-1">
+                                        <SubMenuItem
+                                            icon={Users}
+                                            to="/users"
+                                            label="Gestión de Equipo"
+                                            onClick={() => setConfigOpen(false)}
+                                        />
+                                        <SubMenuItem
+                                            icon={Briefcase}
+                                            to="/services"
+                                            label="Catálogo de Servicios"
+                                            onClick={() => setConfigOpen(false)}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
 
                     <button
                         onClick={handleSignOut}
@@ -95,14 +150,14 @@ export default function Sidebar() {
             <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-variable z-[100] safe-area-bottom">
                 <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto no-scrollbar">
                     <SidebarItem icon={LayoutDashboard} to="/" label="Dashboard" />
-                    <SidebarItem icon={Users} to="/users" label="Usuarios" />
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
-                    <SidebarItem icon={Briefcase} to="/services" label="Servicios" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario" />
                     <SidebarItem icon={FileText} label="Documentos" />
-                    <SidebarItem icon={Settings} label="Config" />
+                    {/* Config group on mobile: direct links */}
+                    <SidebarItem icon={Users} to="/users" label="Equipo" />
+                    <SidebarItem icon={Briefcase} to="/services" label="Servicios" />
                     <button
                         onClick={handleSignOut}
                         className="p-3 rounded-xl text-variable-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all flex-shrink-0 flex items-center justify-center"
