@@ -517,6 +517,8 @@ CREATE TRIGGER trg_milestone_lead_id
 
 -- Servicios vinculados a un Proyecto
 CREATE TABLE IF NOT EXISTS public.project_services (
+    project_id    uuid          REFERENCES public.projects(id) ON DELETE CASCADE,
+    service_id    uuid          REFERENCES public.services(id) ON DELETE CASCADE,
     unit_price    decimal(10,2) DEFAULT 0,
     quantity      integer       DEFAULT 1,
     iva_percent   decimal(5,2)  DEFAULT 21,
@@ -527,10 +529,13 @@ CREATE TABLE IF NOT EXISTS public.project_services (
 
 -- Agregar columnas de precio/iva si la tabla ya existe
 DO $$ BEGIN
+    ALTER TABLE public.project_services ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES public.projects(id) ON DELETE CASCADE;
+    ALTER TABLE public.project_services ADD COLUMN IF NOT EXISTS service_id uuid REFERENCES public.services(id) ON DELETE CASCADE;
     ALTER TABLE public.project_services ADD COLUMN IF NOT EXISTS unit_price decimal(10,2) DEFAULT 0;
     ALTER TABLE public.project_services ADD COLUMN IF NOT EXISTS quantity integer DEFAULT 1;
     ALTER TABLE public.project_services ADD COLUMN IF NOT EXISTS iva_percent decimal(5,2) DEFAULT 21;
     ALTER TABLE public.project_services ADD COLUMN IF NOT EXISTS invoice_id uuid;
+EXCEPTION WHEN others THEN NULL;
 END $$;
 
 CREATE INDEX IF NOT EXISTS idx_project_services_project ON public.project_services(project_id);

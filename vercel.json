@@ -5,19 +5,19 @@
     "rewrites": [
         {
             "source": "/auth/(.*)",
-            "destination": "https://ssdbss.automatizatelo.com/auth/$1"
+            "destination": "https://weatbfnbmgimssvhhqzt.supabase.co/auth/$1"
         },
         {
             "source": "/rest/(.*)",
-            "destination": "https://ssdbss.automatizatelo.com/rest/$1"
+            "destination": "https://weatbfnbmgimssvhhqzt.supabase.co/rest/$1"
         },
         {
             "source": "/realtime/(.*)",
-            "destination": "https://ssdbss.automatizatelo.com/realtime/$1"
+            "destination": "https://weatbfnbmgimssvhhqzt.supabase.co/realtime/$1"
         },
         {
             "source": "/storage/(.*)",
-            "destination": "https://ssdbss.automatizatelo.com/storage/$1"
+            "destination": "https://weatbfnbmgimssvhhqzt.supabase.co/storage/$1"
         },
         {
             "source": "/(.*)",
