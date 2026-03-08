@@ -1076,6 +1076,87 @@ END $$;
 
 
 -- =============================================
+-- 23. TABLA: blog_posts (Sistema de Blog)
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS public.blog_posts (
+    id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    title             text        NOT NULL,
+    slug              text        NOT NULL UNIQUE,
+    excerpt           text,
+    content           text        NOT NULL DEFAULT '',
+    cover_image       text,
+    author_id         uuid        REFERENCES public.users(id) ON DELETE SET NULL,
+    status            text        DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+    is_visible        boolean     DEFAULT false,
+    tags              text[]      DEFAULT '{}',
+    meta_title        text,
+    meta_description  text,
+    published_at      timestamptz,
+    created_at        timestamptz DEFAULT now(),
+    updated_at        timestamptz DEFAULT now()
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_blog_posts_slug ON public.blog_posts(slug);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_status ON public.blog_posts(status);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_published_at ON public.blog_posts(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_visible ON public.blog_posts(is_visible);
+
+-- Función para updated_at (idempotente)
+CREATE OR REPLACE FUNCTION public.blog_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger updated_at
+DROP TRIGGER IF EXISTS set_updated_at_blog_posts ON public.blog_posts;
+CREATE TRIGGER set_updated_at_blog_posts
+    BEFORE UPDATE ON public.blog_posts
+    FOR EACH ROW EXECUTE FUNCTION public.blog_set_updated_at();
+
+-- RLS
+ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
+
+-- Anon: solo leer posts publicados y visibles
+DROP POLICY IF EXISTS "blog_posts_select_public" ON public.blog_posts;
+CREATE POLICY "blog_posts_select_public"
+    ON public.blog_posts FOR SELECT
+    TO anon
+    USING (status = 'published' AND is_visible = true);
+
+-- Authenticated: leer todos los posts
+DROP POLICY IF EXISTS "blog_posts_select_authenticated" ON public.blog_posts;
+CREATE POLICY "blog_posts_select_authenticated"
+    ON public.blog_posts FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- Authenticated: gestión completa
+DROP POLICY IF EXISTS "blog_posts_all_authenticated" ON public.blog_posts;
+CREATE POLICY "blog_posts_all_authenticated"
+    ON public.blog_posts FOR ALL
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- Grants
+GRANT SELECT ON public.blog_posts TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.blog_posts TO authenticated;
+
+-- Realtime
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'blog_posts') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.blog_posts;
+    END IF;
+END $$;
+
+
+-- =============================================
 -- 22. VERIFICACIÓN
 -- =============================================
 -- Ejecutar después de todo lo anterior para verificar:

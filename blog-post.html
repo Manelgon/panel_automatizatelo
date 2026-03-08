@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blog — Automatizatelo</title>
+    <meta name="description" content="Artículos sobre automatización e inteligencia artificial — Automatizatelo" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link rel="icon" href="/favicon.ico" sizes="256x256" type="image/x-icon" />
+    <style>
+        :root {
+            --color-bg: #0d0d0d;
+            --color-bg-secondary: #1a1a2e;
+            --color-primary: #f3791b;
+            --color-text-main: #ffffff;
+            --color-text-muted: #9ca3af;
+            --color-border: rgba(255, 255, 255, 0.1);
+            --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--color-bg);
+            color: var(--color-text-main);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            line-height: 1.7;
+        }
+
+        /* Header bar */
+        .blog-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(13, 13, 13, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--color-border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .blog-header a {
+            text-decoration: none;
+            color: var(--color-text-main);
+        }
+
+        .blog-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .blog-header .back-link {
+            color: var(--color-primary);
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: gap 0.3s;
+        }
+
+        .blog-header .back-link:hover {
+            gap: 0.7rem;
+        }
+
+        /* Article container */
+        .article-container {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 5rem;
+        }
+
+        /* Cover image */
+        .article-cover {
+            width: 100%;
+            max-height: 450px;
+            object-fit: cover;
+            border-radius: 1.5rem;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Meta info */
+        .article-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+        }
+
+        .article-meta .date {
+            color: var(--color-primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .article-tag {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(243, 121, 27, 0.12);
+            color: #f3791b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* Title */
+        .article-title {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #fff 0%, #f3791b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Article body — rich text styling */
+        .article-body h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 2rem 0 1rem;
+            color: var(--color-primary);
+        }
+
+        .article-body h2 {
+            font-size: 1.6rem;
+            font-weight: 600;
+            margin: 1.8rem 0 0.8rem;
+        }
+
+        .article-body h3 {
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin: 1.5rem 0 0.6rem;
+        }
+
+        .article-body p {
+            margin-bottom: 1.2rem;
+            color: var(--color-text-muted);
+            line-height: 1.8;
+        }
+
+        .article-body ul,
+        .article-body ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1.2rem;
+            color: var(--color-text-muted);
+        }
+
+        .article-body li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-body blockquote {
+            border-left: 4px solid var(--color-primary);
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: var(--color-text-muted);
+            background: rgba(243, 121, 27, 0.05);
+            border-radius: 0 0.75rem 0.75rem 0;
+        }
+
+        .article-body pre {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--color-border);
+            border-radius: 1rem;
+            padding: 1.2rem;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            margin: 1.5rem 0;
+        }
+
+        .article-body img {
+            max-width: 100%;
+            border-radius: 1rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .article-body a {
+            color: var(--color-primary);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .article-body hr {
+            border: none;
+            border-top: 1px solid var(--color-border);
+            margin: 2rem 0;
+        }
+
+        /* Loading */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            color: var(--color-text-muted);
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(243, 121, 27, 0.2);
+            border-top: 4px solid #f3791b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Footer */
+        .blog-footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid var(--color-border);
+            color: var(--color-text-muted);
+            font-size: 0.85rem;
+        }
+
+        .blog-footer a {
+            color: var(--color-primary);
+            text-decoration: none;
+        }
+
+        /* Not found */
+        .not-found {
+            text-align: center;
+            padding: 4rem 2rem;
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .not-found h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .not-found p {
+            color: var(--color-text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .not-found a {
+            background: var(--color-primary);
+            color: #fff;
+            padding: 0.75rem 2rem;
+            border-radius: 1rem;
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.3s;
+        }
+
+        .not-found a:hover {
+            opacity: 0.85;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="blog-header">
+        <a class="logo" href="/">
+            <span style="color:var(--color-primary);font-weight:800">Automatizatelo.</span>
+        </a>
+        <a class="back-link" href="plantilla.html#blog">
+            <i class="fa-solid fa-arrow-left"></i> Volver al blog
+        </a>
+    </header>
+
+    <!-- Content -->
+    <div id="article-content">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Cargando artículo...</p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="blog-footer">
+        <p>&copy; 2026 <a href="/">Automatizatelo</a>. Todos los derechos reservados.</p>
+    </footer>
+
+    <script>
+        (function () {
+            var SUPABASE_URL = 'https://weatbfnbmgimssvhhqzt.supabase.co';
+            var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlYXRiZm5ibWdpbXNzdmhocXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3MjEwMjQsImV4cCI6MjA4ODI5NzAyNH0.PhQK8LkdVAROlRnf0LzJFE_NL_IiyZ-dMGrtWQ-iEuY';
+
+            var params = new URLSearchParams(window.location.search);
+            var slug = params.get('slug');
+
+            if (!slug) {
+                showNotFound();
+                return;
+            }
+
+            function formatDate(dateStr) {
+                if (!dateStr) return '';
+                var d = new Date(dateStr);
+                var months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                return d.getDate() + ' de ' + months[d.getMonth()] + ', ' + d.getFullYear();
+            }
+
+            function showNotFound() {
+                document.getElementById('article-content').innerHTML =
+                    '<div class="not-found">'
+                    + '<h2>Artículo no encontrado</h2>'
+                    + '<p>El artículo que buscas no existe o ha sido retirado.</p>'
+                    + '<a href="plantilla.html#blog">Volver al blog</a>'
+                    + '</div>';
+            }
+
+            fetch(SUPABASE_URL + '/rest/v1/blog_posts?slug=eq.' + encodeURIComponent(slug) + '&status=eq.published&is_visible=eq.true', {
+                headers: {
+                    'apikey': SUPABASE_ANON,
+                    'Authorization': 'Bearer ' + SUPABASE_ANON
+                }
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (posts) {
+                    if (!posts || posts.length === 0) {
+                        showNotFound();
+                        return;
+                    }
+
+                    var post = posts[0];
+
+                    // Update page title & meta
+                    document.title = (post.meta_title || post.title) + ' — Automatizatelo Blog';
+                    var metaDesc = document.querySelector('meta[name="description"]');
+                    if (metaDesc) metaDesc.content = post.meta_description || post.excerpt || '';
+
+                    // Build HTML
+                    var coverHtml = post.cover_image
+                        ? '<img class="article-cover" src="' + post.cover_image + '" alt="' + post.title + '" />'
+                        : '';
+
+                    var tagsHtml = '';
+                    if (post.tags && post.tags.length > 0) {
+                        post.tags.forEach(function (t) {
+                            tagsHtml += '<span class="article-tag">' + t + '</span>';
+                        });
+                    }
+
+                    var dateStr = formatDate(post.published_at || post.created_at);
+
+                    var html = '<article class="article-container">'
+                        + coverHtml
+                        + '<div class="article-meta">'
+                        + '<span class="date"><i class="fa-regular fa-calendar"></i> ' + dateStr + '</span>'
+                        + tagsHtml
+                        + '</div>'
+                        + '<h1 class="article-title">' + post.title + '</h1>'
+                        + '<div class="article-body">' + post.content + '</div>'
+                        + '</article>';
+
+                    document.getElementById('article-content').innerHTML = html;
+                })
+                .catch(function (err) {
+                    console.error('Error loading post:', err);
+                    showNotFound();
+                });
+        })();
+    </script>
+</body>
+
+</html>

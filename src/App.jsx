@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import ProjectDetail from './pages/ProjectDetail';
 import Users from './pages/Users';
 import Leads from './pages/Leads';
+import Blog from './pages/Blog';
 import Services from './pages/Services';
 import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
@@ -112,6 +113,13 @@ function App() {
                                 <Route path="/calendar" element={
                                     <ProtectedRoute requireAdmin={false}>
                                         <Calendar />
+                                    </ProtectedRoute>
+                                } />
+
+
+                                <Route path="/blog" element={
+                                    <ProtectedRoute>
+                                        <Blog />
                                     </ProtectedRoute>
                                 } />
 

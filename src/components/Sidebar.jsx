@@ -11,7 +11,8 @@ import {
     Briefcase,
     ListTodo,
     Calendar as CalendarIcon,
-    ChevronRight
+    ChevronRight,
+    PenLine
 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
@@ -87,6 +88,7 @@ export default function Sidebar() {
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario / Hitos" />
+                    <SidebarItem icon={PenLine} to="/blog" label="Blog" />
                     <SidebarItem icon={FileText} label="Documentos" />
                 </div>
 
@@ -125,6 +127,7 @@ export default function Sidebar() {
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario" />
+                    <SidebarItem icon={PenLine} to="/blog" label="Blog" />
                     <SidebarItem icon={FileText} label="Documentos" />
 
                     {/* Botón configuración */}
