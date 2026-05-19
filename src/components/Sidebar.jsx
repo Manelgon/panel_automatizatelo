@@ -12,7 +12,8 @@ import {
     ListTodo,
     Calendar as CalendarIcon,
     ChevronRight,
-    PenLine
+    PenLine,
+    UserCheck
 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
@@ -85,6 +86,7 @@ export default function Sidebar() {
                 <div className="flex flex-col gap-6 flex-1 w-full px-4 items-center">
                     <SidebarItem icon={LayoutDashboard} to="/" label="Dashboard" />
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
+                    <SidebarItem icon={UserCheck} to="/clientes" label="Clientes" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario / Hitos" />
@@ -124,6 +126,7 @@ export default function Sidebar() {
                 <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto no-scrollbar">
                     <SidebarItem icon={LayoutDashboard} to="/" label="Dashboard" />
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
+                    <SidebarItem icon={UserCheck} to="/clientes" label="Clientes" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario" />
