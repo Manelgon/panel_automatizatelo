@@ -44,6 +44,9 @@ export default function Leads() {
     const [gdprLead, setGdprLead] = useState(null);
     const [gdprPreview, setGdprPreview] = useState(null);
     const [gdprBusy, setGdprBusy] = useState(false);
+    const [gdprAuthEmail, setGdprAuthEmail] = useState('');
+    const [gdprAuthPassword, setGdprAuthPassword] = useState('');
+    const [gdprAuthError, setGdprAuthError] = useState(null);
 
     const tabs = [
         { id: 'todos', label: 'Todos' },
@@ -159,9 +162,20 @@ export default function Leads() {
         ? serviceInterests
         : [{ value: 'otro', label: 'Otro' }];
 
+    const closeGdprModal = () => {
+        setGdprLead(null);
+        setGdprPreview(null);
+        setGdprAuthEmail('');
+        setGdprAuthPassword('');
+        setGdprAuthError(null);
+    };
+
     const openGdprModal = async (lead) => {
         setGdprLead(lead);
         setGdprPreview(null);
+        setGdprAuthEmail('');
+        setGdprAuthPassword('');
+        setGdprAuthError(null);
         setGdprBusy(true);
         try {
             const { data, error } = await supabase.rpc('forget_lead_by_email', {
@@ -180,8 +194,41 @@ export default function Leads() {
 
     const confirmGdprDelete = async () => {
         if (!gdprLead) return;
+        setGdprAuthError(null);
+
+        if (!gdprAuthEmail || !gdprAuthPassword) {
+            setGdprAuthError('Introduce email y contraseña de admin');
+            return;
+        }
+
         setGdprBusy(true);
         try {
+            // 1) Re-autenticación: verificar credenciales admin
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: gdprAuthEmail.trim(),
+                password: gdprAuthPassword,
+            });
+
+            if (authError) {
+                setGdprAuthError('Credenciales incorrectas');
+                setGdprBusy(false);
+                return;
+            }
+
+            // 2) Verificar que el usuario re-autenticado es admin
+            const { data: profile, error: profileError } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', authData.user.id)
+                .single();
+
+            if (profileError || !profile || profile.role !== 'admin') {
+                setGdprAuthError('Este usuario no tiene permisos de administrador');
+                setGdprBusy(false);
+                return;
+            }
+
+            // 3) Ejecutar el borrado
             const { data, error } = await supabase.rpc('forget_lead_by_email', {
                 p_email: gdprLead.email,
                 p_dry_run: false,
@@ -193,8 +240,7 @@ export default function Leads() {
                 : 'Datos eliminados completamente';
 
             showNotification(`${action} para ${gdprLead.email}`, 'success');
-            setGdprLead(null);
-            setGdprPreview(null);
+            closeGdprModal();
             fetchLeads();
         } catch (err) {
             showNotification(`Error en el borrado: ${err.message}`, 'error');
@@ -502,14 +548,14 @@ export default function Leads() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => !gdprBusy && setGdprLead(null)}
+                            onClick={() => !gdprBusy && closeGdprModal()}
                             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         />
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-lg glass rounded-[2rem] p-8 shadow-2xl"
+                            className="relative w-full max-w-lg glass rounded-[2rem] p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
                         >
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-500">
@@ -560,9 +606,43 @@ export default function Leads() {
                                 <p className="text-sm text-amber-500 mb-4">No se encontró ningún lead con ese email en la base de datos.</p>
                             )}
 
+                            {/* Re-autenticación admin */}
+                            {gdprPreview && gdprPreview.status === 'dry_run' && (
+                                <div className="border-t border-variable pt-4 mb-4">
+                                    <p className="text-xs font-black text-rose-500 uppercase tracking-widest mb-3">
+                                        <ShieldCheck className="inline mr-1" size={14} />
+                                        Reautenticación requerida
+                                    </p>
+                                    <p className="text-xs text-variable-muted mb-3">
+                                        Confirma tu identidad de administrador para ejecutar esta acción irreversible.
+                                    </p>
+                                    <div className="space-y-2 mb-2">
+                                        <input
+                                            type="email"
+                                            placeholder="Email de admin"
+                                            value={gdprAuthEmail}
+                                            onChange={(e) => { setGdprAuthEmail(e.target.value); setGdprAuthError(null); }}
+                                            autoComplete="off"
+                                            className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-rose-500/50 text-variable-main text-sm"
+                                        />
+                                        <input
+                                            type="password"
+                                            placeholder="Contraseña"
+                                            value={gdprAuthPassword}
+                                            onChange={(e) => { setGdprAuthPassword(e.target.value); setGdprAuthError(null); }}
+                                            autoComplete="new-password"
+                                            className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-rose-500/50 text-variable-main text-sm"
+                                        />
+                                    </div>
+                                    {gdprAuthError && (
+                                        <p className="text-xs text-rose-500 font-bold">{gdprAuthError}</p>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => setGdprLead(null)}
+                                    onClick={closeGdprModal}
                                     disabled={gdprBusy}
                                     className="flex-1 py-3 rounded-2xl border border-variable text-variable-main hover:bg-white/5 transition-all font-bold disabled:opacity-50"
                                 >
@@ -571,8 +651,8 @@ export default function Leads() {
                                 {gdprPreview && gdprPreview.status === 'dry_run' && (
                                     <button
                                         onClick={confirmGdprDelete}
-                                        disabled={gdprBusy}
-                                        className="flex-1 py-3 rounded-2xl bg-rose-500 text-white hover:bg-rose-600 transition-all font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                                        disabled={gdprBusy || !gdprAuthEmail || !gdprAuthPassword}
+                                        className="flex-1 py-3 rounded-2xl bg-rose-500 text-white hover:bg-rose-600 transition-all font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {gdprBusy ? 'Procesando...' : <><Trash2 size={16} /> Confirmar borrado</>}
                                     </button>
