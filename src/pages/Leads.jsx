@@ -16,7 +16,11 @@ import {
     Target,
     Rocket,
     Trash2,
-    AlertTriangle
+    AlertTriangle,
+    UserCheck,
+    Building2,
+    Hash,
+    MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -47,6 +51,23 @@ export default function Leads() {
     const [gdprAuthEmail, setGdprAuthEmail] = useState('');
     const [gdprAuthPassword, setGdprAuthPassword] = useState('');
     const [gdprAuthError, setGdprAuthError] = useState(null);
+
+    // Convert lead → cliente
+    const [convertLead, setConvertLead] = useState(null);
+    const [convertBusy, setConvertBusy] = useState(false);
+    const [convertForm, setConvertForm] = useState({
+        client_type: 'particular',
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        company_name: '',
+        tax_id: '',
+        billing_address: '',
+        billing_postal_code: '',
+        billing_city: '',
+        billing_country: 'España',
+    });
 
     const tabs = [
         { id: 'todos', label: 'Todos' },
@@ -249,16 +270,110 @@ export default function Leads() {
         }
     };
 
-    const handleConvertToProject = async (lead) => {
+    const openConvertModal = (lead) => {
+        setConvertLead(lead);
+        setConvertForm({
+            client_type: lead.client_type || 'particular',
+            first_name: lead.first_name || '',
+            last_name: lead.last_name || '',
+            email: lead.email || '',
+            phone: lead.phone || '',
+            company_name: '',
+            tax_id: '',
+            billing_address: '',
+            billing_postal_code: '',
+            billing_city: '',
+            billing_country: 'España',
+        });
+    };
+
+    const closeConvertModal = () => {
+        if (convertBusy) return;
+        setConvertLead(null);
+    };
+
+    const submitConvert = async (e) => {
+        e.preventDefault();
+        if (!convertLead) return;
+        setConvertBusy(true);
         try {
-            setLoading(true);
-            await withLoading(async () => {
-                navigate(`/projects?convert=${lead.id}`);
-            }, 'Convirtiendo lead a proyecto...');
+            // 1) Buscar cliente existente con mismo email (evitar duplicados)
+            const { data: existingClients, error: searchError } = await supabase
+                .from('clients')
+                .select('id')
+                .ilike('email', convertForm.email.trim())
+                .limit(1);
+
+            if (searchError) throw searchError;
+
+            let clientId;
+            if (existingClients && existingClients.length > 0) {
+                // Reusar y actualizar con datos nuevos si vienen
+                clientId = existingClients[0].id;
+                const { error: updErr } = await supabase
+                    .from('clients')
+                    .update({
+                        client_type: convertForm.client_type,
+                        first_name: convertForm.first_name,
+                        last_name: convertForm.last_name || null,
+                        phone: convertForm.phone || null,
+                        company_name: convertForm.company_name || null,
+                        tax_id: convertForm.tax_id || null,
+                        billing_address: convertForm.billing_address || null,
+                        billing_postal_code: convertForm.billing_postal_code || null,
+                        billing_city: convertForm.billing_city || null,
+                        billing_country: convertForm.billing_country || 'España',
+                        lead_id: convertLead.id,
+                        status: 'active',
+                    })
+                    .eq('id', clientId);
+                if (updErr) throw updErr;
+            } else {
+                // Crear nuevo cliente
+                const { data: newClient, error: insErr } = await supabase
+                    .from('clients')
+                    .insert([{
+                        lead_id: convertLead.id,
+                        client_type: convertForm.client_type,
+                        first_name: convertForm.first_name,
+                        last_name: convertForm.last_name || null,
+                        email: convertForm.email.trim(),
+                        phone: convertForm.phone || null,
+                        company_name: convertForm.company_name || null,
+                        tax_id: convertForm.tax_id || null,
+                        billing_address: convertForm.billing_address || null,
+                        billing_postal_code: convertForm.billing_postal_code || null,
+                        billing_city: convertForm.billing_city || null,
+                        billing_country: convertForm.billing_country || 'España',
+                        status: 'active',
+                    }])
+                    .select('id')
+                    .single();
+                if (insErr) throw insErr;
+                clientId = newClient.id;
+            }
+
+            // 2) Marcar lead como 'ganado'
+            const { error: leadErr } = await supabase
+                .from('leads')
+                .update({ status: 'ganado' })
+                .eq('id', convertLead.id);
+            if (leadErr) throw leadErr;
+
+            // 3) Actualizar funnel_flow del lead (current_status = 'convertido')
+            await supabase
+                .from('funnel_flows')
+                .update({ current_status: 'convertido', activity: 'lead_activo' })
+                .eq('lead_id', convertLead.id);
+
+            showNotification('Lead convertido a cliente correctamente', 'success');
+            setConvertLead(null);
+            fetchLeads();
+            navigate(`/clientes/${clientId}`);
         } catch (err) {
             showNotification(`Error al convertir: ${err.message}`, 'error');
         } finally {
-            setLoading(false);
+            setConvertBusy(false);
         }
     };
 
@@ -517,9 +632,9 @@ export default function Leads() {
                                 <div className="flex gap-2 justify-end">
                                     {lead.status !== 'ganado' && (
                                         <button
-                                            onClick={() => handleConvertToProject(lead)}
+                                            onClick={() => openConvertModal(lead)}
                                             className="p-2 glass rounded-xl text-primary hover:bg-primary/10 transition-all flex items-center gap-2 pr-4 shadow-lg shadow-primary/5 group"
-                                            title="Convertir a Proyecto"
+                                            title="Convertir a Cliente"
                                         >
                                             <div className="bg-primary/20 p-1 rounded-lg group-hover:scale-110 transition-transform"><Rocket size={14} /></div>
                                             <span className="text-[10px] font-black uppercase tracking-tighter">Convertir</span>
@@ -539,6 +654,144 @@ export default function Leads() {
                     ]}
                 />
             </main>
+
+            {/* Convert Lead → Cliente Modal */}
+            <AnimatePresence>
+                {convertLead && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={closeConvertModal}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="relative w-full max-w-2xl glass rounded-[2rem] p-8 shadow-2xl max-h-[90vh] overflow-y-auto"
+                        >
+                            <button onClick={closeConvertModal} className="absolute top-6 right-6 text-variable-muted hover:text-primary">
+                                <X size={24} />
+                            </button>
+
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+                                    <UserCheck size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-variable-main">Convertir a cliente</h2>
+                                    <p className="text-xs text-variable-muted">Completa los datos de facturación</p>
+                                </div>
+                            </div>
+
+                            <form onSubmit={submitConvert} className="space-y-4">
+                                <p className="text-[10px] font-black text-primary uppercase tracking-widest border-b border-variable pb-2">Identidad</p>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">Tipo</label>
+                                        <select
+                                            value={convertForm.client_type}
+                                            onChange={(e) => setConvertForm({ ...convertForm, client_type: e.target.value })}
+                                            className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50"
+                                        >
+                                            <option value="particular">Particular</option>
+                                            <option value="empresa">Empresa</option>
+                                            <option value="agencia">Agencia</option>
+                                            <option value="otro">Otro</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">NIF / CIF *</label>
+                                        <input
+                                            required
+                                            value={convertForm.tax_id}
+                                            onChange={(e) => setConvertForm({ ...convertForm, tax_id: e.target.value.toUpperCase() })}
+                                            placeholder="Ej: 12345678A o B12345678"
+                                            className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm font-mono focus:outline-none focus:border-primary/50"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">Nombre *</label>
+                                        <input required value={convertForm.first_name} onChange={(e) => setConvertForm({ ...convertForm, first_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">Apellidos</label>
+                                        <input value={convertForm.last_name} onChange={(e) => setConvertForm({ ...convertForm, last_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50" />
+                                    </div>
+                                </div>
+
+                                {(convertForm.client_type === 'empresa' || convertForm.client_type === 'agencia') && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">Razón social</label>
+                                        <input value={convertForm.company_name} onChange={(e) => setConvertForm({ ...convertForm, company_name: e.target.value })} placeholder="Empresa S.L." className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50" />
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">Email *</label>
+                                        <input required type="email" value={convertForm.email} onChange={(e) => setConvertForm({ ...convertForm, email: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">Teléfono</label>
+                                        <input value={convertForm.phone} onChange={(e) => setConvertForm({ ...convertForm, phone: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50" />
+                                    </div>
+                                </div>
+
+                                <p className="text-[10px] font-black text-primary uppercase tracking-widest border-b border-variable pb-2 pt-2">Dirección de facturación</p>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">Dirección</label>
+                                    <input value={convertForm.billing_address} onChange={(e) => setConvertForm({ ...convertForm, billing_address: e.target.value })} placeholder="C/ Calle, número, piso" className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50" />
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">C.P.</label>
+                                        <input value={convertForm.billing_postal_code} onChange={(e) => setConvertForm({ ...convertForm, billing_postal_code: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm font-mono focus:outline-none focus:border-primary/50" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">Ciudad</label>
+                                        <input value={convertForm.billing_city} onChange={(e) => setConvertForm({ ...convertForm, billing_city: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-variable-muted uppercase tracking-widest ml-1 block">País</label>
+                                        <input value={convertForm.billing_country} onChange={(e) => setConvertForm({ ...convertForm, billing_country: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 text-variable-main text-sm focus:outline-none focus:border-primary/50" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 text-xs text-variable-muted mt-4">
+                                    Al convertir: se crea el cliente con estos datos, el lead pasa a estado <strong className="text-primary">ganado</strong> y serás redirigido al detalle del cliente. Después podrás crearle proyectos.
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={closeConvertModal}
+                                        disabled={convertBusy}
+                                        className="flex-1 py-3 rounded-2xl border border-variable text-variable-main hover:bg-white/5 transition-all font-bold disabled:opacity-50"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={convertBusy}
+                                        className="flex-1 py-3 rounded-2xl bg-primary text-white hover:brightness-110 transition-all font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {convertBusy ? 'Convirtiendo...' : <><UserCheck size={16} /> Convertir a cliente</>}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* GDPR Modal — Derecho al olvido */}
             <AnimatePresence>

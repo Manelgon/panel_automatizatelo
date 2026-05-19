@@ -39,7 +39,7 @@ export default function ClienteDetail() {
                 .select(`
                     *,
                     projects (
-                        id, name, status, total_hours, alias, description, created_at,
+                        id, name, status, total_hours, id_alias, description, created_at,
                         project_invoices (id, invoice_number, total, status, invoice_date),
                         project_budgets (id, budget_number, total, status, budget_date, created_at),
                         project_milestones (id, title, status, target_date),
@@ -256,7 +256,7 @@ export default function ClienteDetail() {
                                 >
                                     <div>
                                         <p className="font-bold text-variable-main">{p.name}</p>
-                                        <p className="text-xs text-variable-muted">{p.alias || p.description?.slice(0, 60) || '—'}</p>
+                                        <p className="text-xs text-variable-muted">{p.id_alias || p.description?.slice(0, 60) || '—'}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">{p.status}</span>
