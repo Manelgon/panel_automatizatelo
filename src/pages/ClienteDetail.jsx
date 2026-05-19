@@ -40,11 +40,11 @@ export default function ClienteDetail() {
                     *,
                     projects (
                         id, name, status, total_hours, alias, description, created_at,
-                        project_invoices (id, invoice_number, total_amount, status, issue_date),
-                        project_budgets (id, total_amount, status, created_at),
-                        project_milestones (id, title, status, due_date),
-                        project_payments (id, amount, payment_date, method, status),
-                        project_files (id, file_name, file_url, uploaded_at)
+                        project_invoices (id, invoice_number, total, status, invoice_date),
+                        project_budgets (id, budget_number, total, status, budget_date, created_at),
+                        project_milestones (id, title, status, target_date),
+                        project_payments (id, amount, payment_date, payment_method, invoice_id, payment_number),
+                        project_files (id, name, url, file_type, size, created_at)
                     )
                 `)
                 .eq('id', id)
@@ -114,10 +114,8 @@ export default function ClienteDetail() {
         (p.project_files || []).map(f => ({ ...f, project_name: p.name, project_id: p.id }))
     );
 
-    const totalFacturado = allInvoices.reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
-    const totalCobrado = allPayments
-        .filter(p => p.status === 'completed' || p.status === 'paid')
-        .reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+    const totalFacturado = allInvoices.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
+    const totalCobrado = allPayments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
 
     if (loading) {
         return (
@@ -278,11 +276,14 @@ export default function ClienteDetail() {
                                 <div key={i.id} className="flex items-center justify-between p-4 rounded-xl border border-variable">
                                     <div>
                                         <p className="font-bold text-variable-main">{i.invoice_number || `Factura #${i.id.slice(0, 8)}`}</p>
-                                        <p className="text-xs text-variable-muted">Proyecto: {i.project_name}</p>
+                                        <p className="text-xs text-variable-muted">
+                                            Proyecto: {i.project_name}
+                                            {i.invoice_date && ` · ${new Date(i.invoice_date).toLocaleDateString('es-ES')}`}
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">{i.status}</span>
-                                        <span className="font-bold text-variable-main">{parseFloat(i.total_amount || 0).toFixed(2)}€</span>
+                                        <span className="font-bold text-variable-main">{parseFloat(i.total || 0).toFixed(2)}€</span>
                                     </div>
                                 </div>
                             )}
@@ -296,12 +297,15 @@ export default function ClienteDetail() {
                             renderItem={(b) => (
                                 <div key={b.id} className="flex items-center justify-between p-4 rounded-xl border border-variable">
                                     <div>
-                                        <p className="font-bold text-variable-main">Presupuesto #{b.id.slice(0, 8)}</p>
-                                        <p className="text-xs text-variable-muted">Proyecto: {b.project_name}</p>
+                                        <p className="font-bold text-variable-main">{b.budget_number || `Presupuesto #${b.id.slice(0, 8)}`}</p>
+                                        <p className="text-xs text-variable-muted">
+                                            Proyecto: {b.project_name}
+                                            {b.budget_date && ` · ${new Date(b.budget_date).toLocaleDateString('es-ES')}`}
+                                        </p>
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">{b.status}</span>
-                                        <span className="font-bold text-variable-main">{parseFloat(b.total_amount || 0).toFixed(2)}€</span>
+                                        <span className="font-bold text-variable-main">{parseFloat(b.total || 0).toFixed(2)}€</span>
                                     </div>
                                 </div>
                             )}
@@ -323,7 +327,7 @@ export default function ClienteDetail() {
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">{m.status}</span>
-                                        {m.due_date && <span className="text-xs text-variable-muted flex items-center gap-1"><Calendar size={12} />{new Date(m.due_date).toLocaleDateString('es-ES')}</span>}
+                                        {m.target_date && <span className="text-xs text-variable-muted flex items-center gap-1"><Calendar size={12} />{new Date(m.target_date).toLocaleDateString('es-ES')}</span>}
                                     </div>
                                 </div>
                             )}
@@ -337,11 +341,13 @@ export default function ClienteDetail() {
                             renderItem={(p) => (
                                 <div key={p.id} className="flex items-center justify-between p-4 rounded-xl border border-variable">
                                     <div>
-                                        <p className="font-bold text-variable-main">Pago de {parseFloat(p.amount || 0).toFixed(2)}€</p>
-                                        <p className="text-xs text-variable-muted">{p.method || 'Sin método'} · {p.project_name}</p>
+                                        <p className="font-bold text-variable-main">
+                                            {p.payment_number || `Pago de ${parseFloat(p.amount || 0).toFixed(2)}€`}
+                                        </p>
+                                        <p className="text-xs text-variable-muted">{p.payment_method || 'Sin método'} · {p.project_name}</p>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">{p.status}</span>
+                                        <span className="font-bold text-variable-main">{parseFloat(p.amount || 0).toFixed(2)}€</span>
                                         {p.payment_date && <span className="text-xs text-variable-muted">{new Date(p.payment_date).toLocaleDateString('es-ES')}</span>}
                                     </div>
                                 </div>
@@ -356,7 +362,7 @@ export default function ClienteDetail() {
                             renderItem={(f) => (
                                 <a
                                     key={f.id}
-                                    href={f.file_url}
+                                    href={f.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center justify-between p-4 rounded-xl border border-variable hover:border-primary/40 hover:bg-primary/5 transition-all"
@@ -364,11 +370,13 @@ export default function ClienteDetail() {
                                     <div className="flex items-center gap-3">
                                         <Files size={16} className="text-primary" />
                                         <div>
-                                            <p className="font-bold text-variable-main">{f.file_name}</p>
-                                            <p className="text-xs text-variable-muted">{f.project_name}</p>
+                                            <p className="font-bold text-variable-main">{f.name}</p>
+                                            <p className="text-xs text-variable-muted">
+                                                {f.project_name}{f.size ? ` · ${f.size}` : ''}
+                                            </p>
                                         </div>
                                     </div>
-                                    {f.uploaded_at && <span className="text-xs text-variable-muted">{new Date(f.uploaded_at).toLocaleDateString('es-ES')}</span>}
+                                    {f.created_at && <span className="text-xs text-variable-muted">{new Date(f.created_at).toLocaleDateString('es-ES')}</span>}
                                 </a>
                             )}
                         />
