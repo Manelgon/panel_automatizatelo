@@ -14,7 +14,9 @@ import {
     MessageSquare,
     Star,
     Target,
-    Rocket
+    Rocket,
+    Trash2,
+    AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +41,9 @@ export default function Leads() {
     const [services, setServices] = useState([]);
     const [activeTab, setActiveTab] = useState('todos');
     const [fetchError, setFetchError] = useState(null);
+    const [gdprLead, setGdprLead] = useState(null);
+    const [gdprPreview, setGdprPreview] = useState(null);
+    const [gdprBusy, setGdprBusy] = useState(false);
 
     const tabs = [
         { id: 'todos', label: 'Todos' },
@@ -153,6 +158,50 @@ export default function Leads() {
     const finalServiceInterests = serviceInterests.length > 0
         ? serviceInterests
         : [{ value: 'otro', label: 'Otro' }];
+
+    const openGdprModal = async (lead) => {
+        setGdprLead(lead);
+        setGdprPreview(null);
+        setGdprBusy(true);
+        try {
+            const { data, error } = await supabase.rpc('forget_lead_by_email', {
+                p_email: lead.email,
+                p_dry_run: true,
+            });
+            if (error) throw error;
+            setGdprPreview(data);
+        } catch (err) {
+            showNotification(`Error al previsualizar: ${err.message}`, 'error');
+            setGdprLead(null);
+        } finally {
+            setGdprBusy(false);
+        }
+    };
+
+    const confirmGdprDelete = async () => {
+        if (!gdprLead) return;
+        setGdprBusy(true);
+        try {
+            const { data, error } = await supabase.rpc('forget_lead_by_email', {
+                p_email: gdprLead.email,
+                p_dry_run: false,
+            });
+            if (error) throw error;
+
+            const action = data?.status === 'anonymized_due_to_active_project'
+                ? 'Datos anonimizados (proyecto conservado por obligación fiscal)'
+                : 'Datos eliminados completamente';
+
+            showNotification(`${action} para ${gdprLead.email}`, 'success');
+            setGdprLead(null);
+            setGdprPreview(null);
+            fetchLeads();
+        } catch (err) {
+            showNotification(`Error en el borrado: ${err.message}`, 'error');
+        } finally {
+            setGdprBusy(false);
+        }
+    };
 
     const handleConvertToProject = async (lead) => {
         try {
@@ -430,12 +479,109 @@ export default function Leads() {
                                             <span className="text-[10px] font-black uppercase tracking-tighter">Convertir</span>
                                         </button>
                                     )}
+                                    <button
+                                        onClick={() => openGdprModal(lead)}
+                                        className="p-2 glass rounded-xl text-rose-500 hover:bg-rose-500/10 transition-all flex items-center gap-2 pr-4 shadow-lg shadow-rose-500/5 group"
+                                        title="Derecho al olvido (GDPR)"
+                                    >
+                                        <div className="bg-rose-500/20 p-1 rounded-lg group-hover:scale-110 transition-transform"><Trash2 size={14} /></div>
+                                        <span className="text-[10px] font-black uppercase tracking-tighter">GDPR</span>
+                                    </button>
                                 </div>
                             ),
                         }
                     ]}
                 />
             </main>
+
+            {/* GDPR Modal — Derecho al olvido */}
+            <AnimatePresence>
+                {gdprLead && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => !gdprBusy && setGdprLead(null)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="relative w-full max-w-lg glass rounded-[2rem] p-8 shadow-2xl"
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-500">
+                                    <AlertTriangle size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-variable-main">Derecho al olvido (GDPR)</h2>
+                                    <p className="text-xs text-variable-muted">Acción irreversible</p>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-variable-muted mb-4">
+                                Vas a procesar el borrado de los datos personales de:
+                            </p>
+                            <div className="bg-white/5 border border-variable rounded-2xl p-4 mb-4">
+                                <p className="font-bold text-variable-main">{gdprLead.first_name} {gdprLead.last_name}</p>
+                                <p className="text-xs text-variable-muted">{gdprLead.email}</p>
+                            </div>
+
+                            {gdprBusy && !gdprPreview && (
+                                <div className="text-center py-4 text-variable-muted text-sm">
+                                    <Clock className="inline animate-spin mr-2" size={16} />
+                                    Calculando alcance...
+                                </div>
+                            )}
+
+                            {gdprPreview && gdprPreview.status === 'dry_run' && (
+                                <>
+                                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-4">
+                                        <p className="text-xs font-black text-amber-500 uppercase tracking-widest mb-2">
+                                            {gdprPreview.has_active_project ? 'Lead con proyecto' : 'Lead sin proyecto'}
+                                        </p>
+                                        <p className="text-xs text-variable-muted">{gdprPreview.warning}</p>
+                                    </div>
+                                    <div className="space-y-2 text-xs text-variable-muted mb-6">
+                                        <p>Se afectarán:</p>
+                                        <ul className="space-y-1 pl-4">
+                                            <li>• <strong>{gdprPreview.would_delete.leads}</strong> registro(s) en <code>leads</code></li>
+                                            <li>• <strong>{gdprPreview.would_delete.service_segmentation}</strong> en <code>service_segmentation</code></li>
+                                            <li>• <strong>{gdprPreview.would_delete.funnel_flows}</strong> en <code>funnel_flows</code></li>
+                                            <li>• <strong>{gdprPreview.would_delete.project_milestones}</strong> en <code>project_milestones</code></li>
+                                        </ul>
+                                    </div>
+                                </>
+                            )}
+
+                            {gdprPreview && gdprPreview.status === 'not_found' && (
+                                <p className="text-sm text-amber-500 mb-4">No se encontró ningún lead con ese email en la base de datos.</p>
+                            )}
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setGdprLead(null)}
+                                    disabled={gdprBusy}
+                                    className="flex-1 py-3 rounded-2xl border border-variable text-variable-main hover:bg-white/5 transition-all font-bold disabled:opacity-50"
+                                >
+                                    Cancelar
+                                </button>
+                                {gdprPreview && gdprPreview.status === 'dry_run' && (
+                                    <button
+                                        onClick={confirmGdprDelete}
+                                        disabled={gdprBusy}
+                                        className="flex-1 py-3 rounded-2xl bg-rose-500 text-white hover:bg-rose-600 transition-all font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {gdprBusy ? 'Procesando...' : <><Trash2 size={16} /> Confirmar borrado</>}
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             <AnimatePresence>
                 {isModalOpen && (
