@@ -673,6 +673,13 @@ export default function ProjectDetail() {
     };
 
     const handleGenerateBudgetPDF = async () => {
+        // Sin líneas no hay presupuesto. El botón ya viene deshabilitado, pero
+        // un botón deshabilitado no es una defensa: esto guardaba un snapshot
+        // vacío en la base de datos si se llegaba por cualquier otro camino.
+        if (allBudgetLines.length === 0) {
+            showNotification('Añade al menos un concepto antes de crear el presupuesto', 'error');
+            return;
+        }
         // Buscar si existe algún presupuesto en estado 'pendiente'
         const activeBudget = budgets.find(b => b.status === 'pendiente');
         if (activeBudget) {

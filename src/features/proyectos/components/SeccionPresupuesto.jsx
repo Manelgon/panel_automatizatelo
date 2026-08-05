@@ -59,8 +59,15 @@ export default function SeccionPresupuesto({
                                 <AlertTriangle size={12} /> Presupuesto Pendiente (Edición Bloqueada)
                             </div>
                         )}
-                        <button onClick={onGenerarPdf} className="flex items-center gap-2 px-4 py-2.5 glass text-variable-muted rounded-xl text-xs font-bold hover:text-primary transition-all">
-                            <FileText size={14} /> Presupuesto PDF
+                        {/* Sin conceptos no hay nada que presupuestar: deshabilitado
+                            para no crear presupuestos vacíos en la base de datos */}
+                        <button
+                            onClick={onGenerarPdf}
+                            disabled={allBudgetLines.length === 0}
+                            title={allBudgetLines.length === 0 ? 'Añade al menos un concepto primero' : 'Genera el presupuesto y descarga su PDF'}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${allBudgetLines.length === 0 ? 'glass text-variable-muted opacity-40 cursor-not-allowed' : 'glass text-variable-muted hover:text-primary'}`}
+                        >
+                            <FileText size={14} /> Crear Presupuesto
                         </button>
                         <button
                             onClick={onAnadirConcepto}
