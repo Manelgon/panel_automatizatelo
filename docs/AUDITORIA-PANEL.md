@@ -334,7 +334,8 @@ para partir el bundle, y ESLint en `npm run lint`.
 | ~~**2**~~ ✅ | Modelo: PK en `project_services`, `projects.client_id` de verdad, fusión de las tablas 1:1 en `leads`, desambiguación de `users`. → migraciones 010-013 | Medio — tocó la web también | Hecho |
 | ~~**3**~~ ✅ | **Formaciones**: tablas, página, sesiones, alumnos, certificados en PDF con código de verificación y facturación desde la ficha. → migración 014 y `features/formaciones/` | Bajo (todo nuevo) | Hecho |
 | **5** 🟡 | **Citas hechas** (migración 015): tabla, modal de agendar desde Leads, pestaña en la ficha del cliente, eventos en el calendario y próximas citas en el inicio. Quedan `audit_logs` y RGPD (retención, consentimientos, RAT). | Bajo | A medias |
-| **4** | Reorganizar el front en `features/`, partir `ProjectDetail.jsx`, code splitting, TypeScript, fundir `CustomSelect` con `CustomDropdown`. Y aquí el renombrado general a castellano. | Medio, mecánico | 2-3 días |
+| **4** 🟡 | Reorganizar el front. Hecho: ESLint con `jsx-no-undef`, code splitting (1,59 MB → ~670 kB inicial), desplegable único, PDFs fuera de `ProjectDetail`. Queda: partir las secciones grandes, TypeScript y el renombrado a castellano. | Medio, mecánico | A medias |
+| **6** | **Modo VERI\*FACTU pleno** — decidido como objetivo (agosto 2026): registro de eventos del sistema, declaración responsable del productor y remisión a la AEAT con certificado. → `docs/VERIFACTU-ESTADO.md`. **Hasta cerrarlo, el panel no emite facturación real.** | Medio | 2-3 días |
 
 El orden importa: la fase 1 antes que la 2 porque sin migraciones aplicables no se
 puede renombrar nada con seguridad. Y la fase 3 puede adelantarse si hace falta
