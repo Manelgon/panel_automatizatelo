@@ -1192,27 +1192,24 @@ WHERE event_object_schema = 'auth';
 
 
 -- =============================================================================
--- RECONSTRUIDO POR INFERENCIA — ver docs/BASE-DE-DATOS.md
+-- FALTABA EN EL REPOSITORIO — verificado contra la base de datos real
 -- =============================================================================
--- Lo que sigue existe en la base de datos real pero nunca llegó a este
--- repositorio: se creó a mano en el SQL Editor. Está reconstruido leyendo el
--- código que lo usa (Clientes.jsx, ClienteDetail.jsx, el modal de conversión de
--- Leads.jsx y la FK de facturas), NO volcado de la base de datos.
---
--- Sustitúyelo por un `supabase db pull` real en cuanto tengas el proyecto
--- enlazado. Hasta entonces, sirve para levantar un entorno nuevo, pero no
--- garantiza que coincida columna por columna con producción.
+-- Lo que sigue existe en Supabase pero nunca llegó a este repositorio: se creó a
+-- mano en el SQL Editor. Se reconstruyó primero leyendo el código que lo usa y
+-- después se corrigió con el volcado real del esquema (agosto de 2026), así que
+-- estas definiciones sí coinciden columna por columna.
 -- =============================================================================
 
 -- Clientes. `facturas.client_id` (migración 001) la referencia como obligatoria,
 -- así que tiene que existir ANTES que 001.
 CREATE TABLE IF NOT EXISTS public.clients (
     id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-    lead_id             uuid        REFERENCES public.leads(id) ON DELETE SET NULL,
-    client_type         text        DEFAULT 'particular',   -- particular | empresa
+    lead_id             uuid        REFERENCES public.leads(id),
+    client_type         text        NOT NULL DEFAULT 'particular'
+                                    CHECK (client_type IN ('particular', 'empresa', 'agencia', 'otro')),
     first_name          text        NOT NULL,
     last_name           text,
-    email               text,
+    email               text        NOT NULL,
     phone               text,
     company_name        text,
     tax_id              text,                                -- NIF / CIF / NIE
@@ -1221,7 +1218,8 @@ CREATE TABLE IF NOT EXISTS public.clients (
     billing_city        text,
     billing_country     text        DEFAULT 'España',
     notes               text,
-    status              text        DEFAULT 'active',        -- active | archived
+    status              text        NOT NULL DEFAULT 'active'
+                                    CHECK (status IN ('active', 'inactive', 'archived')),
     created_at          timestamptz DEFAULT now(),
     updated_at          timestamptz DEFAULT now()
 );
