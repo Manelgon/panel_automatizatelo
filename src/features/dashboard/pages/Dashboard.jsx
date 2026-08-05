@@ -143,16 +143,16 @@ export default function Dashboard() {
                     { data: citasData },
                 ] = await Promise.all([
                     supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(10),
-                    supabase.from('projects').select('*').order('created_at', { ascending: false }),
-                    supabase.from('project_tasks').select('*, projects(name)').order('created_at', { ascending: false }).limit(8),
-                    supabase.from('project_milestones').select('*, projects(name)').gte('start_date', new Date().toISOString()).order('start_date', { ascending: true }).limit(6),
+                    supabase.from('proyectos').select('*').order('created_at', { ascending: false }),
+                    supabase.from('tareas').select('*, projects:proyectos(name)').order('created_at', { ascending: false }).limit(8),
+                    supabase.from('proyecto_hitos').select('*, projects:proyectos(name)').gte('start_date', new Date().toISOString()).order('start_date', { ascending: true }).limit(6),
                     // Las facturas de formación son filas de `facturas` igual que las
                     // de proyecto: entran aquí solas. Se traen los dos nombres para
                     // poder decir de dónde viene cada una.
-                    supabase.from('facturas').select('*, projects(name), formaciones(titulo)').order('created_at', { ascending: false }),
-                    supabase.from('project_payments').select('*').order('created_at', { ascending: false }),
+                    supabase.from('facturas').select('*, projects:proyectos(name), formaciones(titulo)').order('created_at', { ascending: false }),
+                    supabase.from('cobros').select('*').order('created_at', { ascending: false }),
                     supabase.from('users').select('id, nombre, apellido1, email, avatar_url'),
-                    supabase.from('project_tasks').select('id, status, project_id'),
+                    supabase.from('tareas').select('id, status, project_id'),
                     supabase.from('formaciones').select('id, titulo, estado, fecha_inicio, horas_totales'),
                     // Las citas que vienen, que es lo que se mira por la mañana
                     supabase.from('citas').select('id, titulo, contacto_nombre, start_at, modalidad, enlace, estado, lead_id, cliente_id').gte('start_at', new Date().toISOString()).not('estado', 'in', '(cancelada,realizada)').order('start_at').limit(5),

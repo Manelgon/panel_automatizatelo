@@ -120,7 +120,7 @@ export async function crearFactura({
 
   // 1. Cliente + NIF
   const { data: cliente, error: cliErr } = await supabase
-    .from('clients')
+    .from('clientes')
     .select('id, tax_id, first_name, last_name, company_name, email, billing_address, billing_postal_code, billing_city, billing_country')
     .eq('id', clientId)
     .single();
@@ -232,7 +232,7 @@ export async function crearFactura({
 // =============================================================================
 // PDF FACTURA (reutilizable: pages/ProjectDetail, pages/Facturas, etc.)
 // =============================================================================
-// Espera `factura` con `factura_lineas` embebidas y opcionalmente `projects(name, id_alias)`.
+// Espera `factura` con `factura_lineas` embebidas y opcionalmente `projects:proyectos(name, id_alias)`.
 // `settings` es la fila company_settings. `proyecto` (opcional) sobreescribe el del join.
 export function generarPdfFactura(factura, settings, proyecto = null) {
     const doc = new jsPDF();

@@ -59,8 +59,8 @@ export default function Projects() {
         setFetchError(null);
         try {
             const { data, error } = await supabase
-                .from('projects')
-                .select('*, leads(first_name, last_name, company), project_members(user_id, role, users:user_id(nombre, apellido1, avatar_url))')
+                .from('proyectos')
+                .select('*, leads(first_name, last_name, company), project_members:proyecto_miembros(user_id, role, users:user_id(nombre, apellido1, avatar_url))')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -94,7 +94,7 @@ export default function Projects() {
 
     const fetchServices = async () => {
         const { data, error } = await supabase
-            .from('services')
+            .from('servicios')
             .select('*')
             .order('name', { ascending: true });
 
@@ -104,7 +104,7 @@ export default function Projects() {
 
     const fetchClients = async () => {
         const { data, error } = await supabase
-            .from('clients')
+            .from('clientes')
             .select('id, first_name, last_name, company_name, email, lead_id, status')
             .neq('status', 'archived')
             .order('company_name', { ascending: true });
@@ -155,7 +155,7 @@ export default function Projects() {
             .channel('projects-db-changes')
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'projects' },
+                { event: '*', schema: 'public', table: 'proyectos' },
                 () => fetchProjects()
             )
             .subscribe();
@@ -235,7 +235,7 @@ export default function Projects() {
         await withLoading(async () => {
             try {
                 const { error } = await supabase
-                    .from('projects')
+                    .from('proyectos')
                     .delete()
                     .eq('id', id);
 

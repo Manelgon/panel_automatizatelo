@@ -38,15 +38,15 @@ export default function ClienteDetail() {
         try {
             // 1. Cliente + proyectos (con presupuestos / hitos / pagos / archivos)
             const { data, error } = await supabase
-                .from('clients')
+                .from('clientes')
                 .select(`
                     *,
-                    projects (
+                    projects:proyectos(
                         id, name, status, total_hours, id_alias, description, created_at,
-                        project_budgets (id, budget_number, total, status, budget_date, created_at),
-                        project_milestones (id, title, status, target_date),
-                        project_payments (id, amount, payment_date, payment_method, invoice_id, payment_number),
-                        project_files (id, name, url, file_type, size, created_at)
+                        project_budgets:presupuestos(id, budget_number, total, status, budget_date, created_at),
+                        project_milestones:proyecto_hitos(id, title, status, target_date),
+                        project_payments:cobros(id, amount, payment_date, payment_method, invoice_id, payment_number),
+                        project_files:proyecto_archivos(id, name, url, file_type, size, created_at)
                     )
                 `)
                 .eq('id', id)
@@ -57,7 +57,7 @@ export default function ClienteDetail() {
             // 2. Facturas: ahora viven en `facturas` con client_id directo (sin pasar por proyectos)
             const { data: facturasData } = await supabase
                 .from('facturas')
-                .select('id, numero, total, estado, fecha_emision, project_id, formacion_id, projects(name), formaciones(titulo)')
+                .select('id, numero, total, estado, fecha_emision, project_id, formacion_id, projects:proyectos(name), formaciones(titulo)')
                 .eq('client_id', id)
                 .order('fecha_emision', { ascending: false });
             data.facturas = facturasData || [];
@@ -108,7 +108,7 @@ export default function ClienteDetail() {
         setSaving(true);
         try {
             const { error } = await supabase
-                .from('clients')
+                .from('clientes')
                 .update(editForm)
                 .eq('id', id);
 

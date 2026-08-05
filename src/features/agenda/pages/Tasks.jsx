@@ -81,10 +81,10 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
 
     const fetchDetails = useCallback(async () => {
         const [{ data: subs }, { data: coms }] = await Promise.all([
-            supabase.from('task_subtasks').select('*').eq('task_id', task.id).order('created_at'),
+            supabase.from('tarea_subtareas').select('*').eq('task_id', task.id).order('created_at'),
             // `full_name` no es una columna de users: se compone aquí, igual que
             // en normalizedUsers más abajo.
-            supabase.from('task_comments').select('*, users(nombre, apellido1, avatar_url)').eq('task_id', task.id).order('created_at'),
+            supabase.from('tarea_comentarios').select('*, users(nombre, apellido1, avatar_url)').eq('task_id', task.id).order('created_at'),
         ]);
         setSubtasks(subs || []);
         setComments(coms || []);
@@ -96,8 +96,8 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
         const now = new Date().toISOString();
         // Guardar historial de cambio de estado para calcular duraciones
         await Promise.all([
-            supabase.from('project_tasks').update({ status: newStatus, updated_at: now }).eq('id', task.id),
-            supabase.from('task_status_logs').insert([{
+            supabase.from('tareas').update({ status: newStatus, updated_at: now }).eq('id', task.id),
+            supabase.from('tarea_estados').insert([{
                 task_id: task.id,
                 status: newStatus,
                 changed_by: currentProfile?.id || null,
@@ -109,7 +109,7 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
 
     const handleAssign = async (userId, userName) => {
         setSavingAssignee(true);
-        await supabase.from('project_tasks').update({ assigned_to: userId || null }).eq('id', task.id);
+        await supabase.from('tareas').update({ assigned_to: userId || null }).eq('id', task.id);
         setLocalTask(t => ({ ...t, assigned_to: userId || null, assigned_name: userName || '' }));
         setEditingAssignee(false);
         setSavingAssignee(false);
@@ -123,7 +123,7 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
     const handleAddComment = async () => {
         if (!newComment.trim()) return;
         setLoading(true);
-        await supabase.from('task_comments').insert([{
+        await supabase.from('tarea_comentarios').insert([{
             task_id: task.id,
             user_id: currentProfile?.id,
             content: newComment.trim(),
@@ -135,7 +135,7 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
 
     const handleAddSubtask = async () => {
         if (!newSubtask.trim()) return;
-        await supabase.from('task_subtasks').insert([{
+        await supabase.from('tarea_subtareas').insert([{
             task_id: task.id,
             title: newSubtask.trim(),
             status: 'pending',
@@ -147,17 +147,17 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
 
     const toggleSubtask = async (sub) => {
         const next = sub.status === 'done' ? 'pending' : 'done';
-        await supabase.from('task_subtasks').update({ status: next }).eq('id', sub.id);
+        await supabase.from('tarea_subtareas').update({ status: next }).eq('id', sub.id);
         fetchDetails();
     };
 
     const deleteSubtask = async (subId) => {
-        await supabase.from('task_subtasks').delete().eq('id', subId);
+        await supabase.from('tarea_subtareas').delete().eq('id', subId);
         fetchDetails();
     };
 
     const deleteComment = async (comId) => {
-        await supabase.from('task_comments').delete().eq('id', comId);
+        await supabase.from('tarea_comentarios').delete().eq('id', comId);
         fetchDetails();
     };
 
@@ -553,9 +553,9 @@ export default function Tasks() {
         // Optimistic update
         setTasks(prev => prev.map(t => t.id === draggedTaskId ? { ...t, status: colValue } : t));
         handleDragEnd();
-        await supabase.from('project_tasks').update({ status: colValue }).eq('id', draggedTaskId);
+        await supabase.from('tareas').update({ status: colValue }).eq('id', draggedTaskId);
         // Log del cambio de estado
-        await supabase.from('task_status_logs').insert([{ task_id: draggedTaskId, status: colValue }]);
+        await supabase.from('tarea_estados').insert([{ task_id: draggedTaskId, status: colValue }]);
     };
 
     // New task modal
@@ -568,11 +568,11 @@ export default function Tasks() {
         setLoading(true);
         try {
             const [{ data: projs }, { data: usrs }, { data: rawTasks }, { data: subtaskCounts }, { data: sprintData }] = await Promise.all([
-                supabase.from('projects').select('id, name, id_alias').order('name'),
+                supabase.from('proyectos').select('id, name, id_alias').order('name'),
                 supabase.from('users').select('id, nombre, apellido1, avatar_url').order('nombre'),
-                supabase.from('project_tasks').select('*').order('created_at', { ascending: false }),
-                supabase.from('task_subtasks').select('task_id, status'),
-                supabase.from('project_sprints').select('*').order('created_at', { ascending: false }),
+                supabase.from('tareas').select('*').order('created_at', { ascending: false }),
+                supabase.from('tarea_subtareas').select('task_id, status'),
+                supabase.from('sprints').select('*').order('created_at', { ascending: false }),
             ]);
 
             setProjects(projs || []);
@@ -647,7 +647,7 @@ export default function Tasks() {
                 assigned_to: newTask.assigned_to || null,
                 sprint_id: sprintId || null,
             };
-            await supabase.from('project_tasks').insert([payload]);
+            await supabase.from('tareas').insert([payload]);
             setShowNewModal(false);
             setNewTask({ title: '', description: '', priority: 'Media', status: 'pending', project_id: '', assigned_to: '', sprint_id: '' });
             setCreating(false);
@@ -676,7 +676,7 @@ export default function Tasks() {
                 if (payload.start_date === '') payload.start_date = null;
                 if (payload.end_date === '') payload.end_date = null;
 
-                const { error } = await supabase.from('project_sprints').insert([payload]);
+                const { error } = await supabase.from('sprints').insert([payload]);
 
                 if (error) {
                     console.error('Supabase error:', error);
@@ -697,14 +697,14 @@ export default function Tasks() {
 
     /* ─── Mover tarea al sprint activo desde Backlog ─── */
     const handleMoveToSprint = async (taskId, sprintId) => {
-        await supabase.from('project_tasks').update({ sprint_id: sprintId || null }).eq('id', taskId);
+        await supabase.from('tareas').update({ sprint_id: sprintId || null }).eq('id', taskId);
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, sprint_id: sprintId || null } : t));
     };
 
     /* ─── Eliminar tarea ─── */
     const handleDelete = async (taskId) => {
         if (!window.confirm('¿Eliminar esta tarea?')) return;
-        await supabase.from('project_tasks').delete().eq('id', taskId);
+        await supabase.from('tareas').delete().eq('id', taskId);
         setSelectedTask(null);
         fetchData();
     };
@@ -806,7 +806,7 @@ export default function Tasks() {
                                 }
                             }
                             const next = currentSprintObj.status === 'planning' ? 'active' : 'completed';
-                            await supabase.from('project_sprints').update({ status: next }).eq('id', currentSprintObj.id);
+                            await supabase.from('sprints').update({ status: next }).eq('id', currentSprintObj.id);
                             fetchData();
                         }} className="text-[10px] font-bold text-primary hover:underline whitespace-nowrap">
                             {currentSprintObj.status === 'planning' ? '▶ Iniciar' : currentSprintObj.status === 'active' ? '✓ Completar' : null}

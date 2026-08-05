@@ -128,7 +128,7 @@ export default function ProjectDetail() {
 
         // Sin el proyecto no hay página: este sí es fatal
         const { data: proj, error: projErr } = await supabase
-            .from('projects')
+            .from('proyectos')
             .select('*, leads(*)')
             .eq('id', id)
             .single();
@@ -145,7 +145,7 @@ export default function ProjectDetail() {
         // etiqueta de texto.
         if (proj.client_id) {
             const { data: cli } = await supabase
-                .from('clients')
+                .from('clientes')
                 .select('company_name, first_name, last_name, tax_id, email, billing_address, billing_postal_code, billing_city, billing_country')
                 .eq('id', proj.client_id)
                 .maybeSingle();
@@ -157,10 +157,10 @@ export default function ProjectDetail() {
         // su throw cortaba la función y la tarjeta de Archivos se quedaba en
         // «No hay archivos adjuntos» con los archivos perfectamente guardados.
         const [miles, tks, sprs, fls] = await Promise.all([
-            supabase.from('project_milestones').select('*').eq('project_id', id).order('target_date', { ascending: true }),
-            supabase.from('project_tasks').select('*').eq('project_id', id).order('created_at', { ascending: false }),
-            supabase.from('project_sprints').select('*').eq('project_id', id).order('created_at', { ascending: false }),
-            supabase.from('project_files').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+            supabase.from('proyecto_hitos').select('*').eq('project_id', id).order('target_date', { ascending: true }),
+            supabase.from('tareas').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+            supabase.from('sprints').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+            supabase.from('proyecto_archivos').select('*').eq('project_id', id).order('created_at', { ascending: false }),
         ]);
 
         [['hitos', miles], ['tareas', tks], ['sprints', sprs], ['archivos', fls]]
@@ -182,14 +182,14 @@ export default function ProjectDetail() {
     const fetchBudgetData = async () => {
         // Fetch services linked to this project
         const { data: svcData } = await supabase
-            .from('project_services')
+            .from('proyecto_servicios')
             .select('*, services:service_id(name, description, price)')
             .eq('project_id', id);
         setProjectServices(svcData || []);
 
         // Fetch manual budget lines
         const { data: lineData } = await supabase
-            .from('project_budget_lines')
+            .from('presupuesto_lineas')
             .select('*')
             .eq('project_id', id)
             .order('created_at', { ascending: true });
@@ -205,7 +205,7 @@ export default function ProjectDetail() {
 
         // Fetch budgets
         const { data: budData } = await supabase
-            .from('project_budgets')
+            .from('presupuestos')
             .select('*')
             .eq('project_id', id)
             .order('created_at', { ascending: false });
@@ -213,7 +213,7 @@ export default function ProjectDetail() {
 
         // Fetch payments
         const { data: payData } = await supabase
-            .from('project_payments')
+            .from('cobros')
             .select('*, created_by_user:created_by(nombre, apellido1)')
             .eq('project_id', id)
             .order('payment_date', { ascending: false });
@@ -221,7 +221,7 @@ export default function ProjectDetail() {
 
         // Fetch all catalog services
         const { data: catalogData } = await supabase
-            .from('services')
+            .from('servicios')
             .select('*')
             .eq('is_active', true)
             .order('name');
@@ -236,15 +236,15 @@ export default function ProjectDetail() {
 
             // Subscriptions
             const channel = supabase.channel(`project-${id}`)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: `id=eq.${id}` }, fetchProjectData)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_milestones', filter: `project_id=eq.${id}` }, fetchProjectData)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_tasks', filter: `project_id=eq.${id}` }, fetchProjectData)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_files', filter: `project_id=eq.${id}` }, fetchProjectData)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_services', filter: `project_id=eq.${id}` }, fetchBudgetData)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_budget_lines', filter: `project_id=eq.${id}` }, fetchBudgetData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos', filter: `id=eq.${id}` }, fetchProjectData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'proyecto_hitos', filter: `project_id=eq.${id}` }, fetchProjectData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'tareas', filter: `project_id=eq.${id}` }, fetchProjectData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'proyecto_archivos', filter: `project_id=eq.${id}` }, fetchProjectData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'proyecto_servicios', filter: `project_id=eq.${id}` }, fetchBudgetData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'presupuesto_lineas', filter: `project_id=eq.${id}` }, fetchBudgetData)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'facturas', filter: `project_id=eq.${id}` }, fetchBudgetData)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_budgets', filter: `project_id=eq.${id}` }, fetchBudgetData)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_payments', filter: `project_id=eq.${id}` }, fetchBudgetData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'presupuestos', filter: `project_id=eq.${id}` }, fetchBudgetData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'cobros', filter: `project_id=eq.${id}` }, fetchBudgetData)
                 .subscribe();
 
             return () => { supabase.removeChannel(channel); };
@@ -255,7 +255,7 @@ export default function ProjectDetail() {
         e.preventDefault();
         await withLock(async () => {
             const { error } = await supabase
-                .from('project_milestones')
+                .from('proyecto_hitos')
                 .insert([{ ...newMilestone, project_id: id }]);
             if (error) throw error;
             setMilestoneModal(false);
@@ -274,7 +274,7 @@ export default function ProjectDetail() {
                 sprint_id: newTask.sprint_id || null
             };
             const { error } = await supabase
-                .from('project_tasks')
+                .from('tareas')
                 .insert([payload]);
             if (error) throw error;
             setTaskModal(false);
@@ -292,7 +292,7 @@ export default function ProjectDetail() {
         }
         await withLock(async () => {
             const { error } = await supabase
-                .from('project_budget_lines')
+                .from('presupuesto_lineas')
                 .insert([{
                     project_id: id,
                     description: newBudgetLine.description,
@@ -317,7 +317,7 @@ export default function ProjectDetail() {
             const service = catalogServices.find(s => s.id === serviceId);
             if (!service) return;
             const { error } = await supabase
-                .from('project_services')
+                .from('proyecto_servicios')
                 .insert([{
                     project_id: id,
                     service_id: serviceId,
@@ -342,7 +342,7 @@ export default function ProjectDetail() {
             return;
         }
         await withLock(async () => {
-            const { error } = await supabase.from('project_budget_lines').delete().eq('id', lineId);
+            const { error } = await supabase.from('presupuesto_lineas').delete().eq('id', lineId);
             if (error) throw error;
             fetchBudgetData();
         }, 'Eliminando línea...');
@@ -354,7 +354,7 @@ export default function ProjectDetail() {
             return;
         }
         await withLock(async () => {
-            const { error } = await supabase.from('project_services').delete().eq('project_id', id).eq('service_id', serviceId);
+            const { error } = await supabase.from('proyecto_servicios').delete().eq('project_id', id).eq('service_id', serviceId);
             if (error) throw error;
             fetchBudgetData();
         }, 'Eliminando servicio...');
@@ -366,7 +366,7 @@ export default function ProjectDetail() {
             return;
         }
         await withLock(async () => {
-            const table = isService ? 'project_services' : 'project_budget_lines';
+            const table = isService ? 'proyecto_servicios' : 'presupuesto_lineas';
             let query = supabase.from(table).update({
                 unit_price: parseFloat(tempLine.unit_price) || 0,
                 quantity: parseInt(tempLine.quantity) || 1,
@@ -476,17 +476,17 @@ export default function ProjectDetail() {
         const factura = res.factura;
 
         if (serviceIdsAfectados?.length) {
-            await supabase.from('project_services').update({ invoice_id: factura.id }).in('id', serviceIdsAfectados);
+            await supabase.from('proyecto_servicios').update({ invoice_id: factura.id }).in('id', serviceIdsAfectados);
         }
         if (budgetLineIdsAfectados?.length) {
-            await supabase.from('project_budget_lines').update({ invoice_id: factura.id }).in('id', budgetLineIdsAfectados);
+            await supabase.from('presupuesto_lineas').update({ invoice_id: factura.id }).in('id', budgetLineIdsAfectados);
         }
 
         // Registrar en project_files
         const dateStr = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
         const alias = project.id_alias || project.id.substring(0, 8).toUpperCase();
         const fileName = `Factura - ${project.name} - ${alias} - ${dateStr}`;
-        await supabase.from('project_files').insert([{
+        await supabase.from('proyecto_archivos').insert([{
             project_id: id,
             name: fileName,
             size: `${lineasParaFactura.length} líneas`,
@@ -593,7 +593,7 @@ export default function ProjectDetail() {
             // Si hay un presupuesto anterior activo, marcarlo como denegado
             if (previousBudgetId) {
                 const { error: denyErr } = await supabase
-                    .from('project_budgets')
+                    .from('presupuestos')
                     .update({ status: 'denegado' })
                     .eq('id', previousBudgetId);
                 if (denyErr) throw denyErr;
@@ -622,7 +622,7 @@ export default function ProjectDetail() {
             }));
 
             const { data: newBudget, error: budErr } = await supabase
-                .from('project_budgets')
+                .from('presupuestos')
                 .insert([{
                     project_id: id,
                     budget_number: budgetNumber,
@@ -640,7 +640,7 @@ export default function ProjectDetail() {
 
             const fileName = `Presupuesto - ${pName} - ${pAlias} - ${today.replace(/\//g, '-')}`;
 
-            await supabase.from('project_files').insert([{
+            await supabase.from('proyecto_archivos').insert([{
                 project_id: id,
                 name: fileName,
                 size: `${allBudgetLines.length} líneas`,
@@ -784,18 +784,18 @@ export default function ProjectDetail() {
                     });
 
                     const { error } = await supabase
-                        .from('project_budgets')
+                        .from('presupuestos')
                         .update({ status: 'confirmado' })
                         .eq('id', budgetId);
                     if (error) throw error;
 
                     // Limpiar borrador (servicios/líneas de presupuesto consumidos por la factura)
-                    await supabase.from('project_services').delete().eq('project_id', id);
-                    await supabase.from('project_budget_lines').delete().eq('project_id', id);
+                    await supabase.from('proyecto_servicios').delete().eq('project_id', id);
+                    await supabase.from('presupuesto_lineas').delete().eq('project_id', id);
                     showNotification(`¡Presupuesto confirmado y factura ${factura.numero} generada! 🚀`);
                 } else {
                     const { error } = await supabase
-                        .from('project_budgets')
+                        .from('presupuestos')
                         .update({ status: newStatus })
                         .eq('id', budgetId);
                     if (error) throw error;
@@ -880,7 +880,7 @@ export default function ProjectDetail() {
 
             // Insert payment in DB
             const { data: payment, error: payErr } = await supabase
-                .from('project_payments')
+                .from('cobros')
                 .insert([{
                     project_id: id,
                     payment_number: paymentNumber,
@@ -899,7 +899,7 @@ export default function ProjectDetail() {
             const fileName = `Recibo - ${project.name} - ${alias} - ${dateStr}`;
 
             // Save to project files
-            await supabase.from('project_files').insert([{
+            await supabase.from('proyecto_archivos').insert([{
                 project_id: id,
                 name: fileName,
                 size: `\u20ac${amount.toFixed(2)}`,
@@ -984,7 +984,7 @@ export default function ProjectDetail() {
         { value: 'Cancelado', label: 'Cancelado', bg: 'bg-red-500', color: 'text-white' },
     ];
     const handleProjectStatusChange = async (newStatus) => {
-        await supabase.from('projects').update({ status: newStatus }).eq('id', project.id);
+        await supabase.from('proyectos').update({ status: newStatus }).eq('id', project.id);
         setProject(prev => ({ ...prev, status: newStatus }));
         showNotification(`Estado del proyecto actualizado a "${newStatus}"`, 'success');
     };
@@ -1094,7 +1094,7 @@ export default function ProjectDetail() {
                                             <button
                                                 onClick={async () => {
                                                     const newStatus = m.status === 'completed' ? 'pending' : 'completed';
-                                                    await supabase.from('project_milestones').update({ status: newStatus }).eq('id', m.id);
+                                                    await supabase.from('proyecto_hitos').update({ status: newStatus }).eq('id', m.id);
                                                 }}
                                                 className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-primary hover:bg-primary/10 rounded-md"
                                                 title="Cambiar Estado"
@@ -1198,8 +1198,8 @@ export default function ProjectDetail() {
                                                     // Ciclo: pending → in_progress → review → done → pending
                                                     const cycle = ['pending', 'in_progress', 'review', 'done'];
                                                     const nextStatus = cycle[(cycle.indexOf(task.status) + 1) % cycle.length];
-                                                    await supabase.from('project_tasks').update({ status: nextStatus }).eq('id', task.id);
-                                                    await supabase.from('task_status_logs').insert([{ task_id: task.id, status: nextStatus }]);
+                                                    await supabase.from('tareas').update({ status: nextStatus }).eq('id', task.id);
+                                                    await supabase.from('tarea_estados').insert([{ task_id: task.id, status: nextStatus }]);
                                                     fetchProjectData();
                                                 }}
                                                 className={`p-2 rounded-xl transition-all flex-shrink-0 ${st.bg} ${st.color} hover:scale-110 font-black text-xs`}

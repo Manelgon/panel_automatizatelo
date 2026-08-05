@@ -45,7 +45,7 @@ export default function Facturas() {
                     base_imponible, iva_importe, total,
                     estado, forma_pago,
                     client_id, project_id, formacion_id,
-                    projects(name, id_alias),
+                    projects:proyectos(name, id_alias),
                     formaciones(titulo)
                 `)
                 .order('fecha_emision', { ascending: false });

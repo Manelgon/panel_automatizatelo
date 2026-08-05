@@ -165,7 +165,7 @@ export async function emitirCertificado(alumnoId) {
     // 1. Todo lo que necesita el documento, de una vez
     const { data: alumno, error: errAlumno } = await supabase
         .from('formacion_alumnos')
-        .select('*, formaciones(*, clients(*))')
+        .select('*, formaciones(*, clients:clientes(*))')
         .eq('id', alumnoId)
         .single();
 

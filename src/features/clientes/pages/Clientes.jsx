@@ -31,10 +31,10 @@ export default function Clientes() {
         setLoading(true);
         try {
             const { data, error } = await supabase
-                .from('clients')
+                .from('clientes')
                 .select(`
                     *,
-                    projects:projects(id, name, status, total_hours)
+                    projects:proyectos(id, name, status, total_hours)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -52,7 +52,7 @@ export default function Clientes() {
 
         const channel = supabase
             .channel('clients-changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, fetchClientes)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, fetchClientes)
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -193,7 +193,7 @@ export default function Clientes() {
                             render: (c) => <span className="text-variable-muted text-sm">{c.phone || '—'}</span>,
                         },
                         {
-                            key: 'projects',
+                            key: 'proyectos',
                             label: 'Proyectos',
                             align: 'center',
                             render: (c) => (

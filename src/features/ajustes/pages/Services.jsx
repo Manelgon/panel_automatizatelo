@@ -48,7 +48,7 @@ export default function Services() {
         setFetchError(null);
         try {
             const { data, error } = await supabase
-                .from('services')
+                .from('servicios')
                 .select('*')
                 .order('name', { ascending: true });
 
@@ -79,13 +79,13 @@ export default function Services() {
 
                 if (editingServiceId) {
                     const { error } = await supabase
-                        .from('services')
+                        .from('servicios')
                         .update(serviceData)
                         .eq('id', editingServiceId);
                     if (error) throw error;
                 } else {
                     const { error } = await supabase
-                        .from('services')
+                        .from('servicios')
                         .insert([serviceData]);
                     if (error) throw error;
                 }
@@ -130,7 +130,7 @@ export default function Services() {
         await withLoading(async () => {
             try {
                 const { error } = await supabase
-                    .from('services')
+                    .from('servicios')
                     .delete()
                     .eq('id', id);
 
@@ -155,7 +155,7 @@ export default function Services() {
     const toggleServiceStatus = async (id, currentStatus) => {
         try {
             const { error } = await supabase
-                .from('services')
+                .from('servicios')
                 .update({ is_active: !currentStatus })
                 .eq('id', id);
 
@@ -174,7 +174,7 @@ export default function Services() {
             .channel('services-db-changes')
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'services' },
+                { event: '*', schema: 'public', table: 'servicios' },
                 () => fetchServices()
             )
             .subscribe();

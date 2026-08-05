@@ -31,7 +31,7 @@ export default function FormacionDetalle() {
 
     const cargar = useCallback(async () => {
         const [{ data: f, error }, { data: s }, { data: a }, { data: fac }] = await Promise.all([
-            supabase.from('formaciones').select('*, clients(*)').eq('id', id).single(),
+            supabase.from('formaciones').select('*, clients:clientes(*)').eq('id', id).single(),
             supabase.from('formacion_sesiones').select('*').eq('formacion_id', id).order('fecha'),
             supabase.from('formacion_alumnos').select('*').eq('formacion_id', id).order('apellidos'),
             supabase.from('facturas').select('id, numero, total, estado, fecha_emision').eq('formacion_id', id),

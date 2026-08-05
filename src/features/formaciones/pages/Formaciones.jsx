@@ -46,7 +46,7 @@ export default function Formaciones() {
         setLoading(true);
         const { data, error } = await supabase
             .from('formaciones')
-            .select('*, clients(first_name, last_name, company_name), formacion_alumnos(id, aprovechamiento, certificado_emitido_at)')
+            .select('*, clients:clientes(first_name, last_name, company_name), formacion_alumnos(id, aprovechamiento, certificado_emitido_at)')
             .order('fecha_inicio', { ascending: false, nullsFirst: false });
 
         if (error) showNotification(`Error cargando formaciones: ${error.message}`, 'error');
@@ -56,7 +56,7 @@ export default function Formaciones() {
 
     const cargarClientes = async () => {
         const { data } = await supabase
-            .from('clients')
+            .from('clientes')
             .select('id, first_name, last_name, company_name, email')
             .neq('status', 'archived')
             .order('company_name');

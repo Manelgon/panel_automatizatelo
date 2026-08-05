@@ -58,7 +58,7 @@ export default function Calendar() {
 
         // Suscripción a cambios
         const channel = supabase.channel('calendar-hitos')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'project_milestones' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'proyecto_hitos' }, () => {
                 fetchMilestones();
             })
             .subscribe();
@@ -74,13 +74,13 @@ export default function Calendar() {
 
     const fetchMilestones = async () => {
         const { data, error } = await supabase
-            .from('project_milestones')
-            .select('*, projects(id, name), assigned_user:users!assigned_to(id, nombre, apellido1)');
+            .from('proyecto_hitos')
+            .select('*, projects:proyectos(id, name), assigned_user:users!assigned_to(id, nombre, apellido1)');
 
         if (error) {
             console.error('Error fetching milestones:', error);
             // Si la relación falla, intentar sin ella
-            const { data: simpleData } = await supabase.from('project_milestones').select('*, projects(id, name)');
+            const { data: simpleData } = await supabase.from('proyecto_hitos').select('*, projects:proyectos(id, name)');
             setMilestones(simpleData || []);
         } else {
             setMilestones(data || []);
@@ -103,7 +103,7 @@ export default function Calendar() {
     };
 
     const fetchProjects = async () => {
-        const { data } = await supabase.from('projects').select('id, name').order('name');
+        const { data } = await supabase.from('proyectos').select('id, name').order('name');
         setProjects(data || []);
     };
 
@@ -222,7 +222,7 @@ export default function Calendar() {
         const eventId = dropInfo.event.id;
         try {
             const { error } = await supabase
-                .from('project_milestones')
+                .from('proyecto_hitos')
                 .update({
                     start_date: dropInfo.event.start.toISOString(),
                     end_date: dropInfo.event.end ? dropInfo.event.end.toISOString() : null,
@@ -260,11 +260,11 @@ export default function Calendar() {
                 };
 
                 if (selectedEvent) {
-                    const { error } = await supabase.from('project_milestones').update(payload).eq('id', selectedEvent.id);
+                    const { error } = await supabase.from('proyecto_hitos').update(payload).eq('id', selectedEvent.id);
                     if (error) throw error;
                     showNotification('Hito actualizado');
                 } else {
-                    const { error } = await supabase.from('project_milestones').insert([payload]);
+                    const { error } = await supabase.from('proyecto_hitos').insert([payload]);
                     if (error) throw error;
                     showNotification('Hito creado');
                 }
@@ -284,7 +284,7 @@ export default function Calendar() {
 
         await withLoading(async () => {
             try {
-                const { error } = await supabase.from('project_milestones').delete().eq('id', selectedEvent.id);
+                const { error } = await supabase.from('proyecto_hitos').delete().eq('id', selectedEvent.id);
                 if (error) throw error;
                 showNotification('Hito eliminado');
                 setIsModalOpen(false);

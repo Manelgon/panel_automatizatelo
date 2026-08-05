@@ -147,7 +147,7 @@ export default function Leads() {
 
     const fetchServices = async () => {
         const { data, error } = await supabase
-            .from('services')
+            .from('servicios')
             .select('*')
             .eq('is_active', true)
             .order('name', { ascending: true });
@@ -289,7 +289,7 @@ export default function Leads() {
         try {
             // 1) Buscar cliente existente con mismo email (evitar duplicados)
             const { data: existingClients, error: searchError } = await supabase
-                .from('clients')
+                .from('clientes')
                 .select('id')
                 .ilike('email', convertForm.email.trim())
                 .limit(1);
@@ -301,7 +301,7 @@ export default function Leads() {
                 // Reusar y actualizar con datos nuevos si vienen
                 clientId = existingClients[0].id;
                 const { error: updErr } = await supabase
-                    .from('clients')
+                    .from('clientes')
                     .update({
                         client_type: convertForm.client_type,
                         first_name: convertForm.first_name,
@@ -321,7 +321,7 @@ export default function Leads() {
             } else {
                 // Crear nuevo cliente
                 const { data: newClient, error: insErr } = await supabase
-                    .from('clients')
+                    .from('clientes')
                     .insert([{
                         lead_id: convertLead.id,
                         client_type: convertForm.client_type,
@@ -414,11 +414,11 @@ export default function Leads() {
         fetchLeads();
         fetchServices();
 
-        const tables = ['leads', 'services'];
+        const tables = ['leads', 'servicios'];
         const channels = tables.map(table =>
             supabase.channel(`${table}-changes`)
                 .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
-                    if (table === 'services') fetchServices();
+                    if (table === 'servicios') fetchServices();
                     else fetchLeads();
                 })
                 .subscribe()

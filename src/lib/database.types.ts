@@ -2,7 +2,8 @@
 // TIPOS DE LA BASE DE DATOS
 // =============================================================================
 // Escritos a mano desde el volcado real del esquema (agosto 2026) más las
-// migraciones 014 (formaciones), 015 (citas) y 016 (sprints). Es la referencia
+// migraciones 014 (formaciones), 015 (citas), 016 (sprints) y 017 (renombrado
+// a castellano: las claves de Tables usan los nombres nuevos). Es la referencia
 // que el cliente de Supabase usa para tipar cada .from().
 //
 // MANTENIMIENTO: cuando cambie el esquema, este fichero cambia en el mismo
@@ -504,21 +505,21 @@ export interface Database {
         Tables: {
             users: Fila<Usuario>;
             leads: Fila<Lead>;
-            clients: Fila<Cliente>;
-            services: Fila<Servicio>;
-            projects: Fila<Proyecto>;
-            project_milestones: Fila<ProyectoHito>;
-            project_tasks: Fila<ProyectoTarea>;
-            project_files: Fila<ProyectoArchivo>;
-            project_members: Fila<ProyectoMiembro>;
-            project_services: Fila<ProyectoServicio>;
-            project_budget_lines: Fila<ProyectoLineaPresupuesto>;
-            project_budgets: Fila<ProyectoPresupuesto>;
-            project_payments: Fila<ProyectoPago>;
-            project_sprints: Fila<ProyectoSprint>;
-            task_status_logs: Fila<TareaLogEstado>;
-            task_subtasks: Fila<TareaSubtarea>;
-            task_comments: Fila<TareaComentario>;
+            clientes: Fila<Cliente>;
+            servicios: Fila<Servicio>;
+            proyectos: Fila<Proyecto>;
+            proyecto_hitos: Fila<ProyectoHito>;
+            tareas: Fila<ProyectoTarea>;
+            proyecto_archivos: Fila<ProyectoArchivo>;
+            proyecto_miembros: Fila<ProyectoMiembro>;
+            proyecto_servicios: Fila<ProyectoServicio>;
+            presupuesto_lineas: Fila<ProyectoLineaPresupuesto>;
+            presupuestos: Fila<ProyectoPresupuesto>;
+            cobros: Fila<ProyectoPago>;
+            sprints: Fila<ProyectoSprint>;
+            tarea_estados: Fila<TareaLogEstado>;
+            tarea_subtareas: Fila<TareaSubtarea>;
+            tarea_comentarios: Fila<TareaComentario>;
             formaciones: Fila<Formacion>;
             formacion_sesiones: Fila<FormacionSesion>;
             formacion_alumnos: Fila<FormacionAlumno>;
