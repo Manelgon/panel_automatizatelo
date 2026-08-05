@@ -8,8 +8,6 @@ import {
     Edit3,
     BarChart3,
     Users as UsersIcon,
-    Sun,
-    Moon,
     Plus,
     X,
     Target,
@@ -24,7 +22,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 import { crearFactura, getCompanySettings, getFacturaCompleta, generarPdfFactura, registrarVerifactu } from '../../../lib/facturas';
 import BarraNavegacion from '../../../components/BarraNavegacion';
@@ -44,7 +41,6 @@ import { registrarAccion } from '../../../lib/auditoria';
 export default function ProjectDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
     const { showNotification, confirm } = useNotifications();
     const { showLoading, hideLoading } = useGlobalLoading();
@@ -1014,15 +1010,6 @@ export default function ProjectDetail() {
                     </Link>
 
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={toggleTheme}
-                            className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all flex items-center gap-2"
-                        >
-                            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                            <span className="hidden sm:inline text-xs font-bold uppercase tracking-widest leading-none">
-                                {darkMode ? 'Claro' : 'Oscuro'}
-                            </span>
-                        </button>
                     </div>
                 </div>
 

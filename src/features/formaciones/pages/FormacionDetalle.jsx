@@ -2,12 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
     ArrowLeft, GraduationCap, Plus, Trash2, ShieldCheck, Download, Receipt,
-    Clock, Calendar, MapPin, Euro, Sun, Moon, AlertTriangle, UserPlus
+    Clock, Calendar, MapPin, Euro, AlertTriangle, UserPlus
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import CustomDropdown from '../../../components/CustomDropdown';
-import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 import { crearFactura, registrarVerifactu } from '../../../lib/facturas';
@@ -16,7 +15,6 @@ import { TIPOS, MODALIDADES, ESTADOS, APROVECHAMIENTO, nombreCliente } from '../
 
 export default function FormacionDetalle() {
     const { id } = useParams();
-    const { darkMode, toggleTheme } = useTheme();
     const { showNotification, confirm } = useNotifications();
     const { withLoading } = useGlobalLoading();
 
@@ -241,9 +239,6 @@ export default function FormacionDetalle() {
                         <p className="text-sm text-variable-muted mt-2">{TIPOS[formacion.tipo]?.largo}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button onClick={toggleTheme} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary">
-                            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                        </button>
                         <CustomDropdown
                             value={formacion.estado}
                             onChange={(v) => actualizar({ estado: v })}

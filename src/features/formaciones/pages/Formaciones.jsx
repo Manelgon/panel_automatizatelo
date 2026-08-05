@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react';
-import { GraduationCap, Plus, Sun, Moon, X, Clock, Users as UsersIcon, ShieldCheck, Calendar } from 'lucide-react';
+import { GraduationCap, Plus, X, Clock, Users as UsersIcon, ShieldCheck, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import CustomDropdown from '../../../components/CustomDropdown';
 import DataTable from '../../../components/DataTable';
-import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 import { TIPOS, MODALIDADES, ESTADOS, nombreCliente } from '../../formaciones/constantes';
 
 export default function Formaciones() {
-    const { darkMode, toggleTheme } = useTheme();
     const { showNotification } = useNotifications();
     const { withLoading } = useGlobalLoading();
 
@@ -118,9 +116,6 @@ export default function Formaciones() {
                         </h1>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button onClick={toggleTheme} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary">
-                            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                        </button>
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2"

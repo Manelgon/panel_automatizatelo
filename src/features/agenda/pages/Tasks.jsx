@@ -5,12 +5,11 @@ import {
     AlertCircle, Clock, CheckCircle2, Circle, Flame, ArrowUp,
     ArrowDown, Minus, MessageSquare,
     FolderOpen, Search, Trash2, Send,
-    GitBranch, Sun, Moon, RefreshCw,
+    GitBranch, RefreshCw,
     Zap, Target, Package, Archive
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
-import { useTheme } from '../../../context/ThemeContext';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobalLoading } from '../../../context/LoadingContext';
@@ -512,7 +511,6 @@ function TaskCard({ task, onClick, onDragStart, onDragEnd, isDragging, sprints, 
 /* ══════════════════════════════════════════════ */
 export default function Tasks() {
     const { profile: currentProfile } = useAuth();
-    const { darkMode, toggleTheme } = useTheme();
     const { withLoading } = useGlobalLoading();
 
     const [tasks, setTasks] = useState([]);
@@ -728,19 +726,16 @@ export default function Tasks() {
 
             <main className="flex-1 p-4 sm:p-8 overflow-y-auto pb-8 custom-scrollbar">
                 {/* ─── Header ─── */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
-                            Tareas &amp; <span className="text-primary italic">Sprints</span>
+                        <p className="text-xs text-variable-muted uppercase tracking-widest font-black">Agenda</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-variable-main flex items-center gap-3">
+                            <Zap className="text-primary" /> Tareas &amp; Sprints
                         </h1>
-                        <p className="text-sm text-variable-muted">Gestor de tareas al estilo Jira</p>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                         <button onClick={fetchData} className="p-2.5 sm:p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all" title="Refrescar">
                             <RefreshCw size={18} />
-                        </button>
-                        <button onClick={toggleTheme} className="p-2.5 sm:p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all">
-                            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
                         <button onClick={() => setShowSprintModal(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 glass border border-primary/30 text-primary rounded-2xl font-bold text-xs sm:text-sm hover:bg-primary/10 transition-all">
                             <Zap size={15} /> <span className="hidden sm:inline">Nuevo</span> Sprint

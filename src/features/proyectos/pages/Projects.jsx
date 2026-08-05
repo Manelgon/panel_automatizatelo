@@ -13,7 +13,6 @@ import {
     X} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {useNavigate, useLocation } from 'react-router-dom';
-import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import DataTable from '../../../components/DataTable';
@@ -23,7 +22,6 @@ import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 
 export default function Projects() {
-    const { darkMode } = useTheme();
     const { profile: currentProfile } = useAuth();
     const { showNotification, confirm } = useNotifications();
     const { withLoading } = useGlobalLoading();
@@ -52,6 +50,10 @@ export default function Projects() {
         selected_services: [] // Array of service IDs
     };
     const [formData, setFormData] = useState(defaultForm);
+
+    // Alta rápida de cliente desde el propio modal (null = plegada)
+    const [nuevoCliente, setNuevoCliente] = useState(null);
+    const [creandoCliente, setCreandoCliente] = useState(false);
 
     const fetchProjects = async () => {
         setLoading(true);
@@ -163,6 +165,51 @@ export default function Projects() {
         };
     }, [convertLeadId]);
 
+    const handleCrearClienteRapido = async () => {
+        if (!nuevoCliente.first_name.trim() || !nuevoCliente.email.trim()) {
+            showNotification('Nombre y email son obligatorios para crear el cliente', 'error');
+            return;
+        }
+        setCreandoCliente(true);
+        try {
+            // Mismo control anti-duplicados que la conversión de leads
+            const { data: existentes } = await supabase
+                .from('clientes')
+                .select('id')
+                .ilike('email', nuevoCliente.email.trim())
+                .limit(1);
+            if (existentes?.length) {
+                setFormData({ ...formData, client_id: existentes[0].id });
+                setNuevoCliente(null);
+                showNotification('Ya existía un cliente con ese email: seleccionado');
+                return;
+            }
+            const { data, error } = await supabase
+                .from('clientes')
+                .insert([{
+                    client_type: nuevoCliente.company_name.trim() ? 'empresa' : 'particular',
+                    first_name: nuevoCliente.first_name.trim(),
+                    last_name: nuevoCliente.last_name.trim() || null,
+                    email: nuevoCliente.email.trim(),
+                    company_name: nuevoCliente.company_name.trim() || null,
+                    tax_id: nuevoCliente.tax_id.trim() || null,
+                    billing_country: 'España',
+                    status: 'active',
+                }])
+                .select('id, first_name, last_name, company_name, email, lead_id, status')
+                .single();
+            if (error) throw error;
+            setClients([data, ...clients]);
+            setFormData({ ...formData, client_id: data.id });
+            setNuevoCliente(null);
+            showNotification('Cliente creado y seleccionado');
+        } catch (err) {
+            showNotification(`No se pudo crear el cliente: ${err.message}`, 'error');
+        } finally {
+            setCreandoCliente(false);
+        }
+    };
+
     const handleCreateProject = async (e) => {
         e.preventDefault();
 
@@ -254,12 +301,12 @@ export default function Projects() {
             <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
+                <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
-                            Gestión de <span className="text-primary italic">Proyectos</span>
+                        <p className="text-xs text-variable-muted uppercase tracking-widest font-black">Producción</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-variable-main flex items-center gap-3">
+                            <FolderOpen className="text-primary" /> Gestión de Proyectos
                         </h1>
-                        <p className="text-variable-muted text-sm sm:text-base italic">Supervisa el progreso y recursos de tus activos comerciales</p>
                     </div>
 
                     <button
@@ -445,14 +492,38 @@ export default function Projects() {
                                             onChange={(clientId) => setFormData({ ...formData, client_id: clientId })}
                                             options={clients.map(c => ({ value: c.id, label: nombreCliente(c) }))}
                                         />
-                                        {clients.length === 0 && (
-                                            <p className="text-xs text-amber-400 ml-1">
-                                                No hay clientes todavía. Convierte un lead desde la sección Leads,
-                                                o crea el cliente en la sección Clientes.
-                                            </p>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setNuevoCliente(nuevoCliente ? null : { first_name: '', last_name: '', email: '', company_name: '', tax_id: '' })}
+                                            className="text-xs font-bold text-primary hover:underline ml-1"
+                                        >
+                                            {nuevoCliente ? 'Cancelar cliente nuevo' : '+ El cliente no está: crearlo aquí'}
+                                        </button>
                                     </div>
                                 </div>
+
+                                {/* Alta rápida de cliente sin salir del modal. Sin lead:
+                                    un cliente directo no pasa por la fase de prospecto. */}
+                                {nuevoCliente && (
+                                    <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+                                        <p className="text-xs font-black text-primary uppercase tracking-[0.2em]">Cliente nuevo</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <input value={nuevoCliente.first_name} onChange={(e) => setNuevoCliente({ ...nuevoCliente, first_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-2.5 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Nombre *" />
+                                            <input value={nuevoCliente.last_name} onChange={(e) => setNuevoCliente({ ...nuevoCliente, last_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-2.5 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Apellidos" />
+                                            <input type="email" value={nuevoCliente.email} onChange={(e) => setNuevoCliente({ ...nuevoCliente, email: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-2.5 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Email *" />
+                                            <input value={nuevoCliente.company_name} onChange={(e) => setNuevoCliente({ ...nuevoCliente, company_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-2.5 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Empresa (si aplica)" />
+                                            <input value={nuevoCliente.tax_id} onChange={(e) => setNuevoCliente({ ...nuevoCliente, tax_id: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-2.5 focus:outline-none focus:border-primary/50 text-variable-main text-sm sm:col-span-2" placeholder="NIF/CIF (necesario para facturar, se puede añadir después)" />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleCrearClienteRapido}
+                                            disabled={creandoCliente}
+                                            className="px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:opacity-90 disabled:opacity-40"
+                                        >
+                                            {creandoCliente ? 'Creando…' : 'Guardar y seleccionar'}
+                                        </button>
+                                    </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Horas Totales Estimadas</label>

@@ -4,8 +4,6 @@ import {
     FolderOpen,
     Wallet,
     Bell,
-    Sun,
-    Moon,
     ArrowUpRight,
     Target,
     ListTodo,
@@ -23,7 +21,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { useTheme } from '../../../context/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 import { supabase } from '../../../lib/supabase';
@@ -107,7 +104,6 @@ const TaskStatusIcon = ({ status }) => {
 };
 
 export default function Dashboard() {
-    const { darkMode, toggleTheme } = useTheme();
     const { profile } = useAuth();
     const { withLoading } = useGlobalLoading();
     const navigate = useNavigate();
@@ -324,22 +320,17 @@ export default function Dashboard() {
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 {/* ═══ HEADER ═══ */}
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+                <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
-                            {greeting}, <span className="text-primary italic">{userName}</span>
+                        <p className="text-xs text-variable-muted uppercase tracking-widest font-black">Inicio</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-variable-main flex items-center gap-3">
+                            {greeting}, <span className="text-primary">{userName}</span>
                         </h1>
                         <div className="flex items-center gap-2 text-variable-muted">
                             <span className="text-xs">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <button
-                            onClick={toggleTheme}
-                            className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all"
-                        >
-                            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                        </button>
                         <button className="p-3 glass rounded-2xl text-variable-muted hover:text-primary relative transition-all">
                             <Bell size={20} />
                             {activityFeed.length > 0 && (

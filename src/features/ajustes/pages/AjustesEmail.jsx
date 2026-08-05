@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Mail, Save, Send, Sun, Moon, AlertTriangle, CheckCircle2,
+    Mail, Save, Send, AlertTriangle, CheckCircle2,
     Inbox, Zap, FileCode2, History, RefreshCw, KeyRound
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
-import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
 const SECCIONES = {
@@ -48,7 +47,6 @@ const ESTADO_COLOR = {
 };
 
 export default function AjustesEmail() {
-    const { darkMode, toggleTheme } = useTheme();
     const { showNotification } = useNotifications();
 
     const [loading, setLoading] = useState(true);
@@ -239,9 +237,6 @@ export default function AjustesEmail() {
                             <Mail className="text-primary" /> Correo del panel
                         </h1>
                     </div>
-                    <button onClick={toggleTheme} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary self-start sm:self-auto">
-                        {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
                 </div>
 
                 {/* Estado */}

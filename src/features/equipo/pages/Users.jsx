@@ -5,8 +5,6 @@ import {
     Mail,
     Trash2,
     Clock,
-    Sun,
-    Moon,
     Settings,
     X,
     ShieldCheck,
@@ -18,7 +16,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 
 import BarraNavegacion from '../../../components/BarraNavegacion';
@@ -30,7 +27,6 @@ import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 
 export default function Users() {
-    const { darkMode, toggleTheme } = useTheme();
     const { user: currentUser, profile: currentProfile } = useAuth();
     const { showNotification, confirm } = useNotifications();
     const { withLoading } = useGlobalLoading();
@@ -215,10 +211,12 @@ export default function Users() {
             <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
+                <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">Gestión de <span className="text-primary italic">Equipo</span></h1>
-                        <p className="text-variable-muted text-sm sm:text-base">Configura los accesos y permisos de la plataforma</p>
+                        <p className="text-xs text-variable-muted uppercase tracking-widest font-black">Configuración</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-variable-main flex items-center gap-3">
+                            <UsersIcon className="text-primary" /> Gestión de Equipo
+                        </h1>
                         {/* Debug Info */}
                         <div className="text-xs text-variable-muted mt-2 font-mono">
                             Debug: {currentUser?.email} | Rol: {currentProfile?.role || 'Sin Perfil'} |
@@ -233,12 +231,6 @@ export default function Users() {
                             title="Recargar Lista"
                         >
                             <Clock size={20} />
-                        </button>
-                        <button
-                            onClick={toggleTheme}
-                            className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all flex items-center justify-center"
-                        >
-                            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
                         <button
                             onClick={() => setIsModalOpen(true)}

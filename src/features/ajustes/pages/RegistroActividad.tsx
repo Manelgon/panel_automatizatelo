@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollText, Sun, Moon, RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import { ScrollText, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
-import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
 // Los contextos siguen en .jsx: en la frontera con TSX se tipa a mano lo que
 // se usa. Cuando migren a .tsx, esto sobra.
 type Notificador = { showNotification: (mensaje: string, tipo?: 'success' | 'error') => void };
-type Tema = { darkMode: boolean; toggleTheme: () => void };
 import type { Auditoria, Usuario, Json } from '../../../lib/database.types';
 
 // =============================================================================
@@ -42,7 +40,6 @@ const metadataLegible = (m: Json): string => {
 };
 
 export default function RegistroActividad() {
-    const { darkMode, toggleTheme } = useTheme() as Tema;
     const { showNotification } = useNotifications() as Notificador;
 
     const [cargando, setCargando] = useState(true);
@@ -113,9 +110,6 @@ export default function RegistroActividad() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button onClick={toggleTheme} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary">
-                            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                        </button>
                         <button onClick={cargar} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary" title="Actualizar">
                             <RefreshCw size={18} className={cargando ? 'animate-spin' : ''} />
                         </button>

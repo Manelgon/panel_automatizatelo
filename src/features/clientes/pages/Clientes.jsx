@@ -2,17 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
-    UserCheck, Search, Clock, Sun, Moon, ChevronRight,
+    UserCheck, Search, Clock, ChevronRight,
     Building2, User} from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import DataTable from '../../../components/DataTable';
-import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
 export default function Clientes() {
     const navigate = useNavigate();
-    const { darkMode, toggleTheme } = useTheme();
     const { showNotification } = useNotifications();
     const [loading, setLoading] = useState(false);
     const [clientes, setClientes] = useState([]);
@@ -91,12 +89,12 @@ export default function Clientes() {
             <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
+                <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
-                            <span className="text-primary italic">Clientes</span>
+                        <p className="text-xs text-variable-muted uppercase tracking-widest font-black">Comercial</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-variable-main flex items-center gap-3">
+                            <Building2 className="text-primary" /> Clientes
                         </h1>
-                        <p className="text-variable-muted text-sm sm:text-base">Cartera comercial activa</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                         <div className="relative flex-1 sm:flex-none">
@@ -115,12 +113,6 @@ export default function Clientes() {
                             title="Recargar"
                         >
                             <Clock size={20} />
-                        </button>
-                        <button
-                            onClick={toggleTheme}
-                            className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all flex items-center justify-center"
-                        >
-                            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
                     </div>
                 </header>

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ShieldCheck, AlertTriangle, RefreshCw, FileCode, Sun, Moon } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, RefreshCw, FileCode } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { registrarVerifactu } from '../../../lib/facturas';
 import BarraNavegacion from '../../../components/BarraNavegacion';
-import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
 const BADGE = {
@@ -15,7 +14,6 @@ const BADGE = {
 };
 
 export default function Verifactu() {
-    const { darkMode, toggleTheme } = useTheme();
     const { showNotification } = useNotifications();
     const [loading, setLoading] = useState(true);
     const [registros, setRegistros] = useState([]);
@@ -106,9 +104,6 @@ export default function Verifactu() {
                             Cadena SHA-256 conforme al RD 1007/2023. El envío AEAT se activa cuando esté disponible el certificado FNMT.
                         </p>
                     </div>
-                    <button onClick={toggleTheme} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary self-start sm:self-auto">
-                        {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
                 </div>
 
                 {/* KPIs */}

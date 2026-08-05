@@ -12,11 +12,8 @@ import {
     FileText,
     DollarSign,
     Clock,
-    Sun,
-    Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import DataTable from '../../../components/DataTable';
@@ -25,7 +22,6 @@ import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 
 export default function Services() {
-    const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
     const { showNotification, confirm } = useNotifications();
     const { withLoading } = useGlobalLoading();
@@ -189,10 +185,12 @@ export default function Services() {
             <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
+                <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">Catálogo de <span className="text-primary italic">Servicios</span></h1>
-                        <p className="text-variable-muted text-sm sm:text-base">Gestiona los servicios y soluciones que ofreces a tus clientes</p>
+                        <p className="text-xs text-variable-muted uppercase tracking-widest font-black">Configuración</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-variable-main flex items-center gap-3">
+                            <Briefcase className="text-primary" /> Catálogo de Servicios
+                        </h1>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                         <button
@@ -201,12 +199,6 @@ export default function Services() {
                             title="Recargar Lista"
                         >
                             <Clock size={20} />
-                        </button>
-                        <button
-                            onClick={toggleTheme}
-                            className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all flex items-center justify-center"
-                        >
-                            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
                         <button
                             onClick={() => setIsModalOpen(true)}

@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Settings, Save, Sun, Moon, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Settings, Save, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { validarIdFiscal } from '../../../lib/facturas';
 import BarraNavegacion from '../../../components/BarraNavegacion';
-import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
 const SECCIONES = {
@@ -48,7 +47,6 @@ const CAMPOS_VERIFACTU = [
 ];
 
 export default function AjustesEmisor() {
-    const { darkMode, toggleTheme } = useTheme();
     const { showNotification } = useNotifications();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -199,9 +197,6 @@ export default function AjustesEmisor() {
                             <Settings className="text-primary" /> Ajustes del emisor
                         </h1>
                     </div>
-                    <button onClick={toggleTheme} className="p-3 glass rounded-2xl text-variable-muted hover:text-primary self-start sm:self-auto">
-                        {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
                 </div>
 
                 {/* Alerta si falta emisor */}

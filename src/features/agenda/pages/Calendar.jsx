@@ -307,12 +307,12 @@ export default function Calendar() {
         <div className="min-h-screen font-display overflow-x-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-main)' }}>
             <BarraNavegacion />
             <div className="flex-1 p-4 sm:p-8 pb-8 transition-all relative z-10 min-h-screen overflow-y-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
-                            Calendario de <span className="text-primary italic">Hitos</span>
+                        <p className="text-xs text-variable-muted uppercase tracking-widest font-black">Agenda</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-variable-main flex items-center gap-3">
+                            <CalendarIcon className="text-primary" /> Calendario de Hitos
                         </h1>
-                        <p className="text-sm text-variable-muted">Planifica fechas clave, reuniones y entregables.</p>
                     </div>
                     <button
                         onClick={() => {

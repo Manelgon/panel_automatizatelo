@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Sun, Moon } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 // =============================================================================
 // BARRA DE NAVEGACIÓN SUPERIOR
@@ -54,6 +56,7 @@ const grupoActivo = (pathname, items) =>
 
 export default function BarraNavegacion() {
     const { signOut } = useAuth();
+    const { darkMode, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const { pathname } = useLocation();
 
@@ -154,6 +157,15 @@ export default function BarraNavegacion() {
                 </nav>
 
                 <div className="flex-1 md:hidden" />
+
+                {/* Tema claro/oscuro: vive aquí para no repetirlo en cada página */}
+                <button
+                    onClick={toggleTheme}
+                    className="p-2.5 rounded-xl text-variable-muted hover:text-primary hover:bg-white/5 transition-all shrink-0"
+                    title={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                >
+                    {darkMode ? <Sun size={17} /> : <Moon size={17} />}
+                </button>
 
                 {/* Salir (escritorio) */}
                 <button

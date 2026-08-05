@@ -35,7 +35,6 @@ import {
     Maximize
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import { useAuth } from '../../../context/AuthContext';
@@ -363,7 +362,6 @@ async function uploadCoverImage(file) {
 
 // ─── Main Component ─────────────────────────────────
 export default function Blog() {
-    const { darkMode } = useTheme();
     const { profile } = useAuth();
     const { showNotification, confirm } = useNotifications();
     const { withLoading } = useGlobalLoading();
@@ -579,12 +577,12 @@ export default function Blog() {
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 {/* Header */}
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
+                <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">
-                            Gestión del <span className="text-primary italic">Blog</span>
+                        <p className="text-xs text-variable-muted uppercase tracking-widest font-black">Contenidos</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-variable-main flex items-center gap-3">
+                            <FileText className="text-primary" /> Gestión del Blog
                         </h1>
-                        <p className="text-variable-muted text-sm sm:text-base">Crea, edita y publica artículos para la landing</p>
                     </div>
                     <button onClick={openNew} className="flex items-center gap-2 bg-primary hover:bg-primary/80 text-white px-5 py-3 rounded-2xl font-semibold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40">
                         <Plus size={20} /> Nuevo Post

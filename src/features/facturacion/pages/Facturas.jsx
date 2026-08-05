@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Receipt, Search, Download, Sun, Moon, ChevronRight, FileWarning, CheckCircle2, Send } from 'lucide-react';
+import { Receipt, Search, Download, ChevronRight, FileWarning, CheckCircle2, Send } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../../../lib/facturas';
 import { enviarDocumento } from '../../../lib/enviarEmail';
 import { registrarAccion } from '../../../lib/auditoria';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import DataTable from '../../../components/DataTable';
-import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
 const ESTADOS = [
@@ -28,7 +27,6 @@ const BADGE_ESTADO = {
 };
 
 export default function Facturas() {
-    const { darkMode, toggleTheme } = useTheme();
     const { showNotification } = useNotifications();
     const [loading, setLoading] = useState(false);
     const [facturas, setFacturas] = useState([]);
@@ -186,12 +184,6 @@ export default function Facturas() {
                             <Receipt className="text-primary" /> Facturas
                         </h1>
                     </div>
-                    <button
-                        onClick={toggleTheme}
-                        className="p-3 glass rounded-2xl text-variable-muted hover:text-primary self-start sm:self-auto"
-                    >
-                        {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
                 </div>
 
                 {/* KPIs */}
