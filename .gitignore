@@ -23,6 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
+# Credenciales — NUNCA se suben
+CREDENCIALES.md
+*.credenciales.md
+secretos/
+
 # Environment variables
 .env
 .env.local
