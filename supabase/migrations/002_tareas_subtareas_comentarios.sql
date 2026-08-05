@@ -1,44 +1,56 @@
--- ══════════════════════════════════════════════
--- TABLAS PARA EL GESTOR DE TAREAS (tipo Jira)
--- Ejecutar en el SQL Editor de Supabase
--- ══════════════════════════════════════════════
+-- =============================================================================
+-- MIGRACIÓN 002 — SUBTAREAS Y COMENTARIOS DE TAREAS
+-- =============================================================================
+-- Este contenido vivía en `supabase_tasks.sql`, en la raíz del repositorio, con
+-- la cabecera «Ejecutar en el SQL Editor de Supabase». Es decir: se aplicaba a
+-- mano y el repositorio no se enteraba. Ahora es una migración normal.
+--
+-- Se corrige de paso una referencia rota: apuntaba a `profiles(id)`, tabla que
+-- no existe en este proyecto — aquí el perfil de usuario es `public.users`.
+--
+-- Las políticas que se crean aquí son provisionales; la migración 008 las
+-- sustituye por permisos reales por proyecto.
+-- =============================================================================
 
--- 1. Asegurar que project_tasks tiene los campos necesarios
--- (El campo description puede que ya no exista, lo añadimos si falta)
-ALTER TABLE project_tasks 
-  ADD COLUMN IF NOT EXISTS description TEXT,
-  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+-- El gestor de tareas necesita estas dos columnas
+alter table public.project_tasks
+    add column if not exists description text,
+    add column if not exists created_at timestamptz default now();
 
--- 2. Subtareas de cada tarea
-CREATE TABLE IF NOT EXISTS task_subtasks (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    task_id UUID REFERENCES project_tasks(id) ON DELETE CASCADE NOT NULL,
-    title TEXT NOT NULL,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'done')),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+
+-- Subtareas
+create table if not exists public.task_subtasks (
+    id         uuid primary key default gen_random_uuid(),
+    task_id    uuid not null references public.project_tasks(id) on delete cascade,
+    title      text not null,
+    status     text default 'pending' check (status in ('pending', 'done')),
+    created_at timestamptz default now()
 );
 
--- 3. Comentarios / Actividad de cada tarea
-CREATE TABLE IF NOT EXISTS task_comments (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    task_id UUID REFERENCES project_tasks(id) ON DELETE CASCADE NOT NULL,
-    user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-    content TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+
+-- Comentarios / actividad
+create table if not exists public.task_comments (
+    id         uuid primary key default gen_random_uuid(),
+    task_id    uuid not null references public.project_tasks(id) on delete cascade,
+    user_id    uuid references public.users(id) on delete set null,
+    content    text not null,
+    created_at timestamptz default now()
 );
 
--- 4. Índices para rendimiento
-CREATE INDEX IF NOT EXISTS idx_task_subtasks_task_id ON task_subtasks(task_id);
-CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id);
-CREATE INDEX IF NOT EXISTS idx_project_tasks_project_id ON project_tasks(project_id);
-CREATE INDEX IF NOT EXISTS idx_project_tasks_assigned_to ON project_tasks(assigned_to);
 
--- 5. RLS (Row Level Security) - Todos los autenticados pueden ver y gestionar
-ALTER TABLE task_subtasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE task_comments ENABLE ROW LEVEL SECURITY;
+create index if not exists idx_task_subtasks_task_id     on public.task_subtasks(task_id);
+create index if not exists idx_task_comments_task_id     on public.task_comments(task_id);
+create index if not exists idx_project_tasks_project_id  on public.project_tasks(project_id);
+create index if not exists idx_project_tasks_assigned_to on public.project_tasks(assigned_to);
 
-CREATE POLICY "Auth users can manage subtasks" ON task_subtasks
-    FOR ALL USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Auth users can manage comments" ON task_comments
-    FOR ALL USING (auth.role() = 'authenticated');
+alter table public.task_subtasks enable row level security;
+alter table public.task_comments enable row level security;
+
+drop policy if exists "Auth users can manage subtasks" on public.task_subtasks;
+create policy "Auth users can manage subtasks" on public.task_subtasks
+    for all to authenticated using (true) with check (true);
+
+drop policy if exists "Auth users can manage comments" on public.task_comments;
+create policy "Auth users can manage comments" on public.task_comments
+    for all to authenticated using (true) with check (true);
