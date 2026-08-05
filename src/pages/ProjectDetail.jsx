@@ -49,7 +49,7 @@ export default function ProjectDetail() {
     const navigate = useNavigate();
     const { darkMode, toggleTheme } = useTheme();
     const { profile: currentProfile } = useAuth();
-    const { showNotification } = useNotifications();
+    const { showNotification, confirm } = useNotifications();
     const { showLoading, hideLoading } = useGlobalLoading();
 
     const [project, setProject] = useState(null);
@@ -825,6 +825,28 @@ export default function ProjectDetail() {
             showNotification('No hay facturas emitidas para registrar pagos', 'error');
             return;
         }
+
+        // Ley 11/2021: máximo 1.000 € en efectivo por OPERACIÓN cuando una de
+        // las partes es empresario. Y fraccionar el pago no fracciona la
+        // operación: en una factura de 2.000 €, dos plazos de 1.000 en efectivo
+        // siguen estando fuera de límite. Se avisa en vez de bloquear porque
+        // hay excepciones (pagador particular no residente, hasta 10.000 €).
+        if (newPayment.payment_method === 'efectivo') {
+            const efectivoAcumulado = payments
+                .filter(p => p.payment_method === 'efectivo')
+                .reduce((s, p) => s + parseFloat(p.amount || 0), 0) + amount;
+
+            if (totalInvoiced > 1000 || efectivoAcumulado > 1000) {
+                const ok = await confirm({
+                    title: 'Límite legal de efectivo',
+                    message: `La Ley 11/2021 prohíbe cobrar en efectivo operaciones de más de 1.000 € cuando una de las partes es empresario — y fraccionar el pago no fracciona la operación. Esta operación suma €${totalInvoiced.toFixed(2)} y el efectivo acumulado con este pago sería €${efectivoAcumulado.toFixed(2)}. La sanción es el 25% de lo pagado en efectivo. ¿Registrarlo igualmente?`,
+                    confirmText: 'Registrar igualmente',
+                    cancelText: 'Cambiar método',
+                });
+                if (!ok) return;
+            }
+        }
+
         await withLock(async () => {
             const paymentCount = payments.length + 1;
             const alias = project.id_alias || project.id.substring(0, 8).toUpperCase();
