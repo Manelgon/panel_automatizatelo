@@ -558,16 +558,24 @@ export default function Leads() {
                         {
                             key: 'process_tags',
                             label: 'Etiquetas',
-                            render: (lead) => (
-                                <div className="flex flex-wrap gap-1">
-                                    {(lead.process_tags || []).map((tag, i) => (
-                                        <span key={i} className="px-2 py-0.5 rounded-md bg-variable/5 border border-variable/10 text-[9px] uppercase font-bold text-variable-muted">
-                                            {tag}
+                            render: (lead) => {
+                                // Solo la última etiqueta (la más reciente del flujo):
+                                // apilarlas todas duplicaba la altura de la fila. Si hay
+                                // más, un +N discreto lo dice y el tooltip las lista.
+                                const tags = lead.process_tags || [];
+                                if (tags.length === 0) return <span className="text-variable-muted/30">—</span>;
+                                const ultima = tags[tags.length - 1];
+                                return (
+                                    <span className="inline-flex items-center gap-1.5" title={tags.join(' · ')}>
+                                        <span className="px-2 py-0.5 rounded-md bg-variable/5 border border-variable/10 text-[9px] uppercase font-bold text-variable-muted whitespace-nowrap">
+                                            {String(ultima).replace(/_/g, ' ')}
                                         </span>
-                                    ))}
-                                    {(!lead.process_tags || lead.process_tags.length === 0) && <span className="text-variable-muted/30">—</span>}
-                                </div>
-                            ),
+                                        {tags.length > 1 && (
+                                            <span className="text-[9px] font-bold text-variable-muted/50">+{tags.length - 1}</span>
+                                        )}
+                                    </span>
+                                );
+                            },
                         },
                         {
                             key: 'score',
@@ -655,7 +663,7 @@ export default function Leads() {
             {/* Convert Lead → Cliente Modal */}
             <AnimatePresence>
                 {convertLead && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -793,7 +801,7 @@ export default function Leads() {
             {/* GDPR Modal — Derecho al olvido */}
             <AnimatePresence>
                 {gdprLead && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -914,7 +922,7 @@ export default function Leads() {
 
             <AnimatePresence>
                 {isModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

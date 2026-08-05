@@ -35,7 +35,6 @@ export default function Projects() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [projectsList, setProjectsList] = useState([]);
-    const [leads, setLeads] = useState([]);
     const [users, setUsers] = useState([]);
     const [services, setServices] = useState([]);
     const [clients, setClients] = useState([]);
@@ -78,7 +77,6 @@ export default function Projects() {
             .from('leads')
             .select('id, first_name, last_name, company, service_interest')
             .order('created_at', { ascending: false });
-        setLeads(data || []);
         return data || [];
     };
 
@@ -404,7 +402,7 @@ export default function Projects() {
             {/* Modal para Nuevo Proyecto */}
             <AnimatePresence>
                 {isModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -426,7 +424,7 @@ export default function Projects() {
                             <p className="text-variable-muted mb-8 italic text-sm sm:text-base">Inicializa un nuevo entorno de trabajo para tu cliente</p>
 
                             <form onSubmit={handleCreateProject} className="space-y-6">
-                                <div className={formData.lead_id ? "space-y-2" : "grid grid-cols-1 sm:grid-cols-2 gap-6"}>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Nombre del Proyecto</label>
                                         <div className="relative">
@@ -464,40 +462,9 @@ export default function Projects() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Lead Relacionado (Opcional)</label>
-                                    <CustomDropdown
-                                        icon={UsersIcon}
-                                        placeholder="-- Seleccionar Lead --"
-                                        value={formData.lead_id}
-                                        onChange={(leadId) => {
-                                            const selectedLead = leads.find(l => l.id === leadId);
-                                            let newAlias = formData.id_alias;
-                                            if (selectedLead) {
-                                                const firstInitial = (selectedLead.first_name || '').charAt(0).toUpperCase();
-                                                const lastInitial = (selectedLead.last_name || '').charAt(0).toUpperCase();
-                                                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                                                const randomDigits = Math.floor(1000 + Math.random() * 9000);
-                                                newAlias = `${firstInitial}${lastInitial}-${dateStr}-${randomDigits}`;
-                                            }
-                                            // Si ese lead ya tiene ficha de cliente, se selecciona sola
-                                            const clienteDelLead = clients.find(c => c.lead_id === leadId);
-                                            setFormData({
-                                                ...formData,
-                                                lead_id: leadId,
-                                                client_id: clienteDelLead?.id || formData.client_id,
-                                                id_alias: newAlias
-                                            });
-                                        }}
-                                        options={[
-                                            { value: '', label: '-- Sin Lead --' },
-                                            ...leads.map(lead => ({
-                                                value: lead.id,
-                                                label: lead.company ? `${lead.company} (${lead.first_name})` : `${lead.first_name} ${lead.last_name}`
-                                            }))
-                                        ]}
-                                    />
-                                </div>
+                                {/* Sin selector de lead: el proyecto se crea sobre un cliente.
+                                    Si se llega desde "Convertir lead" (?convert=), lead_id viene
+                                    ya puesto en el estado y el enlace se guarda igual. */}
 
                                 {/* ── SERVICIOS DROPDOWN ── */}
                                 <div className="space-y-3">

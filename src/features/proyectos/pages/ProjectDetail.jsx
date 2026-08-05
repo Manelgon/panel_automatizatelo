@@ -1491,7 +1491,7 @@ export default function ProjectDetail() {
             {/* MODALS */}
             < AnimatePresence >
                 {milestoneModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMilestoneModal(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-md glass rounded-[2.5rem] p-10 shadow-2xl overflow-visible">
                             <h2 className="text-2xl font-bold mb-2 text-variable-main text-center">Nuevo Hito</h2>
@@ -1516,7 +1516,7 @@ export default function ProjectDetail() {
 
                 {
                     taskModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setTaskModal(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
                             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-md glass rounded-[2.5rem] p-10 shadow-2xl overflow-visible">
                                 <h2 className="text-2xl font-bold mb-2 text-variable-main text-center">Nueva Tarea</h2>
