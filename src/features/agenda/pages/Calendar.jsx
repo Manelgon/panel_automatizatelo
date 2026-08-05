@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
 import { motion } from 'framer-motion';
-import { X, Calendar as CalendarIcon, User, FolderOpen, AlignLeft} from 'lucide-react';
+import { X, Plus, Calendar as CalendarIcon, User, FolderOpen, AlignLeft} from 'lucide-react';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
@@ -323,9 +323,9 @@ export default function Calendar() {
                             setSelectedEvent(null);
                             setIsModalOpen(true);
                         }}
-                        className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg hover:shadow-primary/30 transition-all active:scale-95"
+                        className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2"
                     >
-                        + Nuevo Hito
+                        <Plus size={16} /> Nuevo Hito
                     </button>
                 </div>
 

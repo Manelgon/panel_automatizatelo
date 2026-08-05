@@ -584,8 +584,8 @@ export default function Blog() {
                             <FileText className="text-primary" /> Gestión del Blog
                         </h1>
                     </div>
-                    <button onClick={openNew} className="flex items-center gap-2 bg-primary hover:bg-primary/80 text-white px-5 py-3 rounded-2xl font-semibold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40">
-                        <Plus size={20} /> Nuevo Post
+                    <button onClick={openNew} className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2">
+                        <Plus size={16} /> Nuevo Post
                     </button>
                 </header>
 

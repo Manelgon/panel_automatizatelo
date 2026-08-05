@@ -311,10 +311,9 @@ export default function Projects() {
 
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="w-full sm:w-auto px-6 py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+                        className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2"
                     >
-                        <Plus size={20} />
-                        Nuevo Proyecto
+                        <Plus size={16} /> Nuevo Proyecto
                     </button>
                 </header>
 

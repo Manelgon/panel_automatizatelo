@@ -737,10 +737,10 @@ export default function Tasks() {
                         <button onClick={fetchData} className="p-2.5 sm:p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all" title="Refrescar">
                             <RefreshCw size={18} />
                         </button>
-                        <button onClick={() => setShowSprintModal(true)} className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 glass border border-primary/30 text-primary rounded-2xl font-bold text-xs sm:text-sm hover:bg-primary/10 transition-all">
+                        <button onClick={() => setShowSprintModal(true)} className="px-4 py-3 rounded-2xl glass border border-primary/30 text-primary text-sm font-bold hover:bg-primary/10 flex items-center gap-2">
                             <Zap size={15} /> <span className="hidden sm:inline">Nuevo</span> Sprint
                         </button>
-                        <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 bg-primary text-white rounded-2xl font-bold text-xs sm:text-sm hover:brightness-110 transition-all shadow-lg shadow-primary/20">
+                        <button onClick={() => setShowNewModal(true)} className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2">
                             <Plus size={16} /> <span className="hidden sm:inline">Nueva</span> Tarea
                         </button>
                     </div>

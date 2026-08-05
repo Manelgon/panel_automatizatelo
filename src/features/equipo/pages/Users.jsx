@@ -234,9 +234,9 @@ export default function Users() {
                         </button>
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex-1 sm:flex-none bg-primary text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-lg shadow-primary/20"
+                            className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2"
                         >
-                            <UserPlus size={20} /> <span className="whitespace-nowrap">Nuevo Miembro</span>
+                            <UserPlus size={16} /> <span className="whitespace-nowrap">Nuevo Miembro</span>
                         </button>
                     </div>
                 </header>
