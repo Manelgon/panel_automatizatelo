@@ -8,12 +8,12 @@ import {
     GitBranch, Sun, Moon, RefreshCw,
     Zap, Target, Package, Archive
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import Sidebar from '../components/Sidebar';
+import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import { useTheme } from '../../../context/ThemeContext';
+import Sidebar from '../../../components/Sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGlobalLoading } from '../context/LoadingContext';
+import { useGlobalLoading } from '../../../context/LoadingContext';
 
 /* ─── Constantes ─── */
 const PRIORITIES = [

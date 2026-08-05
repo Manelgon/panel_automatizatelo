@@ -13,14 +13,14 @@ import {
     X} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {useNavigate, useLocation } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
-import { supabase } from '../lib/supabase';
-import Sidebar from '../components/Sidebar';
-import DataTable from '../components/DataTable';
-import CustomDropdown from '../components/CustomDropdown';
-import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../context/NotificationContext';
-import { useGlobalLoading } from '../context/LoadingContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import Sidebar from '../../../components/Sidebar';
+import DataTable from '../../../components/DataTable';
+import CustomDropdown from '../../../components/CustomDropdown';
+import { useAuth } from '../../../context/AuthContext';
+import { useNotifications } from '../../../context/NotificationContext';
+import { useGlobalLoading } from '../../../context/LoadingContext';
 
 export default function Projects() {
     const { darkMode } = useTheme();

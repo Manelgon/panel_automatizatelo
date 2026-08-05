@@ -6,10 +6,10 @@ import {
     FolderOpen, FileText, Wallet, Receipt, Files, Flag, X,
     ChevronRight, Calendar, CheckCircle, GraduationCap, ShieldCheck, CalendarClock
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import Sidebar from '../components/Sidebar';
+import { supabase } from '../../../lib/supabase';
+import Sidebar from '../../../components/Sidebar';
 
-import { useNotifications } from '../context/NotificationContext';
+import { useNotifications } from '../../../context/NotificationContext';
 
 export default function ClienteDetail() {
     const { id } = useParams();

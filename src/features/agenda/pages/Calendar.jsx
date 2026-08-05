@@ -5,13 +5,13 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
+import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { X, Calendar as CalendarIcon, User, FolderOpen, AlignLeft} from 'lucide-react';
-import Sidebar from '../components/Sidebar';
-import { useNotifications } from '../context/NotificationContext';
-import { useGlobalLoading } from '../context/LoadingContext';
+import Sidebar from '../../../components/Sidebar';
+import { useNotifications } from '../../../context/NotificationContext';
+import { useGlobalLoading } from '../../../context/LoadingContext';
 
 export default function Calendar() {
     const navigate = useNavigate();

@@ -3,10 +3,10 @@ import {
     Mail, Save, Send, Sun, Moon, AlertTriangle, CheckCircle2,
     Inbox, Zap, FileCode2, History, RefreshCw, KeyRound
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import Sidebar from '../components/Sidebar';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
+import { supabase } from '../../../lib/supabase';
+import Sidebar from '../../../components/Sidebar';
+import { useTheme } from '../../../context/ThemeContext';
+import { useNotifications } from '../../../context/NotificationContext';
 
 const SECCIONES = {
     smtp: { label: 'Envío (SMTP)', icon: Send },

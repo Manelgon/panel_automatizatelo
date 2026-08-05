@@ -11,24 +11,24 @@ import { LoadingProvider } from './context/LoadingContext';
 //
 // Login queda estático a propósito — es la primera pantalla y no debe esperar
 // a una segunda petición.
-import Login from './pages/Login';
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
-const Users = lazy(() => import('./pages/Users'));
-const Leads = lazy(() => import('./pages/Leads'));
-const Clientes = lazy(() => import('./pages/Clientes'));
-const ClienteDetail = lazy(() => import('./pages/ClienteDetail'));
-const Blog = lazy(() => import('./pages/Blog'));
-const Services = lazy(() => import('./pages/Services'));
-const Projects = lazy(() => import('./pages/Projects'));
-const Formaciones = lazy(() => import('./pages/Formaciones'));
-const FormacionDetalle = lazy(() => import('./pages/FormacionDetalle'));
-const Tasks = lazy(() => import('./pages/Tasks'));
-const Facturas = lazy(() => import('./pages/Facturas'));
-const AjustesEmisor = lazy(() => import('./pages/AjustesEmisor'));
-const AjustesEmail = lazy(() => import('./pages/AjustesEmail'));
-const Verifactu = lazy(() => import('./pages/Verifactu'));
-const Calendar = lazy(() => import('./pages/Calendar'));
+import Login from './features/auth/pages/Login';
+const Dashboard = lazy(() => import('./features/dashboard/pages/Dashboard'));
+const ProjectDetail = lazy(() => import('./features/proyectos/pages/ProjectDetail'));
+const Users = lazy(() => import('./features/equipo/pages/Users'));
+const Leads = lazy(() => import('./features/leads/pages/Leads'));
+const Clientes = lazy(() => import('./features/clientes/pages/Clientes'));
+const ClienteDetail = lazy(() => import('./features/clientes/pages/ClienteDetail'));
+const Blog = lazy(() => import('./features/contenidos/pages/Blog'));
+const Services = lazy(() => import('./features/ajustes/pages/Services'));
+const Projects = lazy(() => import('./features/proyectos/pages/Projects'));
+const Formaciones = lazy(() => import('./features/formaciones/pages/Formaciones'));
+const FormacionDetalle = lazy(() => import('./features/formaciones/pages/FormacionDetalle'));
+const Tasks = lazy(() => import('./features/agenda/pages/Tasks'));
+const Facturas = lazy(() => import('./features/facturacion/pages/Facturas'));
+const AjustesEmisor = lazy(() => import('./features/facturacion/pages/AjustesEmisor'));
+const AjustesEmail = lazy(() => import('./features/ajustes/pages/AjustesEmail'));
+const Verifactu = lazy(() => import('./features/facturacion/pages/Verifactu'));
+const Calendar = lazy(() => import('./features/agenda/pages/Calendar'));
 
 // El mismo spinner que ya usa el resto del panel mientras carga una página
 const CargandoPagina = () => (

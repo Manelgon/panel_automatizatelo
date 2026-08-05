@@ -35,12 +35,12 @@ import {
     Maximize
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '../context/ThemeContext';
-import { supabase } from '../lib/supabase';
-import Sidebar from '../components/Sidebar';
-import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../context/NotificationContext';
-import { useGlobalLoading } from '../context/LoadingContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import Sidebar from '../../../components/Sidebar';
+import { useAuth } from '../../../context/AuthContext';
+import { useNotifications } from '../../../context/NotificationContext';
+import { useGlobalLoading } from '../../../context/LoadingContext';
 
 // ─── Helpers ────────────────────────────────────────
 function slugify(text) {

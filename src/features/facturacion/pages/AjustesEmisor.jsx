@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Settings, Save, Sun, Moon, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { validarIdFiscal } from '../lib/facturas';
-import Sidebar from '../components/Sidebar';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
+import { supabase } from '../../../lib/supabase';
+import { validarIdFiscal } from '../../../lib/facturas';
+import Sidebar from '../../../components/Sidebar';
+import { useTheme } from '../../../context/ThemeContext';
+import { useNotifications } from '../../../context/NotificationContext';
 
 const SECCIONES = {
     emisor: 'Datos del emisor',

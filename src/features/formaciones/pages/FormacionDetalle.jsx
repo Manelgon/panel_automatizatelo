@@ -4,15 +4,15 @@ import {
     ArrowLeft, GraduationCap, Plus, Trash2, ShieldCheck, Download, Receipt,
     Clock, Calendar, MapPin, Euro, Sun, Moon, AlertTriangle, UserPlus
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import Sidebar from '../components/Sidebar';
-import CustomDropdown from '../components/CustomDropdown';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
-import { useGlobalLoading } from '../context/LoadingContext';
-import { crearFactura, registrarVerifactu } from '../lib/facturas';
-import { emitirCertificado, urlCertificado, nombreCompletoAlumno } from '../features/formaciones/services/certificado';
-import { TIPOS, MODALIDADES, ESTADOS, APROVECHAMIENTO, nombreCliente } from '../features/formaciones/constantes';
+import { supabase } from '../../../lib/supabase';
+import Sidebar from '../../../components/Sidebar';
+import CustomDropdown from '../../../components/CustomDropdown';
+import { useTheme } from '../../../context/ThemeContext';
+import { useNotifications } from '../../../context/NotificationContext';
+import { useGlobalLoading } from '../../../context/LoadingContext';
+import { crearFactura, registrarVerifactu } from '../../../lib/facturas';
+import { emitirCertificado, urlCertificado, nombreCompletoAlumno } from '../../formaciones/services/certificado';
+import { TIPOS, MODALIDADES, ESTADOS, APROVECHAMIENTO, nombreCliente } from '../../formaciones/constantes';
 
 export default function FormacionDetalle() {
     const { id } = useParams();

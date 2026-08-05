@@ -23,11 +23,11 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
-import { useGlobalLoading } from '../context/LoadingContext';
-import { supabase } from '../lib/supabase';
-import Sidebar from '../components/Sidebar';
+import { useTheme } from '../../../context/ThemeContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useGlobalLoading } from '../../../context/LoadingContext';
+import { supabase } from '../../../lib/supabase';
+import Sidebar from '../../../components/Sidebar';
 
 /* ─── Stat Card ─── */
 const StatCard = ({ title, value, subtitle, icon: Icon, color = 'primary', delay = 0 }) => {

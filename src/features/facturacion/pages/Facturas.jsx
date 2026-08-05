@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Receipt, Search, Download, Sun, Moon, ChevronRight, FileWarning, CheckCircle2, Send } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../lib/facturas';
-import { enviarDocumento } from '../lib/enviarEmail';
-import Sidebar from '../components/Sidebar';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
+import { supabase } from '../../../lib/supabase';
+import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../../../lib/facturas';
+import { enviarDocumento } from '../../../lib/enviarEmail';
+import Sidebar from '../../../components/Sidebar';
+import { useTheme } from '../../../context/ThemeContext';
+import { useNotifications } from '../../../context/NotificationContext';
 
 const ESTADOS = [
     { id: 'todos', label: 'Todas' },

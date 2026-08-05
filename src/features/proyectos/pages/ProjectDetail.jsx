@@ -26,17 +26,17 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
-import { supabase } from '../lib/supabase';
-import { crearFactura, getCompanySettings, getFacturaCompleta, generarPdfFactura, registrarVerifactu } from '../lib/facturas';
-import Sidebar from '../components/Sidebar';
-import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../context/NotificationContext';
-import { useGlobalLoading } from '../context/LoadingContext';
-import { generarPdfPresupuesto, generarPdfRecibo } from '../features/proyectos/services/pdfs';
-import SeccionCobros from '../features/proyectos/components/SeccionCobros';
-import SeccionPresupuesto from '../features/proyectos/components/SeccionPresupuesto';
-import { enviarDocumento } from '../lib/enviarEmail';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../lib/supabase';
+import { crearFactura, getCompanySettings, getFacturaCompleta, generarPdfFactura, registrarVerifactu } from '../../../lib/facturas';
+import Sidebar from '../../../components/Sidebar';
+import { useAuth } from '../../../context/AuthContext';
+import { useNotifications } from '../../../context/NotificationContext';
+import { useGlobalLoading } from '../../../context/LoadingContext';
+import { generarPdfPresupuesto, generarPdfRecibo } from '../../proyectos/services/pdfs';
+import SeccionCobros from '../../proyectos/components/SeccionCobros';
+import SeccionPresupuesto from '../../proyectos/components/SeccionPresupuesto';
+import { enviarDocumento } from '../../../lib/enviarEmail';
 
 export default function ProjectDetail() {
     const { id } = useParams();

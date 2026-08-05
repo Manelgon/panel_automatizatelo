@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { GraduationCap, Plus, Sun, Moon, X, Clock, Users as UsersIcon, ShieldCheck, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import Sidebar from '../components/Sidebar';
-import CustomDropdown from '../components/CustomDropdown';
-import DataTable from '../components/DataTable';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
-import { useGlobalLoading } from '../context/LoadingContext';
-import { TIPOS, MODALIDADES, ESTADOS, nombreCliente } from '../features/formaciones/constantes';
+import { supabase } from '../../../lib/supabase';
+import Sidebar from '../../../components/Sidebar';
+import CustomDropdown from '../../../components/CustomDropdown';
+import DataTable from '../../../components/DataTable';
+import { useTheme } from '../../../context/ThemeContext';
+import { useNotifications } from '../../../context/NotificationContext';
+import { useGlobalLoading } from '../../../context/LoadingContext';
+import { TIPOS, MODALIDADES, ESTADOS, nombreCliente } from '../../formaciones/constantes';
 
 export default function Formaciones() {
     const { darkMode, toggleTheme } = useTheme();

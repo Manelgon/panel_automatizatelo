@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import {
     UserCheck, Search, Clock, Sun, Moon, ChevronRight,
     Building2, User} from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import Sidebar from '../components/Sidebar';
-import DataTable from '../components/DataTable';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
+import { supabase } from '../../../lib/supabase';
+import Sidebar from '../../../components/Sidebar';
+import DataTable from '../../../components/DataTable';
+import { useTheme } from '../../../context/ThemeContext';
+import { useNotifications } from '../../../context/NotificationContext';
 
 export default function Clientes() {
     const navigate = useNavigate();

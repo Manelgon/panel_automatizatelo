@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck, AlertTriangle, RefreshCw, FileCode, Sun, Moon } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { registrarVerifactu } from '../lib/facturas';
-import Sidebar from '../components/Sidebar';
-import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../context/NotificationContext';
+import { supabase } from '../../../lib/supabase';
+import { registrarVerifactu } from '../../../lib/facturas';
+import Sidebar from '../../../components/Sidebar';
+import { useTheme } from '../../../context/ThemeContext';
+import { useNotifications } from '../../../context/NotificationContext';
 
 const BADGE = {
     pendiente:  'bg-zinc-500/15 text-zinc-400',
