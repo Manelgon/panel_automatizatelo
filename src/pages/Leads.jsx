@@ -20,7 +20,8 @@ import {
     UserCheck,
     Building2,
     Hash,
-    MapPin
+    MapPin,
+    CalendarClock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import CustomSelect from '../components/CustomSelect';
+import AgendarCitaModal from '../features/citas/AgendarCitaModal';
 import DataTable from '../components/DataTable';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -51,6 +53,9 @@ export default function Leads() {
     const [gdprAuthEmail, setGdprAuthEmail] = useState('');
     const [gdprAuthPassword, setGdprAuthPassword] = useState('');
     const [gdprAuthError, setGdprAuthError] = useState(null);
+
+    // Agendar los 30 minutos con un lead
+    const [citaContacto, setCitaContacto] = useState(null);
 
     // Convert lead → cliente
     const [convertLead, setConvertLead] = useState(null);
@@ -611,7 +616,21 @@ export default function Leads() {
                             align: 'right',
                             render: (lead) => (
                                 <div className="flex gap-2 justify-end">
-                                    {lead.status !== 'ganado' && (
+                                    <button
+                                        onClick={() => setCitaContacto({
+                                            leadId: lead.id,
+                                            nombre: [lead.first_name, lead.last_name].filter(Boolean).join(' '),
+                                            email: lead.email,
+                                        })}
+                                        className="p-2 glass rounded-xl text-sky-400 hover:bg-sky-500/10 transition-all flex items-center gap-2 pr-4 shadow-lg shadow-sky-500/5 group"
+                                        title="Agendar los 30 minutos"
+                                    >
+                                        <div className="bg-sky-500/20 p-1 rounded-lg group-hover:scale-110 transition-transform"><CalendarClock size={14} /></div>
+                                        <span className="text-[10px] font-black uppercase tracking-tighter">Agendar</span>
+                                    </button>
+
+                                    {/* 'ganado' dejó de existir en la migración 012 */}
+                                    {lead.status !== 'convertido' && (
                                         <button
                                             onClick={() => openConvertModal(lead)}
                                             className="p-2 glass rounded-xl text-primary hover:bg-primary/10 transition-all flex items-center gap-2 pr-4 shadow-lg shadow-primary/5 group"
@@ -988,6 +1007,13 @@ export default function Leads() {
                     </div>
                 )}
             </AnimatePresence>
+
+            <AgendarCitaModal
+                abierto={!!citaContacto}
+                contacto={citaContacto}
+                onCerrar={() => setCitaContacto(null)}
+                onGuardada={fetchLeads}
+            />
         </div>
     );
 }

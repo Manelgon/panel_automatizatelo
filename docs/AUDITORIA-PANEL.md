@@ -333,8 +333,8 @@ para partir el bundle, y ESLint en `npm run lint`.
 | **1** 🟡 | Reconstruir el esquema como migraciones aplicables. Hecho salvo verificar la parte reconstruida por inferencia (tres consultas de radiografía). → `docs/BASE-DE-DATOS.md` | Bajo | Casi |
 | ~~**2**~~ ✅ | Modelo: PK en `project_services`, `projects.client_id` de verdad, fusión de las tablas 1:1 en `leads`, desambiguación de `users`. → migraciones 010-013 | Medio — tocó la web también | Hecho |
 | ~~**3**~~ ✅ | **Formaciones**: tablas, página, sesiones, alumnos, certificados en PDF con código de verificación y facturación desde la ficha. → migración 014 y `features/formaciones/` | Bajo (todo nuevo) | Hecho |
-| **4** | Reorganizar el front en `features/`, partir `ProjectDetail.jsx`, code splitting, TypeScript. | Medio, mecánico | 2-3 días |
-| **5** | `audit_logs`, citas, RGPD (retención, consentimientos, RAT). | Bajo | 1-2 días |
+| **5** 🟡 | **Citas hechas** (migración 015): tabla, modal de agendar desde Leads, pestaña en la ficha del cliente, eventos en el calendario y próximas citas en el inicio. Quedan `audit_logs` y RGPD (retención, consentimientos, RAT). | Bajo | A medias |
+| **4** | Reorganizar el front en `features/`, partir `ProjectDetail.jsx`, code splitting, TypeScript, fundir `CustomSelect` con `CustomDropdown`. Y aquí el renombrado general a castellano. | Medio, mecánico | 2-3 días |
 
 El orden importa: la fase 1 antes que la 2 porque sin migraciones aplicables no se
 puede renombrar nada con seguridad. Y la fase 3 puede adelantarse si hace falta

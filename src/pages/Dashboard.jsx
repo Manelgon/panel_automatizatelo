@@ -83,13 +83,16 @@ const PriorityBadge = ({ priority }) => {
 
 /* ─── Status Badge ─── */
 const StatusBadge = ({ status }) => {
+    // Vocabulario de la migración 012. Antes decía 'pendiente' y 'ganado', que
+    // ya no existen: cualquier lead caía en el estilo por defecto.
     const styles = {
-        'pendiente': { bg: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-500', label: 'Pendiente' },
+        'nuevo': { bg: 'bg-amber-500/10 border-amber-500/20', text: 'text-amber-500', label: 'Nuevo' },
+        'en_proceso': { bg: 'bg-violet-500/10 border-violet-500/20', text: 'text-violet-400', label: 'En proceso' },
         'contactado': { bg: 'bg-blue-500/10 border-blue-500/20', text: 'text-blue-400', label: 'Contactado' },
-        'ganado': { bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-500', label: 'Ganado' },
+        'convertido': { bg: 'bg-emerald-500/10 border-emerald-500/20', text: 'text-emerald-500', label: 'Convertido' },
         'perdido': { bg: 'bg-rose-500/10 border-rose-500/20', text: 'text-rose-400', label: 'Perdido' },
     };
-    const s = styles[status] || styles['pendiente'];
+    const s = styles[status] || styles['nuevo'];
     return (
         <span className={`text-[10px] font-bold px-3 py-1 rounded-full border ${s.bg} ${s.text}`}>
             {s.label}
@@ -127,6 +130,7 @@ export default function Dashboard() {
     const [users, setUsers] = useState([]);
     const [projectTasks, setProjectTasks] = useState([]);
     const [formaciones, setFormaciones] = useState([]);
+    const [citas, setCitas] = useState([]);
 
     // ─── Fetch All Data ───
     useEffect(() => {
@@ -143,6 +147,7 @@ export default function Dashboard() {
                     { data: usersData },
                     { data: allTasksData },
                     { data: formacionesData },
+                    { data: citasData },
                 ] = await Promise.all([
                     supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(10),
                     supabase.from('projects').select('*').order('created_at', { ascending: false }),
@@ -156,6 +161,8 @@ export default function Dashboard() {
                     supabase.from('users').select('id, nombre, apellido1, email, avatar_url'),
                     supabase.from('project_tasks').select('id, status, project_id'),
                     supabase.from('formaciones').select('id, titulo, estado, fecha_inicio, horas_totales'),
+                    // Las citas que vienen, que es lo que se mira por la mañana
+                    supabase.from('citas').select('id, titulo, contacto_nombre, start_at, modalidad, enlace, estado, lead_id, cliente_id').gte('start_at', new Date().toISOString()).not('estado', 'in', '(cancelada,realizada)').order('start_at').limit(5),
                 ]);
 
                 setLeads(leadsData || []);
@@ -167,6 +174,7 @@ export default function Dashboard() {
                 setUsers(usersData || []);
                 setProjectTasks(allTasksData || []);
                 setFormaciones(formacionesData || []);
+                setCitas(citasData || []);
             } catch (err) {
                 console.error('Dashboard fetch error:', err);
             } finally {
@@ -519,6 +527,66 @@ export default function Dashboard() {
                                 ))
                             )}
                         </div>
+                    </motion.div>
+
+                    {/* Próximas citas — lo primero que se mira por la mañana */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+                        className="glass rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8"
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-sky-500/10 rounded-xl text-sky-400"><CalendarIcon size={18} /></div>
+                                <h2 className="text-lg font-bold font-display text-variable-main">Próximas citas</h2>
+                            </div>
+                            <Link to="/calendar" className="text-primary hover:underline text-xs font-bold flex items-center gap-1">
+                                Ver <ArrowUpRight size={14} />
+                            </Link>
+                        </div>
+
+                        {citas.length === 0 ? (
+                            <p className="text-sm text-variable-muted italic text-center py-8">
+                                Ninguna cita agendada. Se agendan desde la lista de Leads.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {citas.map(c => {
+                                    const cuando = new Date(c.start_at);
+                                    const hoy = new Date().toDateString() === cuando.toDateString();
+                                    return (
+                                        <div
+                                            key={c.id}
+                                            onClick={() => navigate(c.cliente_id ? `/clientes/${c.cliente_id}` : '/leads')}
+                                            className="flex items-center gap-4 p-4 rounded-2xl border border-variable hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer"
+                                        >
+                                            <div className={`text-center shrink-0 px-3 py-2 rounded-xl ${hoy ? 'bg-primary/15 text-primary' : 'bg-white/5 text-variable-muted'}`}>
+                                                <p className="text-[9px] font-black uppercase tracking-widest">
+                                                    {hoy ? 'Hoy' : cuando.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                                </p>
+                                                <p className="text-sm font-bold">
+                                                    {cuando.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-bold text-sm text-variable-main truncate">{c.contacto_nombre}</p>
+                                                <p className="text-xs text-variable-muted truncate">{c.titulo}</p>
+                                            </div>
+                                            {c.enlace && (
+                                                <a
+                                                    href={c.enlace}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="shrink-0 px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[10px] font-bold"
+                                                >
+                                                    Entrar
+                                                </a>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </motion.div>
 
                     {/* Upcoming Milestones */}

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft, Mail, Phone, MapPin, Hash, Building2, User, Edit3,
     FolderOpen, FileText, Wallet, Receipt, Files, Flag, X,
-    ChevronRight, Calendar, CheckCircle, GraduationCap, ShieldCheck
+    ChevronRight, Calendar, CheckCircle, GraduationCap, ShieldCheck, CalendarClock
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
@@ -25,6 +25,7 @@ export default function ClienteDetail() {
     const tabs = [
         { id: 'proyectos', label: 'Proyectos', icon: FolderOpen },
         { id: 'formaciones', label: 'Formaciones', icon: GraduationCap },
+        { id: 'citas', label: 'Citas', icon: CalendarClock },
         { id: 'facturas', label: 'Facturas', icon: Receipt },
         { id: 'presupuestos', label: 'Presupuestos', icon: Wallet },
         { id: 'hitos', label: 'Hitos', icon: Flag },
@@ -68,6 +69,14 @@ export default function ClienteDetail() {
                 .eq('cliente_id', id)
                 .order('fecha_inicio', { ascending: false, nullsFirst: false });
             data.formaciones = formacionesData || [];
+
+            // 4. Citas con este cliente, de la más reciente a la más antigua
+            const { data: citasData } = await supabase
+                .from('citas')
+                .select('id, titulo, tipo, estado, start_at, modalidad, enlace, lugar, notas, resultado')
+                .eq('cliente_id', id)
+                .order('start_at', { ascending: false });
+            data.citas = citasData || [];
             setCliente(data);
             setEditForm({
                 first_name: data.first_name || '',
@@ -319,6 +328,51 @@ export default function ClienteDetail() {
                                             <ChevronRight size={16} className="text-primary" />
                                         </div>
                                     </Link>
+                                );
+                            }}
+                        />
+                    )}
+
+                    {activeTab === 'citas' && (
+                        <TabList
+                            items={cliente.citas || []}
+                            emptyText="Sin citas registradas con este cliente"
+                            renderItem={(c) => {
+                                const cuando = new Date(c.start_at);
+                                const pasada = cuando < new Date();
+                                return (
+                                    <div key={c.id} className="p-4 rounded-xl border border-variable">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-variable-main truncate">{c.titulo}</p>
+                                                <p className="text-xs text-variable-muted">
+                                                    {cuando.toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}
+                                                    {' · '}{c.modalidad}
+                                                    {c.lugar ? ` · ${c.lugar}` : ''}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {!pasada && c.enlace && (
+                                                    <a
+                                                        href={c.enlace}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[10px] font-bold"
+                                                    >
+                                                        Entrar
+                                                    </a>
+                                                )}
+                                                <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">
+                                                    {c.estado}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {(c.notas || c.resultado) && (
+                                            <p className="text-xs text-variable-muted mt-3 pt-3 border-t border-variable">
+                                                {c.resultado || c.notas}
+                                            </p>
+                                        )}
+                                    </div>
                                 );
                             }}
                         />

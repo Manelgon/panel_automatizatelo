@@ -20,6 +20,7 @@ export default function Calendar() {
     const { withLoading } = useGlobalLoading();
     const [milestones, setMilestones] = useState([]);
     const [sesiones, setSesiones] = useState([]);
+    const [citas, setCitas] = useState([]);
     const [projects, setProjects] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -67,7 +68,7 @@ export default function Calendar() {
 
     const fetchData = async () => {
         setLoading(true);
-        await Promise.all([fetchMilestones(), fetchProjects(), fetchUsers(), fetchSesiones()]);
+        await Promise.all([fetchMilestones(), fetchProjects(), fetchUsers(), fetchSesiones(), fetchCitas()]);
         setLoading(false);
     };
 
@@ -91,6 +92,14 @@ export default function Calendar() {
             .from('formacion_sesiones')
             .select('id, formacion_id, fecha, hora_inicio, hora_fin, horas, lugar, formaciones(titulo)');
         setSesiones(data || []);
+    };
+
+    const fetchCitas = async () => {
+        const { data } = await supabase
+            .from('citas')
+            .select('id, titulo, contacto_nombre, start_at, end_at, estado, modalidad, enlace, lugar, lead_id, cliente_id')
+            .neq('estado', 'cancelada');
+        setCitas(data || []);
     };
 
     const fetchProjects = async () => {
@@ -144,7 +153,21 @@ export default function Calendar() {
         };
     });
 
-    const todosLosEventos = [...events, ...eventosFormacion];
+    // Citas en azul, verde cuando ya se han hecho. No se arrastran: una cita se
+    // recoloca hablando con la persona, no tirando de ella en un calendario.
+    const eventosCitas = citas.map(c => ({
+        id: `cita-${c.id}`,
+        title: `📞 ${c.contacto_nombre}`,
+        start: c.start_at,
+        end: c.end_at,
+        allDay: false,
+        backgroundColor: c.estado === 'realizada' ? '#10b981' : '#0ea5e9',
+        borderColor: c.estado === 'realizada' ? '#10b981' : '#0ea5e9',
+        editable: false,
+        extendedProps: { esCita: true, cita: c },
+    }));
+
+    const todosLosEventos = [...events, ...eventosFormacion, ...eventosCitas];
 
     const handleDateSelect = (selectInfo) => {
         setFormData({
@@ -170,6 +193,14 @@ export default function Calendar() {
         // Una sesión de formación no se edita aquí: se va a su ficha
         if (props.esFormacion) {
             navigate(`/formaciones/${props.formacionId}`);
+            return;
+        }
+
+        // Una cita lleva a quien la tiene. Si es con un lead, a Leads; si el
+        // lead ya se convirtió, a la ficha del cliente.
+        if (props.esCita) {
+            const c = props.cita;
+            navigate(c.cliente_id ? `/clientes/${c.cliente_id}` : '/leads');
             return;
         }
 
