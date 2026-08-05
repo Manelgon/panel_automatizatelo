@@ -108,7 +108,7 @@ export async function crearFactura({
   lineas,
   ivaPorcentaje = 21,
   irpfPorcentaje = 0,
-  formaPago = 'transferencia',
+  formaPago = null,
   fechaVencimiento = null,
   notas = null,
   serie = null,
@@ -171,15 +171,19 @@ export async function crearFactura({
     cliente.billing_country,
   ].filter(Boolean).join(', ');
 
-  // 5. Vencimiento default
+  // 5. Defaults desde Ajustes del emisor: vencimiento y forma de pago.
+  // Quien llame puede pasarlos explícitos; si no, mandan los ajustes.
+  const settings = await getCompanySettings();
+
   let vencimiento = fechaVencimiento;
   if (!vencimiento) {
-    const settings = await getCompanySettings();
     const dias = settings?.dias_vencimiento_default || 30;
     const d = new Date();
     d.setDate(d.getDate() + dias);
     vencimiento = d.toISOString().split('T')[0];
   }
+
+  const formaPagoFinal = formaPago || settings?.forma_pago_default || 'transferencia';
 
   // 6. INSERT factura
   const { data: factura, error: facErr } = await supabase
@@ -202,7 +206,7 @@ export async function crearFactura({
       irpf_porcentaje: irpfPorcentaje,
       irpf_importe: irpfImporte,
       total,
-      forma_pago: formaPago,
+      forma_pago: formaPagoFinal,
       fecha_vencimiento: vencimiento,
       notas,
     }])
@@ -328,6 +332,39 @@ export function generarPdfFactura(factura, settings, proyecto = null) {
     doc.setTextColor(255, 140, 50);
     doc.text('TOTAL:', 120, yPos + 8);
     doc.text(`€${parseFloat(factura.total).toFixed(2)}`, 195, yPos + 8, { align: 'right' });
+
+    // ── Cómo pagar ──
+    // Sin este bloque, el cliente recibía una factura sin saber a qué cuenta
+    // transferir. La forma de pago viene de la factura; el IBAN, del emisor.
+    const ETIQUETAS_PAGO = {
+        transferencia: 'Transferencia bancaria',
+        efectivo: 'Efectivo',
+        bizum: 'Bizum',
+        tarjeta: 'Tarjeta',
+        domiciliacion: 'Domiciliación bancaria',
+    };
+    const pagoY = yPos + 22;
+    doc.setFillColor(248, 246, 240);
+    doc.roundedRect(15, pagoY, 180, factura.forma_pago === 'transferencia' && settings?.emisor_iban ? 26 : 18, 3, 3, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 80, 90);
+    doc.text('FORMA DE PAGO:', 22, pagoY + 8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(ETIQUETAS_PAGO[factura.forma_pago] || 'Transferencia bancaria', 60, pagoY + 8);
+    if (factura.fecha_vencimiento) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('VENCIMIENTO:', 120, pagoY + 8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(new Date(factura.fecha_vencimiento).toLocaleDateString('es-ES'), 152, pagoY + 8);
+    }
+    if (factura.forma_pago === 'transferencia' && settings?.emisor_iban) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('IBAN:', 22, pagoY + 17);
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(10);
+        doc.text(String(settings.emisor_iban).replace(/(.{4})/g, '$1 ').trim(), 60, pagoY + 17);
+    }
 
     doc.setFontSize(7);
     doc.setTextColor(150, 150, 160);
