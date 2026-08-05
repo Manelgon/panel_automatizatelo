@@ -30,20 +30,28 @@ export default function FormacionDetalle() {
     const [nuevaSesion, setNuevaSesion] = useState({ fecha: '', hora_inicio: '', hora_fin: '', horas: '', lugar: '' });
     const [nuevoAlumno, setNuevoAlumno] = useState({ nombre: '', apellidos: '', email: '', dni: '', cargo: '' });
 
+    // Paquete de facturación: null = cerrado; si no, {hermanas, seleccion}
+    const [modalPaquete, setModalPaquete] = useState(null);
+
     const cargar = useCallback(async () => {
-        const [{ data: f, error }, { data: s }, { data: a }, { data: fac }, { data: con }] = await Promise.all([
+        const [{ data: f, error }, { data: s }, { data: a }, { data: fac }, { data: con }, { data: facLineas }] = await Promise.all([
             supabase.from('formaciones').select('*, clients:clientes(*)').eq('id', id).single(),
             supabase.from('formacion_sesiones').select('*').eq('formacion_id', id).order('fecha'),
             supabase.from('formacion_alumnos').select('*').eq('formacion_id', id).order('apellidos'),
             supabase.from('facturas').select('id, numero, total, estado, fecha_emision').eq('formacion_id', id),
             supabase.from('formacion_contratos').select('*').eq('formacion_id', id).order('created_at', { ascending: false }),
+            // Paquetes (021): facturas que cubren esta formación desde una línea
+            supabase.from('factura_lineas').select('facturas(id, numero, total, estado, fecha_emision)').eq('formacion_id', id),
         ]);
 
         if (error) showNotification(`Error cargando la formación: ${error.message}`, 'error');
         setFormacion(f || null);
         setSesiones(s || []);
         setAlumnos(a || []);
-        setFacturas(fac || []);
+        // Directas + de paquete, sin duplicar (si la 021 no está, facLineas viene null)
+        const porLinea = (facLineas || []).map(l => l.facturas).filter(Boolean);
+        const vistas = new Set();
+        setFacturas([...(fac || []), ...porLinea].filter(x => !vistas.has(x.id) && vistas.add(x.id)));
         setContratos(con || []);
         setLoading(false);
     }, [id]);
@@ -204,30 +212,28 @@ export default function FormacionDetalle() {
     };
 
     // ── Facturación ───────────────────────────────────────────────────────────
-    const facturar = async () => {
-        if (!formacion?.cliente_id) return showNotification('La formación no tiene cliente', 'error');
-        if (!Number(formacion.precio_cerrado)) return showNotification('Pon el precio cerrado antes de facturar', 'error');
+    // Decisión de Manel: los módulos contratados juntos (alfabetización +
+    // troncal) se crean como formaciones separadas pero se cobran en UNA
+    // factura con una línea por módulo (migración 021).
+    const lineaDe = (f) => {
+        const horas = Number(f.horas_totales || 0);
+        return {
+            // El precio es cerrado: una línea, no horas x tarifa. Las horas
+            // van en el concepto porque documentan qué se impartió.
+            concepto: `${f.titulo}${horas ? ` — ${horas} horas` : ''}`,
+            cantidad: 1,
+            precio_unitario: Number(f.precio_cerrado),
+            descuento_porcentaje: 0,
+            formacionId: f.id,
+        };
+    };
 
-        const ok = await confirm({
-            title: '¿Emitir factura?',
-            message: `Se emitirá una factura de €${Number(formacion.precio_cerrado).toFixed(2)} a ${nombreCliente(formacion.clients)}. Una vez emitida no se puede modificar.`,
-            confirmText: 'Emitir',
-        });
-        if (!ok) return;
-
+    const emitirFactura = async (formacionesAFacturar) => {
         await withLoading(async () => {
-            const horas = Number(formacion.horas_totales || 0);
             const res = await crearFactura({
                 clientId: formacion.cliente_id,
                 formacionId: formacion.id,
-                lineas: [{
-                    // El precio es cerrado: una línea, no horas x tarifa. Las horas
-                    // van en el concepto porque documentan qué se impartió.
-                    concepto: `${formacion.titulo}${horas ? ` — ${horas} horas` : ''}`,
-                    cantidad: 1,
-                    precio_unitario: Number(formacion.precio_cerrado),
-                    descuento_porcentaje: 0,
-                }],
+                lineas: formacionesAFacturar.map(lineaDe),
             });
 
             if (res.error) return showNotification(res.error, 'error');
@@ -237,8 +243,46 @@ export default function FormacionDetalle() {
             const v = await registrarVerifactu(res.factura.id, 'alta');
             if (v?.error) showNotification(`Factura emitida, pero Veri*factu falló: ${v.error}`, 'error');
 
+            setModalPaquete(null);
             cargar();
         }, 'Emitiendo factura...');
+    };
+
+    const facturar = async () => {
+        if (!formacion?.cliente_id) return showNotification('La formación no tiene cliente', 'error');
+        if (!Number(formacion.precio_cerrado)) return showNotification('Pon el precio cerrado antes de facturar', 'error');
+
+        // ¿Hay más formaciones del mismo cliente sin facturar? → ofrecer paquete
+        const { data: hermanas } = await supabase
+            .from('formaciones')
+            .select('id, titulo, horas_totales, precio_cerrado, estado')
+            .eq('cliente_id', formacion.cliente_id)
+            .neq('id', formacion.id)
+            .neq('estado', 'cancelada');
+
+        let sinFacturar = [];
+        if (hermanas?.length) {
+            const ids = hermanas.map(h => h.id);
+            const [{ data: dir }, { data: lin }] = await Promise.all([
+                supabase.from('facturas').select('formacion_id').in('formacion_id', ids).neq('estado', 'anulada'),
+                supabase.from('factura_lineas').select('formacion_id').in('formacion_id', ids),
+            ]);
+            const facturadas = new Set([...(dir || []), ...(lin || [])].map(x => x.formacion_id));
+            sinFacturar = hermanas.filter(h => !facturadas.has(h.id) && Number(h.precio_cerrado) > 0);
+        }
+
+        if (sinFacturar.length > 0) {
+            setModalPaquete({ hermanas: sinFacturar, seleccion: {} });
+            return;
+        }
+
+        const ok = await confirm({
+            title: '¿Emitir factura?',
+            message: `Se emitirá una factura de €${Number(formacion.precio_cerrado).toFixed(2)} a ${nombreCliente(formacion.clients)}. Una vez emitida no se puede modificar.`,
+            confirmText: 'Emitir',
+        });
+        if (!ok) return;
+        await emitirFactura([formacion]);
     };
 
     if (loading) {
@@ -625,6 +669,75 @@ export default function FormacionDetalle() {
                         )}
                     </div>
                 </section>
+
+                {/* MODAL: FACTURAR PAQUETE (esta formación + las hermanas que se marquen) */}
+                {modalPaquete && (() => {
+                    const marcadas = modalPaquete.hermanas.filter(h => modalPaquete.seleccion[h.id]);
+                    const total = [formacion, ...marcadas].reduce((s, f) => s + Number(f.precio_cerrado || 0), 0);
+                    return (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setModalPaquete(null)} />
+                            <div className="relative glass rounded-3xl border border-variable p-6 sm:p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                                <h2 className="text-xl sm:text-2xl font-bold font-display mb-2 text-variable-main">Emitir factura</h2>
+                                <p className="text-sm text-variable-muted mb-6">
+                                    {nombreCliente(formacion.clients)} tiene más formaciones sin facturar.
+                                    Marca las que quieras cobrar en la misma factura: saldrá una línea por formación.
+                                </p>
+
+                                <div className="space-y-2 mb-6">
+                                    <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-primary/5 border border-primary/30">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-variable-main truncate">{formacion.titulo}</p>
+                                            <p className="text-[11px] text-variable-muted">Esta formación · siempre incluida</p>
+                                        </div>
+                                        <span className="text-sm font-black text-variable-main shrink-0">€{Number(formacion.precio_cerrado).toFixed(2)}</span>
+                                    </div>
+                                    {modalPaquete.hermanas.map(h => (
+                                        <label key={h.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/5 border border-variable cursor-pointer hover:border-primary/40">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!modalPaquete.seleccion[h.id]}
+                                                    onChange={() => setModalPaquete({
+                                                        ...modalPaquete,
+                                                        seleccion: { ...modalPaquete.seleccion, [h.id]: !modalPaquete.seleccion[h.id] },
+                                                    })}
+                                                    className="size-4 accent-[var(--primary)] shrink-0"
+                                                />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-variable-main truncate">{h.titulo}</p>
+                                                    <p className="text-[11px] text-variable-muted">{Number(h.horas_totales || 0)} h</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-sm font-black text-variable-main shrink-0">€{Number(h.precio_cerrado).toFixed(2)}</span>
+                                        </label>
+                                    ))}
+                                </div>
+
+                                <div className="flex items-center justify-between mb-5 pt-4 border-t border-variable">
+                                    <span className="text-xs font-black uppercase tracking-widest text-variable-muted">Total (sin IVA)</span>
+                                    <span className="text-lg font-black text-variable-main">€{total.toFixed(2)}</span>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setModalPaquete(null)}
+                                        className="flex-1 py-3 rounded-2xl glass border border-variable text-sm font-bold text-variable-muted hover:text-primary"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => emitirFactura([formacion, ...marcadas])}
+                                        className="flex-1 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center justify-center gap-2"
+                                    >
+                                        <Receipt size={15} />
+                                        {marcadas.length > 0 ? `Facturar ${1 + marcadas.length} juntas` : 'Facturar solo esta'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
             </main>
         </div>
     );

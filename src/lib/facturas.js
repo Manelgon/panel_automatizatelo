@@ -154,6 +154,10 @@ export async function crearFactura({
       precio_unitario: precio,
       descuento_porcentaje: descuento,
       base_linea: base,
+      // Paquetes (migración 021): la línea recuerda de qué formación viene.
+      // Solo se manda la columna cuando hay valor: así una BD sin la 021
+      // sigue facturando proyectos y formaciones sueltas sin enterarse.
+      ...(l.formacionId ? { formacion_id: l.formacionId } : {}),
     };
   });
   const baseImponible = +lineasNorm.reduce((s, l) => s + l.base_linea, 0).toFixed(2);

@@ -382,6 +382,7 @@ export interface Factura {
 export interface FacturaLinea {
     id: string;
     factura_id: string;
+    formacion_id: string | null;   // migración 021: paquetes de formaciones
     orden: number;
     concepto: string;
     cantidad: number;
