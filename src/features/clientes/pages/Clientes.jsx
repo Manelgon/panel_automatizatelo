@@ -125,7 +125,9 @@ export default function Clientes() {
                     </div>
                 </header>
 
-                <div className="flex flex-wrap gap-2 mb-8 bg-white/5 p-1.5 rounded-[1.5rem] border border-variable w-fit">
+                <DataTable
+                    cabecera={(
+                <div className="flex flex-wrap gap-2 bg-white/5 p-1.5 rounded-[1.5rem] border border-variable w-fit">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -142,8 +144,7 @@ export default function Clientes() {
                         </button>
                     ))}
                 </div>
-
-                <DataTable
+                    )}
                     tableId="clientes"
                     loading={loading}
                     data={filtered}

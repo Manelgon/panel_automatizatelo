@@ -146,7 +146,8 @@ export default function Formaciones() {
                     ))}
                 </div>
 
-                {/* Filtros */}
+                <DataTable
+                    cabecera={(
                 <div className="flex flex-wrap gap-2 mb-6">
                     {tabs.map(t => (
                         <button
@@ -160,8 +161,7 @@ export default function Formaciones() {
                         </button>
                     ))}
                 </div>
-
-                <DataTable
+                    )}
                     data={filtradas}
                     loading={loading}
                     emptyIcon={<GraduationCap size={40} className="opacity-20" />}

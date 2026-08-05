@@ -469,8 +469,9 @@ export default function Leads() {
                     </div>
                 </header>
 
-                {/* TABS DE ESTADO */}
-                <div className="flex flex-wrap gap-2 mb-8 bg-white/5 p-1.5 rounded-[1.5rem] border border-variable w-fit">
+                <DataTable
+                    cabecera={(
+                <div className="flex flex-wrap gap-2 bg-white/5 p-1.5 rounded-[1.5rem] border border-variable w-fit">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -488,8 +489,7 @@ export default function Leads() {
                         </button>
                     ))}
                 </div>
-
-                <DataTable
+                    )}
                     tableId="leads"
                     loading={loading}
                     data={filteredLeads}

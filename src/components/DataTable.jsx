@@ -35,6 +35,7 @@ export default function DataTable({
     emptyIcon,
     emptyTitle = 'Sin datos',
     emptySub = '',
+    cabecera = null,
     rowKey = 'id',
     defaultSort,
     onRowClick,
@@ -162,9 +163,11 @@ export default function DataTable({
     return (
         <div className="glass rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-8">
             {/* ----- TOOLBAR (column selector) ----- */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="flex-1 min-w-0">
-                    {/* Optional: Add search or breadcrumbs here in the future */}
+                    {/* Las páginas pasan aquí sus pestañas de filtro para que
+                        compartan fila con el botón de columnas */}
+                    {cabecera}
                 </div>
 
                 <div ref={colMenuRef} className="relative">

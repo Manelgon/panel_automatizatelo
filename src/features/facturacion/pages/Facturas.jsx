@@ -213,7 +213,21 @@ export default function Facturas() {
                     </div>
                 </div>
 
-                {/* Tabs estado */}
+                {/* Buscador */}
+                <div className="relative mb-5">
+                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Buscar por número, cliente, NIF o proyecto…"
+                        className="w-full glass border border-variable rounded-2xl pl-12 pr-4 py-3 text-sm text-variable-main placeholder:text-variable-muted outline-none focus:border-primary"
+                    />
+                </div>
+
+                {/* Lista — el mismo DataTable que usan Leads, Clientes y compañía */}
+                <DataTable
+                    cabecera={(
                 <div className="flex flex-wrap gap-2 mb-5">
                     {ESTADOS.map(t => (
                         <button
@@ -229,21 +243,7 @@ export default function Facturas() {
                         </button>
                     ))}
                 </div>
-
-                {/* Buscador */}
-                <div className="relative mb-5">
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar por número, cliente, NIF o proyecto…"
-                        className="w-full glass border border-variable rounded-2xl pl-12 pr-4 py-3 text-sm text-variable-main placeholder:text-variable-muted outline-none focus:border-primary"
-                    />
-                </div>
-
-                {/* Lista — el mismo DataTable que usan Leads, Clientes y compañía */}
-                <DataTable
+                    )}
                     tableId="facturas"
                     data={filtered}
                     loading={loading}
