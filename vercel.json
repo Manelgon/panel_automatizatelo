@@ -20,6 +20,10 @@
             "destination": "https://weatbfnbmgimssvhhqzt.supabase.co/storage/$1"
         },
         {
+            "source": "/functions/(.*)",
+            "destination": "https://weatbfnbmgimssvhhqzt.supabase.co/functions/$1"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }

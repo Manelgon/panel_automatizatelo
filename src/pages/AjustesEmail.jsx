@@ -59,6 +59,7 @@ export default function AjustesEmail() {
     const [form, setForm] = useState({});
     const [flags, setFlags] = useState({});
     const [claveOk, setClaveOk] = useState(true);
+    const [funcionCaida, setFuncionCaida] = useState(false);
     const [emailPrueba, setEmailPrueba] = useState('');
 
     const [plantillas, setPlantillas] = useState([]);
@@ -77,6 +78,13 @@ export default function AjustesEmail() {
                 const j = await error.context?.json();
                 if (j?.error) detalle = j.error;
             } catch { /* el error no traía JSON */ }
+
+            // supabase-js devuelve este mensaje genérico cuando ni siquiera
+            // consigue hablar con la función. Casi siempre es una de dos cosas.
+            if (/failed to send a request/i.test(detalle)) {
+                setFuncionCaida(true);
+                detalle = 'No se llega a la Edge Function «email». O no está desplegada todavía, o la ruta /functions no llega a Supabase.';
+            }
             throw new Error(detalle);
         }
         if (data?.error) throw new Error(data.error);
@@ -237,7 +245,41 @@ export default function AjustesEmail() {
                 </div>
 
                 {/* Estado */}
-                {!claveOk && (
+                {funcionCaida && (
+                    <div className="glass rounded-2xl border border-red-500/30 bg-red-500/5 p-5 mb-6">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={20} />
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-red-300">No se llega a la Edge Function «email»</p>
+                                <p className="text-xs text-red-300/80 mt-1 leading-relaxed">
+                                    Sin ella esta pantalla no puede leer ni guardar nada: las contraseñas
+                                    se cifran allí, nunca en el navegador. Suele ser una de estas dos:
+                                </p>
+                                <ol className="text-xs text-red-300/80 mt-3 space-y-2 list-decimal pl-4 leading-relaxed">
+                                    <li>
+                                        <strong className="text-red-200">La función no está desplegada.</strong>{' '}
+                                        En Supabase → Edge Functions, crea una llamada <code>email</code> y pega
+                                        el contenido de <code>supabase/functions/email/index.ts</code>.
+                                        Después, en Settings → Edge Functions → Secrets, añade{' '}
+                                        <code>EMAIL_ENCRYPTION_KEY</code> con 64 caracteres hexadecimales.
+                                    </li>
+                                    <li>
+                                        <strong className="text-red-200">La ruta no llega a Supabase.</strong>{' '}
+                                        Si el panel habla con Supabase a través de su propio dominio, en{' '}
+                                        <code>vercel.json</code> tiene que existir la regla de{' '}
+                                        <code>/functions/(.*)</code>, no solo las de <code>/rest</code> y{' '}
+                                        <code>/auth</code>.
+                                    </li>
+                                </ol>
+                                <p className="text-[11px] text-red-300/60 mt-3 font-mono break-all">
+                                    URL de Supabase en uso: {import.meta.env.VITE_PUBLIC_SUPABASE_URL || '(sin definir)'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {!claveOk && !funcionCaida && (
                     <div className="glass rounded-2xl border border-red-500/30 bg-red-500/5 p-5 mb-4 flex items-start gap-3">
                         <KeyRound className="text-red-400 shrink-0 mt-0.5" size={20} />
                         <div>

@@ -28,11 +28,12 @@ elimina la dependencia de n8n, funciona.
 
 ## Puesta en marcha (una sola vez)
 
+> Todo desde el panel de Supabase. No hace falta la CLI ni un terminal.
+
 ### 1. Aplicar la migración
 
-```bash
-supabase db push
-```
+Copia `supabase/migrations/007_email.sql` entero y pégalo en **SQL Editor →
+New query → Run**.
 
 Crea `email_settings`, `email_plantillas`, `email_envios` y el trigger
 `trg_lead_email_bienvenida`. El trigger nace **desactivado**
@@ -43,22 +44,41 @@ Crea `email_settings`, `email_plantillas`, `email_envios` y el trigger
 Las contraseñas SMTP/IMAP se guardan cifradas con AES-256-GCM. La clave vive
 solo en la Edge Function, nunca en la base de datos ni en el navegador.
 
-```bash
-openssl rand -hex 32
+En el mismo SQL Editor:
+
+```sql
+select encode(gen_random_bytes(32), 'hex');
 ```
 
-Guarda ese valor en un sitio seguro: **si lo pierdes hay que reintroducir las
-contraseñas**.
+Devuelve 64 caracteres hexadecimales. **Guárdalos donde no se pierdan**: si
+desaparecen, hay que reintroducir todas las contraseñas.
 
 ### 3. Desplegar la Edge Function
 
-```bash
-supabase secrets set EMAIL_ENCRYPTION_KEY=<los 64 caracteres del paso 2>
-```
+**Supabase → Edge Functions → Deploy a new function → Via Editor.**
 
-```bash
-supabase functions deploy email
-```
+- Nombre: `email` — exactamente así, es el que invoca el panel.
+- Contenido: todo `supabase/functions/email/index.ts`.
+- Deploy.
+
+Y el secreto, en **Project Settings → Edge Functions → Secrets**:
+
+| Nombre | Valor |
+|---|---|
+| `EMAIL_ENCRYPTION_KEY` | los 64 caracteres del paso 2 |
+
+`SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta Supabase sola: no hay
+que añadirlas.
+
+> **Si el panel dice «Failed to send a request to the Edge Function»** es que
+> este paso falta, o que la ruta no llega. La pantalla de Correo te lo explica
+> con las dos causas y te enseña qué URL de Supabase está usando.
+>
+> La segunda causa es esta: `vercel.json` proxea Supabase a través del dominio
+> del panel, y durante un tiempo tenía reglas para `/auth`, `/rest`, `/realtime`
+> y `/storage` pero no para `/functions`. Las llamadas caían en el catch-all del
+> SPA y volvían como `index.html`. Ya está añadida — pero requiere volver a
+> desplegar el panel en Vercel para que surta efecto.
 
 ### 4. Configurar desde el panel
 
