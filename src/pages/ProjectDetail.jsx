@@ -40,8 +40,7 @@ import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useGlobalLoading } from '../context/LoadingContext';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generarPdfPresupuesto, generarPdfRecibo } from '../features/proyectos/services/pdfs';
 
 export default function ProjectDetail() {
     const { id } = useParams();
@@ -565,79 +564,13 @@ export default function ProjectDetail() {
                 if (denyErr) throw denyErr;
             }
 
-            const doc = new jsPDF();
             const pName = project?.name || 'Proyecto';
             const pAlias = project?.id_alias || '';
-            const pClient = project?.client || 'Cliente';
             const today = new Date().toLocaleDateString('es-ES');
 
-            // Header
-            doc.setFillColor(30, 30, 40);
-            doc.rect(0, 0, 220, 42, 'F');
-            doc.setTextColor(255, 140, 50);
-            doc.setFontSize(22);
-            doc.setFont('helvetica', 'bold');
-            doc.text('PRESUPUESTO', 15, 22);
-            doc.setFontSize(10);
-            doc.setTextColor(180, 180, 190);
-            doc.text(`Fecha: ${today}`, 15, 32);
-
-            // Project / Client info
-            doc.setTextColor(60, 60, 70);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text('PROYECTO:', 15, 55);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`${pName}${pAlias ? ` (${pAlias})` : ''}`, 50, 55);
-            doc.setFont('helvetica', 'bold');
-            doc.text('CLIENTE:', 15, 62);
-            doc.setFont('helvetica', 'normal');
-            doc.text(pClient, 50, 62);
-
-            // Table
-            const tableRows = allBudgetLines.map(l => [
-                l.description,
-                l.quantity?.toString() || '1',
-                `€${parseFloat(l.unit_price || 0).toFixed(2)}`,
-                `${l.iva_percent || 21}%`,
-                `€${parseFloat(l.base || 0).toFixed(2)}`,
-                `€${parseFloat(l.total || 0).toFixed(2)}`
-            ]);
-
-            autoTable(doc, {
-                startY: 72,
-                head: [['Concepto', 'Cant.', 'Precio Unit.', 'IVA', 'Base', 'Total']],
-                body: tableRows,
-                headStyles: { fillColor: [255, 140, 50], textColor: 255, fontSize: 9, fontStyle: 'bold' },
-                bodyStyles: { fontSize: 9, textColor: [50, 50, 60] },
-                alternateRowStyles: { fillColor: [245, 245, 248] },
-                columnStyles: {
-                    0: { cellWidth: 60 },
-                    1: { halign: 'center', cellWidth: 18 },
-                    2: { halign: 'right', cellWidth: 28 },
-                    3: { halign: 'center', cellWidth: 18 },
-                    4: { halign: 'right', cellWidth: 28 },
-                    5: { halign: 'right', cellWidth: 28 },
-                },
-                margin: { left: 15, right: 15 },
-            });
-
-            const finalY = doc.lastAutoTable.finalY + 10;
-
-            // Totals
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(80, 80, 90);
-            doc.text('Subtotal (Base):', 120, finalY + 8);
-            doc.text(`€${budgetSubtotal.toFixed(2)}`, 195, finalY + 8, { align: 'right' });
-            doc.text('IVA Total:', 120, finalY + 16);
-            doc.text(`€${budgetIVA.toFixed(2)}`, 195, finalY + 16, { align: 'right' });
-            doc.setFontSize(13);
-            doc.setTextColor(255, 140, 50);
-            doc.text('TOTAL:', 120, finalY + 28);
-            doc.text(`€${budgetTotal.toFixed(2)}`, 195, finalY + 28, { align: 'right' });
-
-            // Save Snapshot
+            // Numeración y snapshot primero; el PDF se dibuja después con el
+            // mismo servicio que usa la re-descarga, para que las dos salidas
+            // no puedan divergir.
             const budgetCount = budgets.length + 1;
             const bAlias = project?.id_alias || project?.id?.substring(0, 8).toUpperCase() || '';
             const budgetNumber = `PRE-${bAlias}-${String(budgetCount).padStart(3, '0')}`;
@@ -680,6 +613,15 @@ export default function ProjectDetail() {
                 url: `budget:${newBudget.id}`
             }]);
 
+            const doc = generarPdfPresupuesto({
+                numero: budgetNumber,
+                fecha: newBudget.budget_date,
+                proyecto: project,
+                lineas: lineItemsSnapshot,
+                subtotal: budgetSubtotal,
+                ivaTotal: budgetIVA,
+                total: budgetTotal,
+            });
             doc.save(`${fileName}.pdf`);
             showNotification(previousBudgetId ? 'Presupuesto anterior denegado. Nuevo presupuesto generado ✅' : 'Presupuesto generado y guardado ✅');
             fetchProjectData();
@@ -717,78 +659,19 @@ export default function ProjectDetail() {
         const bud = budgets.find(b => b.id === budgetId);
         if (!bud) { showNotification('Presupuesto no encontrado', 'error'); return; }
 
-        const doc = new jsPDF();
-        const pName = project?.name || 'Proyecto';
-        const pAlias = project?.id_alias || '';
-        const pClient = project?.client || 'Cliente';
-        const bDate = new Date(bud.budget_date).toLocaleDateString('es-ES');
-
-        // Header
-        doc.setFillColor(30, 30, 40);
-        doc.rect(0, 0, 220, 42, 'F');
-        doc.setTextColor(255, 140, 50);
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text('PRESUPUESTO', 15, 22);
-        doc.setFontSize(10);
-        doc.setTextColor(180, 180, 190);
-        doc.text(`N.º ${bud.budget_number}`, 15, 32);
-        doc.text(`Fecha: ${bDate}`, 15, 38);
-
-        // Project / Client info
-        doc.setTextColor(60, 60, 70);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('PROYECTO:', 15, 55);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${pName}${pAlias ? ` (${pAlias})` : ''}`, 50, 55);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CLIENTE:', 15, 62);
-        doc.setFont('helvetica', 'normal');
-        doc.text(pClient, 50, 62);
-
-        // Table
-        const tableRows = (bud.line_items || []).map(l => [
-            l.description,
-            l.quantity?.toString() || '1',
-            `€${parseFloat(l.unit_price || 0).toFixed(2)}`,
-            `${l.iva_percent || 21}%`,
-            `€${parseFloat(l.base || 0).toFixed(2)}`,
-            `€${parseFloat(l.total || 0).toFixed(2)}`
-        ]);
-
-        autoTable(doc, {
-            startY: 72,
-            head: [['Concepto', 'Cant.', 'Precio Unit.', 'IVA', 'Base', 'Total']],
-            body: tableRows,
-            headStyles: { fillColor: [255, 140, 50], textColor: 255, fontSize: 9, fontStyle: 'bold' },
-            bodyStyles: { fontSize: 9, textColor: [50, 50, 60] },
-            alternateRowStyles: { fillColor: [245, 245, 248] },
-            columnStyles: {
-                0: { cellWidth: 60 },
-                1: { halign: 'center', cellWidth: 18 },
-                2: { halign: 'right', cellWidth: 28 },
-                3: { halign: 'center', cellWidth: 18 },
-                4: { halign: 'right', cellWidth: 28 },
-                5: { halign: 'right', cellWidth: 28 },
-            },
-            margin: { left: 15, right: 15 },
+        // Mismo dibujo que al generar: una sola implementacion en el servicio
+        const doc = generarPdfPresupuesto({
+            numero: bud.budget_number,
+            fecha: bud.budget_date,
+            proyecto: project,
+            lineas: bud.line_items || [],
+            subtotal: bud.subtotal,
+            ivaTotal: bud.iva_total,
+            total: bud.total,
         });
 
-        const finalY = doc.lastAutoTable.finalY + 10;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(80, 80, 90);
-        doc.text('Subtotal (Base):', 120, finalY + 8);
-        doc.text(`€${parseFloat(bud.subtotal).toFixed(2)}`, 195, finalY + 8, { align: 'right' });
-        doc.text('IVA Total:', 120, finalY + 16);
-        doc.text(`€${parseFloat(bud.iva_total).toFixed(2)}`, 195, finalY + 16, { align: 'right' });
-        doc.setFontSize(13);
-        doc.setTextColor(255, 140, 50);
-        doc.text('TOTAL:', 120, finalY + 28);
-        doc.text(`€${parseFloat(bud.total).toFixed(2)}`, 195, finalY + 28, { align: 'right' });
-
-        const fileName = `Presupuesto - ${pName} - ${pAlias} - ${bDate.replace(/\//g, '-')}`;
+        const bDate = new Date(bud.budget_date).toLocaleDateString('es-ES');
+        const fileName = `Presupuesto - ${project?.name || 'Proyecto'} - ${project?.id_alias || ''} - ${bDate.replace(/\//g, '-')}`;
         doc.save(`${fileName}.pdf`);
     };
 
@@ -857,121 +740,14 @@ export default function ProjectDetail() {
 
     const getPaymentMethodInfo = (method) => PAYMENT_METHODS.find(m => m.value === method) || PAYMENT_METHODS[4];
 
-    // Generar PDF de recibo
-    const generateReceiptPDF = (paymentData) => {
-        const doc = new jsPDF();
-        const pName = project?.name || 'Proyecto';
-        const pAlias = project?.id_alias || '';
-        const pClient = project?.client || 'Cliente';
-        const payMethod = getPaymentMethodInfo(paymentData.payment_method);
-
-        // Header
-        doc.setFillColor(30, 30, 40);
-        doc.rect(0, 0, 220, 42, 'F');
-        doc.setTextColor(80, 200, 120);
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text('RECIBO DE PAGO', 15, 22);
-        doc.setFontSize(10);
-        doc.setTextColor(180, 180, 190);
-        doc.text(`N.\u00ba ${paymentData.payment_number}`, 15, 32);
-        doc.text(`Fecha: ${new Date(paymentData.payment_date).toLocaleDateString('es-ES')}`, 15, 38);
-
-        // Company info (right side)
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Autom\u00e1t\u00edzatelo', 195, 18, { align: 'right' });
-        doc.setFontSize(8);
-        doc.setTextColor(180, 180, 190);
-        doc.text('automatizatelo.com', 195, 25, { align: 'right' });
-
-        // Project / Client info
-        doc.setTextColor(60, 60, 70);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('PROYECTO:', 15, 55);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${pName}${pAlias ? ` (${pAlias})` : ''}`, 50, 55);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CLIENTE:', 15, 62);
-        doc.setFont('helvetica', 'normal');
-        doc.text(pClient, 50, 62);
-
-        // Payment details box
-        doc.setFillColor(245, 250, 245);
-        doc.roundedRect(15, 75, 180, 60, 4, 4, 'F');
-        doc.setDrawColor(80, 200, 120);
-        doc.setLineWidth(0.5);
-        doc.roundedRect(15, 75, 180, 60, 4, 4, 'S');
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(60, 60, 70);
-        doc.text('IMPORTE RECIBIDO:', 25, 90);
-        doc.setFontSize(28);
-        doc.setTextColor(80, 200, 120);
-        doc.text(`\u20ac${parseFloat(paymentData.amount).toFixed(2)}`, 25, 108);
-
-        doc.setFontSize(10);
-        doc.setTextColor(80, 80, 90);
-        doc.setFont('helvetica', 'bold');
-        doc.text('M\u00e9todo de Pago:', 120, 90);
-        doc.setFont('helvetica', 'normal');
-        doc.text(payMethod.label, 120, 100);
-
-        if (paymentData.notes) {
-            doc.setFont('helvetica', 'bold');
-            doc.text('Notas:', 120, 115);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            const splitNotes = doc.splitTextToSize(paymentData.notes, 65);
-            doc.text(splitNotes, 120, 123);
-        }
-
-        // Balance summary
-        const summaryY = 150;
-        doc.setDrawColor(200, 200, 210);
-        doc.line(15, summaryY, 195, summaryY);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(80, 80, 90);
-        doc.text('RESUMEN DE CUENTA', 15, summaryY + 10);
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Total Facturado:', 15, summaryY + 22);
-        doc.text(`\u20ac${totalInvoiced.toFixed(2)}`, 195, summaryY + 22, { align: 'right' });
-
-        const totalPaidWithCurrent = totalPaid + parseFloat(paymentData.amount || 0);
-        doc.text('Total Cobrado (inc. este pago):', 15, summaryY + 32);
-        doc.setTextColor(80, 200, 120);
-        doc.text(`\u20ac${totalPaidWithCurrent.toFixed(2)}`, 195, summaryY + 32, { align: 'right' });
-
-        doc.setDrawColor(80, 200, 120);
-        doc.setLineWidth(0.5);
-        doc.line(15, summaryY + 36, 195, summaryY + 36);
-
-        const remainingBalance = totalInvoiced - totalPaidWithCurrent;
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        if (remainingBalance <= 0) {
-            doc.setTextColor(80, 200, 120);
-            doc.text('SALDO PENDIENTE:', 15, summaryY + 46);
-            doc.text('\u20ac0.00 - PAGADO COMPLETO \u2713', 195, summaryY + 46, { align: 'right' });
-        } else {
-            doc.setTextColor(220, 120, 50);
-            doc.text('SALDO PENDIENTE:', 15, summaryY + 46);
-            doc.text(`\u20ac${remainingBalance.toFixed(2)}`, 195, summaryY + 46, { align: 'right' });
-        }
-
-        // Footer
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 160);
-        doc.text('Este recibo ha sido generado autom\u00e1ticamente por el Panel de Autom\u00e1t\u00edzatelo.', 105, 285, { align: 'center' });
-
-        return doc;
-    };
+    // Generar PDF de recibo — el dibujo vive en features/proyectos/services/pdfs.js
+    const generateReceiptPDF = (paymentData) => generarPdfRecibo({
+        pago: paymentData,
+        metodoEtiqueta: getPaymentMethodInfo(paymentData.payment_method).label,
+        proyecto: project,
+        totalFacturado: totalInvoiced,
+        totalCobrado: totalPaid,
+    });
 
     const handleRegisterPayment = async (e) => {
         e.preventDefault();
