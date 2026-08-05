@@ -287,12 +287,12 @@ export default function DataTable({
             <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
                 <table className="w-full text-left min-w-[600px] sm:min-w-full">
                     {/* HEAD */}
-                    <thead className="text-variable-muted text-[10px] sm:text-xs uppercase tracking-[0.2em] font-bold border-b border-variable">
+                    <thead className="text-variable-muted text-[11px] uppercase tracking-wide font-bold border-b-2 border-variable bg-white/[0.03]">
                         <tr>
                             {visibleColumns.map((col) => (
                                 <th
                                     key={col.key}
-                                    className={`pb-4 sm:pb-6 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''} ${col.sortable !== false ? 'cursor-pointer select-none group' : ''}`}
+                                    className={`py-2.5 px-3 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''} ${col.sortable !== false ? 'cursor-pointer select-none group' : ''}`}
                                     onClick={() => col.sortable !== false && handleSort(col.key)}
                                 >
                                     <span className="inline-flex items-center gap-1.5">
@@ -321,7 +321,7 @@ export default function DataTable({
                     <tbody className="divide-y divide-variable">
                         {loading && data.length === 0 ? (
                             <tr>
-                                <td colSpan={visibleColumns.length} className="py-20 text-center">
+                                <td colSpan={visibleColumns.length} className="py-12 text-center">
                                     <div className="flex flex-col items-center gap-4">
                                         <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                                         <p className="text-variable-muted font-medium">Cargando...</p>
@@ -330,7 +330,7 @@ export default function DataTable({
                             </tr>
                         ) : data.length === 0 ? (
                             <tr>
-                                <td colSpan={visibleColumns.length} className="py-20 text-center">
+                                <td colSpan={visibleColumns.length} className="py-12 text-center">
                                     <div className="flex flex-col items-center gap-4 text-variable-muted">
                                         {emptyIcon}
                                         <p className="font-medium">{emptyTitle}</p>
@@ -342,13 +342,13 @@ export default function DataTable({
                             paged.map((row) => (
                                 <tr
                                     key={row[rowKey]}
-                                    className={`group hover:bg-white/[0.02] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                                    className={`group odd:bg-white/[0.015] hover:bg-primary/[0.05] transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
                                     onClick={() => onRowClick?.(row)}
                                 >
                                     {visibleColumns.map((col) => (
                                         <td
                                             key={col.key}
-                                            className={`py-4 sm:py-6 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}
+                                            className={`py-2.5 px-3 ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : ''}`}
                                         >
                                             <div className="min-h-[1.5rem] flex items-center">
                                                 {col.render ? col.render(row) : row[col.key]}
@@ -364,7 +364,7 @@ export default function DataTable({
 
             {/* ----- PAGINATION BAR ----- */}
             {data.length > 0 && (
-                <div className="flex flex-col items-center justify-between gap-6 mt-6 pt-6 border-t border-variable lg:flex-row">
+                <div className="flex flex-col items-center justify-between gap-4 mt-3 pt-3 border-t border-variable lg:flex-row">
                     {/* Rows per page */}
                     <div className="flex items-center gap-3">
                         <span className="text-[10px] text-variable-muted font-bold uppercase tracking-widest">Mostrar</span>
