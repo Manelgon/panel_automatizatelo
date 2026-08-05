@@ -1,10 +1,18 @@
--- =============================================
--- SCHEMA COMPLETO: Panel Automatizatelo
--- Supabase Self-Hosted
--- =============================================
--- Ejecutar este archivo en el SQL Editor de Supabase
--- para crear/recrear todas las tablas y políticas.
--- =============================================
+-- =============================================================================
+-- MIGRACIÓN 000 — BASELINE
+-- =============================================================================
+-- Antes era `supabase/schema.sql` y se pegaba a mano en el SQL Editor. Ahora es
+-- la primera migración, para que el repositorio pueda levantar una base de datos
+-- desde cero. Todo es idempotente (IF NOT EXISTS / DROP POLICY IF EXISTS), así
+-- que aplicarlo sobre la base de datos actual no rompe nada.
+--
+-- OJO: las políticas RLS de este archivo son las originales y son permisivas a
+-- propósito — se conservan tal cual para no reescribir la historia. Quien las
+-- corrige es la migración 008_seguridad_rls.sql, que corre después.
+--
+-- Al final del archivo hay un bloque «RECONSTRUIDO POR INFERENCIA» con lo que
+-- existía solo en la base de datos real. Ver docs/BASE-DE-DATOS.md.
+-- =============================================================================
 
 
 -- =============================================
@@ -1181,3 +1189,60 @@ SELECT trigger_name, event_object_table
 FROM information_schema.triggers
 WHERE event_object_schema = 'auth';
 
+
+
+-- =============================================================================
+-- FALTABA EN EL REPOSITORIO — verificado contra la base de datos real
+-- =============================================================================
+-- Lo que sigue existe en Supabase pero nunca llegó a este repositorio: se creó a
+-- mano en el SQL Editor. Se reconstruyó primero leyendo el código que lo usa y
+-- después se corrigió con el volcado real del esquema (agosto de 2026), así que
+-- estas definiciones sí coinciden columna por columna.
+-- =============================================================================
+
+-- Clientes. `facturas.client_id` (migración 001) la referencia como obligatoria,
+-- así que tiene que existir ANTES que 001.
+CREATE TABLE IF NOT EXISTS public.clients (
+    id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id             uuid        REFERENCES public.leads(id),
+    client_type         text        NOT NULL DEFAULT 'particular'
+                                    CHECK (client_type IN ('particular', 'empresa', 'agencia', 'otro')),
+    first_name          text        NOT NULL,
+    last_name           text,
+    email               text        NOT NULL,
+    phone               text,
+    company_name        text,
+    tax_id              text,                                -- NIF / CIF / NIE
+    billing_address     text,
+    billing_postal_code text,
+    billing_city        text,
+    billing_country     text        DEFAULT 'España',
+    notes               text,
+    status              text        NOT NULL DEFAULT 'active'
+                                    CHECK (status IN ('active', 'inactive', 'archived')),
+    created_at          timestamptz DEFAULT now(),
+    updated_at          timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clients_email  ON public.clients(lower(email));
+CREATE INDEX IF NOT EXISTS idx_clients_status ON public.clients(status);
+CREATE INDEX IF NOT EXISTS idx_clients_lead   ON public.clients(lead_id);
+
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "clients_admin_all" ON public.clients;
+CREATE POLICY "clients_admin_all" ON public.clients
+    FOR ALL TO authenticated
+    USING ( (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin' )
+    WITH CHECK ( (SELECT role FROM public.users WHERE id = auth.uid()) = 'admin' );
+
+
+-- Vínculo proyecto → cliente.
+-- `projects.client` (texto libre) sigue existiendo por compatibilidad, pero el
+-- que vale es `client_id`: sin él, el embed `clients -> projects(...)` que usan
+-- Clientes.jsx y ClienteDetail.jsx no funciona.
+-- La fase 2 de la auditoría elimina la columna de texto.
+ALTER TABLE public.projects
+    ADD COLUMN IF NOT EXISTS client_id uuid REFERENCES public.clients(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_projects_client ON public.projects(client_id);

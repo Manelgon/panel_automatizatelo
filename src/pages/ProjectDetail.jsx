@@ -42,6 +42,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
+import { crearFactura, getCompanySettings, getFacturaCompleta, generarPdfFactura, registrarVerifactu } from '../lib/facturas';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -198,10 +199,10 @@ export default function ProjectDetail() {
             .order('created_at', { ascending: true });
         setBudgetLines(lineData || []);
 
-        // Fetch invoices
+        // Fetch invoices (modelo fiscal nuevo: facturas + factura_lineas)
         const { data: invData } = await supabase
-            .from('project_invoices')
-            .select('*')
+            .from('facturas')
+            .select('*, factura_lineas(*)')
             .eq('project_id', id)
             .order('created_at', { ascending: false });
         setInvoices(invData || []);
@@ -245,7 +246,7 @@ export default function ProjectDetail() {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_files', filter: `project_id=eq.${id}` }, fetchProjectData)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_services', filter: `project_id=eq.${id}` }, fetchBudgetData)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_budget_lines', filter: `project_id=eq.${id}` }, fetchBudgetData)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_invoices', filter: `project_id=eq.${id}` }, fetchBudgetData)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'facturas', filter: `project_id=eq.${id}` }, fetchBudgetData)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_budgets', filter: `project_id=eq.${id}` }, fetchBudgetData)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_payments', filter: `project_id=eq.${id}` }, fetchBudgetData)
                 .subscribe();
@@ -453,103 +454,64 @@ export default function ProjectDetail() {
     const uninvoicedIVA = uninvoicedLines.reduce((sum, l) => sum + l.iva, 0);
     const uninvoicedTotal = uninvoicedLines.reduce((sum, l) => sum + l.total, 0);
 
-    // Generar PDF de factura
-    const generateInvoicePDF = (invoiceData) => {
-        const doc = new jsPDF();
-        const pName = invoiceData.projectName || project?.name || 'Proyecto';
-        const pAlias = invoiceData.projectAlias || project?.id_alias || '';
-        const pClient = invoiceData.clientName || project?.client || 'Cliente';
+    // Wrapper local que llama al helper compartido inyectando el proyecto actual
+    const generateInvoicePDF = (factura, settings) => generarPdfFactura(factura, settings, project);
 
-        // Header
-        doc.setFillColor(30, 30, 40);
-        doc.rect(0, 0, 220, 42, 'F');
-        doc.setTextColor(255, 140, 50);
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text('FACTURA', 15, 22);
-        doc.setFontSize(10);
-        doc.setTextColor(180, 180, 190);
-        doc.text(`N.º ${invoiceData.invoice_number}`, 15, 32);
-        doc.text(`Fecha: ${new Date(invoiceData.invoice_date).toLocaleDateString('es-ES')}`, 15, 38);
-
-        // Company info (right side)
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Automatízatelo', 195, 18, { align: 'right' });
-        doc.setFontSize(8);
-        doc.setTextColor(180, 180, 190);
-        doc.text('automatizatelo.com', 195, 25, { align: 'right' });
-
-        // Project / Client info
-        doc.setTextColor(60, 60, 70);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('PROYECTO:', 15, 55);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${pName}${pAlias ? ` (${pAlias})` : ''}`, 50, 55);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CLIENTE:', 15, 62);
-        doc.setFont('helvetica', 'normal');
-        doc.text(pClient, 50, 62);
-
-        // Table
-        const lines = invoiceData.line_items || [];
-        const tableRows = lines.map(l => [
-            l.description,
-            l.quantity?.toString() || '1',
-            `€${parseFloat(l.unit_price || 0).toFixed(2)}`,
-            `${l.iva_percent || 21}%`,
-            `€${parseFloat(l.base || 0).toFixed(2)}`,
-            `€${parseFloat(l.total || 0).toFixed(2)}`
-        ]);
-
-        autoTable(doc, {
-            startY: 72,
-            head: [['Concepto', 'Cant.', 'Precio Unit.', 'IVA', 'Base', 'Total']],
-            body: tableRows,
-            headStyles: { fillColor: [255, 140, 50], textColor: 255, fontSize: 9, fontStyle: 'bold' },
-            bodyStyles: { fontSize: 9, textColor: [50, 50, 60] },
-            alternateRowStyles: { fillColor: [245, 245, 248] },
-            columnStyles: {
-                0: { cellWidth: 60 },
-                1: { halign: 'center', cellWidth: 18 },
-                2: { halign: 'right', cellWidth: 28 },
-                3: { halign: 'center', cellWidth: 18 },
-                4: { halign: 'right', cellWidth: 28 },
-                5: { halign: 'right', cellWidth: 28 },
-            },
-            margin: { left: 15, right: 15 },
+    // Núcleo común: dadas unas líneas (formato {description, quantity, unit_price, iva_percent}),
+    // crea la factura en el modelo fiscal nuevo y marca los servicios/líneas como facturados.
+    // Devuelve { ok, factura } o lanza para que withLock muestre el error.
+    const _emitirFactura = async ({ lineasUI, serviceIdsAfectados, budgetLineIdsAfectados, ivaPct }) => {
+        if (!project?.client_id) {
+            throw new Error('El proyecto no tiene cliente asociado. Asigna un cliente al proyecto antes de facturar.');
+        }
+        const lineasParaFactura = lineasUI.map(l => ({
+            concepto: l.description || 'Servicio',
+            cantidad: l.quantity || 1,
+            precio_unitario: l.unit_price || 0,
+            descuento_porcentaje: 0,
+        }));
+        const res = await crearFactura({
+            clientId: project.client_id,
+            projectId: id,
+            lineas: lineasParaFactura,
+            ivaPorcentaje: ivaPct ?? 21,
         });
+        if (res.error) throw new Error(res.error);
+        const factura = res.factura;
 
-        const finalY = doc.lastAutoTable.finalY + 10;
+        if (serviceIdsAfectados?.length) {
+            await supabase.from('project_services').update({ invoice_id: factura.id }).in('id', serviceIdsAfectados);
+        }
+        if (budgetLineIdsAfectados?.length) {
+            await supabase.from('project_budget_lines').update({ invoice_id: factura.id }).in('id', budgetLineIdsAfectados);
+        }
 
-        // Totals
-        doc.setDrawColor(200, 200, 210);
-        doc.line(120, finalY, 195, finalY);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(80, 80, 90);
-        doc.text('Subtotal (Base Imponible):', 120, finalY + 8);
-        doc.text(`€${parseFloat(invoiceData.subtotal).toFixed(2)}`, 195, finalY + 8, { align: 'right' });
-        doc.text('IVA Total:', 120, finalY + 16);
-        doc.text(`€${parseFloat(invoiceData.iva_total).toFixed(2)}`, 195, finalY + 16, { align: 'right' });
+        // Registrar en project_files
+        const dateStr = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
+        const alias = project.id_alias || project.id.substring(0, 8).toUpperCase();
+        const fileName = `Factura - ${project.name} - ${alias} - ${dateStr}`;
+        await supabase.from('project_files').insert([{
+            project_id: id,
+            name: fileName,
+            size: `${lineasParaFactura.length} líneas`,
+            file_type: 'FACTURA',
+            url: `invoice:${factura.id}`,
+        }]);
 
-        doc.setDrawColor(255, 140, 50);
-        doc.setLineWidth(0.5);
-        doc.line(120, finalY + 20, 195, finalY + 20);
-        doc.setFontSize(13);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(255, 140, 50);
-        doc.text('TOTAL:', 120, finalY + 28);
-        doc.text(`€${parseFloat(invoiceData.total).toFixed(2)}`, 195, finalY + 28, { align: 'right' });
+        // Registrar en Verifactu (cadena SHA-256 local) — NO bloqueante.
+        // Si falla, la factura ya está creada y se podrá reintentar desde /verifactu.
+        const verifactuRes = await registrarVerifactu(factura.id, 'alta');
+        if (verifactuRes.error) {
+            showNotification(`Factura ${factura.numero} emitida, pero Veri*factu falló: ${verifactuRes.error}. Reintenta desde /verifactu.`, 'error');
+        }
 
-        // Footer
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 160);
-        doc.text('Este documento ha sido generado automáticamente por el Panel de Automatízatelo.', 105, 285, { align: 'center' });
+        // Generar PDF en el momento de emisión (con qr_url ya seteado si Verifactu fue OK)
+        const settings = await getCompanySettings();
+        const { factura: facturaCompleta } = await getFacturaCompleta(factura.id);
+        const doc = generateInvoicePDF(facturaCompleta, settings);
+        doc.save(`${fileName}.pdf`);
 
-        return doc;
+        return { factura, verifactu: verifactuRes };
     };
 
     const handleGenerateInvoice = async () => {
@@ -564,75 +526,36 @@ export default function ProjectDetail() {
             showNotification('No hay líneas pendientes de facturar', 'error');
             return;
         }
+        const ivaPct = parseFloat(uninvoicedLines[0]?.iva_percent) || 21;
         await withLock(async () => {
-            const invoiceCount = invoices.length + 1;
-            const alias = project.id_alias || project.id.substring(0, 8).toUpperCase();
-            const invoiceNumber = `FAC-${alias}-${String(invoiceCount).padStart(3, '0')}`;
-            const today = new Date().toISOString().split('T')[0];
-            const lineItemsSnapshot = uninvoicedLines.map(l => ({
-                description: l.description,
-                quantity: l.quantity || 1,
-                unit_price: l.unit_price,
-                iva_percent: l.iva_percent,
-                base: l.base,
-                iva: l.iva,
-                total: l.total,
-                type: l.isService ? 'servicio' : 'manual'
-            }));
-            const { data: invoice, error: invErr } = await supabase
-                .from('project_invoices')
-                .insert([{
-                    project_id: id,
-                    invoice_number: invoiceNumber,
-                    invoice_date: today,
-                    subtotal: uninvoicedSubtotal,
-                    iva_total: uninvoicedIVA,
-                    total: uninvoicedTotal,
-                    line_items: lineItemsSnapshot,
-                    status: 'emitida'
-                }])
-                .select()
-                .single();
-            if (invErr) throw invErr;
-            const uninvoicedServiceIds = projectServices.filter(ps => !ps.invoice_id).map(ps => ps.id);
-            if (uninvoicedServiceIds.length > 0) {
-                await supabase.from('project_services').update({ invoice_id: invoice.id }).in('id', uninvoicedServiceIds);
-            }
-            const uninvoicedBudgetIds = budgetLines.filter(bl => !bl.invoice_id).map(bl => bl.id);
-            if (uninvoicedBudgetIds.length > 0) {
-                await supabase.from('project_budget_lines').update({ invoice_id: invoice.id }).in('id', uninvoicedBudgetIds);
-            }
-            const dateStr = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
-            const fileName = `Factura - ${project.name} - ${alias} - ${dateStr}`;
-            await supabase.from('project_files').insert([{
-                project_id: id,
-                name: fileName,
-                size: `${lineItemsSnapshot.length} líneas`,
-                file_type: 'FACTURA',
-                url: `invoice:${invoice.id}`
-            }]);
-            const invoiceData = { ...invoice, projectName: project.name, projectAlias: project.id_alias, clientName: project.client };
-            const doc = generateInvoicePDF(invoiceData);
-            doc.save(`${fileName}.pdf`);
-            showNotification(`Factura ${invoiceNumber} generada correctamente ✅`);
+            const serviceIds = projectServices.filter(ps => !ps.invoice_id).map(ps => ps.id);
+            const budgetLineIds = budgetLines.filter(bl => !bl.invoice_id).map(bl => bl.id);
+            const { factura } = await _emitirFactura({
+                lineasUI: uninvoicedLines,
+                serviceIdsAfectados: serviceIds,
+                budgetLineIdsAfectados: budgetLineIds,
+                ivaPct,
+            });
+            showNotification(`Factura ${factura.numero} generada correctamente ✅`);
             fetchProjectData();
             fetchBudgetData();
         }, 'Generando factura...');
     };
 
-    const handleRedownloadInvoice = (invoiceId) => {
-        const inv = invoices.find(i => i.id === invoiceId);
-        if (!inv) { showNotification('Factura no encontrada', 'error'); return; }
-        const invoiceData = {
-            ...inv,
-            projectName: project?.name,
-            projectAlias: project?.id_alias,
-            clientName: project?.client
-        };
-        const doc = generateInvoicePDF(invoiceData);
-        const alias = project?.id_alias || project?.id?.substring(0, 8).toUpperCase() || '';
-        const dateStr = new Date(inv.invoice_date).toLocaleDateString('es-ES').replace(/\//g, '-');
-        doc.save(`Factura - ${project?.name} - ${alias} - ${dateStr}.pdf`);
+    const handleRedownloadInvoice = async (invoiceId) => {
+        try {
+            const [{ factura }, settings] = await Promise.all([
+                getFacturaCompleta(invoiceId),
+                getCompanySettings(),
+            ]);
+            if (!factura) { showNotification('Factura no encontrada', 'error'); return; }
+            const doc = generateInvoicePDF(factura, settings);
+            const alias = project?.id_alias || project?.id?.substring(0, 8).toUpperCase() || '';
+            const dateStr = new Date(factura.fecha_emision).toLocaleDateString('es-ES').replace(/\//g, '-');
+            doc.save(`Factura - ${project?.name} - ${alias} - ${dateStr}.pdf`);
+        } catch (err) {
+            showNotification(`Error al descargar: ${err.message}`, 'error');
+        }
     };
 
     // Lógica real de generación (llamada tras confirmación o directamente si no hay activo)
@@ -890,41 +813,28 @@ export default function ProjectDetail() {
                     .eq('id', budgetId);
                 if (error) throw error;
                 if (newStatus === 'confirmado') {
-                    const invoiceCount = invoices.length + 1;
-                    const alias = project.id_alias || project.id.substring(0, 8).toUpperCase();
-                    const invoiceNumber = `FAC-${alias}-${String(invoiceCount).padStart(3, '0')}`;
-                    const today = new Date().toISOString().split('T')[0];
-                    const { data: invoice, error: invErr } = await supabase
-                        .from('project_invoices')
-                        .insert([{
-                            project_id: id,
-                            invoice_number: invoiceNumber,
-                            invoice_date: today,
-                            subtotal: bud.subtotal,
-                            iva_total: bud.iva_total,
-                            total: bud.total,
-                            line_items: bud.line_items,
-                            status: 'emitida'
-                        }])
-                        .select()
-                        .single();
-                    if (invErr) throw invErr;
-                    const dateStr = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
-                    const fileName = `Factura - ${project.name} - ${alias} - ${dateStr}`;
-                    await supabase.from('project_files').insert([{
-                        project_id: id,
-                        name: fileName,
-                        size: `${(bud.line_items || []).length} líneas`,
-                        file_type: 'FACTURA',
-                        url: `invoice:${invoice.id}`
-                    }]);
-                    const { data: allInvoices } = await supabase
-                        .from('project_invoices').select('total').eq('project_id', id);
-                    const totalFacturado = (allInvoices || []).reduce((sum, inv) => sum + parseFloat(inv.total || 0), 0);
-                    await supabase.from('projects').update({ budget: totalFacturado }).eq('id', id);
+                    // Reutilizamos el snapshot del presupuesto (bud.line_items) como líneas.
+                    // line_items legacy del presupuesto: { description, quantity, unit_price, iva_percent }
+                    const lineasUI = (bud.line_items || []).map(l => ({
+                        description: l.description,
+                        quantity: l.quantity || 1,
+                        unit_price: l.unit_price || 0,
+                        iva_percent: l.iva_percent || 21,
+                    }));
+                    if (lineasUI.length === 0) {
+                        throw new Error('El presupuesto no tiene líneas para facturar');
+                    }
+                    const ivaPct = parseFloat(lineasUI[0]?.iva_percent) || 21;
+                    const { factura } = await _emitirFactura({
+                        lineasUI,
+                        serviceIdsAfectados: projectServices.filter(ps => !ps.invoice_id).map(ps => ps.id),
+                        budgetLineIdsAfectados: budgetLines.filter(bl => !bl.invoice_id).map(bl => bl.id),
+                        ivaPct,
+                    });
+                    // Limpiar borrador (servicios/líneas de presupuesto consumidos por la factura)
                     await supabase.from('project_services').delete().eq('project_id', id);
                     await supabase.from('project_budget_lines').delete().eq('project_id', id);
-                    showNotification('¡Presupuesto confirmado y factura generada! 🚀');
+                    showNotification(`¡Presupuesto confirmado y factura ${factura.numero} generada! 🚀`);
                 } else if (newStatus === 'denegado') {
                     showNotification('Presupuesto marcado como denegado ✖️');
                 }
@@ -1763,8 +1673,8 @@ export default function ProjectDetail() {
                                                     <div key={inv.id} onClick={() => handleRedownloadInvoice(inv.id)} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-variable hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-all group">
                                                         <div className="p-2.5 bg-primary/10 rounded-xl text-primary group-hover:scale-110 transition-transform"><Receipt size={18} /></div>
                                                         <div className="flex-1">
-                                                            <p className="text-sm font-bold text-variable-main">{inv.invoice_number}</p>
-                                                            <p className="text-[9px] text-variable-muted font-bold">{new Date(inv.invoice_date).toLocaleDateString('es-ES')} • {inv.line_items?.length || 0} líneas</p>
+                                                            <p className="text-sm font-bold text-variable-main">{inv.numero}</p>
+                                                            <p className="text-[9px] text-variable-muted font-bold">{new Date(inv.fecha_emision).toLocaleDateString('es-ES')} • {inv.factura_lineas?.length || 0} líneas</p>
                                                         </div>
                                                         <div className="text-right flex flex-col items-end gap-1">
                                                             <span className="text-sm font-black text-primary">€{parseFloat(inv.total).toFixed(2)}</span>

@@ -82,7 +82,9 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
     const fetchDetails = useCallback(async () => {
         const [{ data: subs }, { data: coms }] = await Promise.all([
             supabase.from('task_subtasks').select('*').eq('task_id', task.id).order('created_at'),
-            supabase.from('task_comments').select('*, users(full_name, avatar_url)').eq('task_id', task.id).order('created_at'),
+            // `full_name` no es una columna de users: se compone aquí, igual que
+            // en normalizedUsers más abajo.
+            supabase.from('task_comments').select('*, users(first_name, second_name, avatar_url)').eq('task_id', task.id).order('created_at'),
         ]);
         setSubtasks(subs || []);
         setComments(coms || []);
@@ -339,12 +341,14 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
                     </p>
 
                     <div className="space-y-4 mb-4">
-                        {comments.map(c => (
+                        {comments.map(c => {
+                            const autor = [c.users?.first_name, c.users?.second_name].filter(Boolean).join(' ');
+                            return (
                             <div key={c.id} className="flex gap-3 group">
-                                <Avatar name={c.users?.full_name || '?'} size={7} />
+                                <Avatar name={autor || '?'} size={7} />
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-xs font-bold text-variable-main">{c.users?.full_name || 'Usuario'}</span>
+                                        <span className="text-xs font-bold text-variable-main">{autor || 'Usuario'}</span>
                                         <span className="text-[10px] text-variable-muted">{new Date(c.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                     <div className="p-3 rounded-xl bg-white/5 border border-variable text-sm text-variable-muted leading-relaxed">
@@ -357,7 +361,8 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
                                     </button>
                                 )}
                             </div>
-                        ))}
+                            );
+                        })}
                         {comments.length === 0 && (
                             <p className="text-xs text-variable-muted italic text-center py-4">Sin actividad aún. ¡Sé el primero en comentar!</p>
                         )}

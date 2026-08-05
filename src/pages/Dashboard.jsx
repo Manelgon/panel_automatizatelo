@@ -146,7 +146,7 @@ export default function Dashboard() {
                     supabase.from('projects').select('*').order('created_at', { ascending: false }),
                     supabase.from('project_tasks').select('*, projects(name)').order('created_at', { ascending: false }).limit(8),
                     supabase.from('project_milestones').select('*, projects(name)').gte('start_date', new Date().toISOString()).order('start_date', { ascending: true }).limit(6),
-                    supabase.from('project_invoices').select('*').order('created_at', { ascending: false }),
+                    supabase.from('facturas').select('*').order('created_at', { ascending: false }),
                     supabase.from('project_payments').select('*').order('created_at', { ascending: false }),
                     supabase.from('users').select('id, first_name, second_name, email, avatar_url'),
                     supabase.from('project_tasks').select('id, status, project_id'),
@@ -225,7 +225,7 @@ export default function Dashboard() {
                 icon: Receipt,
                 color: 'text-primary',
                 bg: 'bg-primary/10',
-                text: `Factura ${inv.invoice_number} generada`,
+                text: `Factura ${inv.numero} generada`,
                 sub: `€${parseFloat(inv.total || 0).toFixed(2)}`,
                 date: inv.created_at,
             });

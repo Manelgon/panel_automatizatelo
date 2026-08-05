@@ -10,6 +10,10 @@ import Blog from './pages/Blog';
 import Services from './pages/Services';
 import Projects from './pages/Projects';
 import Tasks from './pages/Tasks';
+import Facturas from './pages/Facturas';
+import AjustesEmisor from './pages/AjustesEmisor';
+import AjustesEmail from './pages/AjustesEmail';
+import Verifactu from './pages/Verifactu';
 import Calendar from './pages/Calendar';
 import Login from './pages/Login';
 import { ThemeProvider } from './context/ThemeContext';
@@ -130,6 +134,30 @@ function App() {
                                     </ProtectedRoute>
                                 } />
 
+
+                                <Route path="/facturas" element={
+                                    <ProtectedRoute>
+                                        <Facturas />
+                                    </ProtectedRoute>
+                                } />
+
+                                <Route path="/ajustes-emisor" element={
+                                    <ProtectedRoute>
+                                        <AjustesEmisor />
+                                    </ProtectedRoute>
+                                } />
+
+                                <Route path="/ajustes-email" element={
+                                    <ProtectedRoute>
+                                        <AjustesEmail />
+                                    </ProtectedRoute>
+                                } />
+
+                                <Route path="/verifactu" element={
+                                    <ProtectedRoute>
+                                        <Verifactu />
+                                    </ProtectedRoute>
+                                } />
 
                                 <Route path="/blog" element={
                                     <ProtectedRoute>

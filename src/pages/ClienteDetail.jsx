@@ -34,13 +34,13 @@ export default function ClienteDetail() {
     const fetchCliente = async () => {
         setLoading(true);
         try {
+            // 1. Cliente + proyectos (con presupuestos / hitos / pagos / archivos)
             const { data, error } = await supabase
                 .from('clients')
                 .select(`
                     *,
                     projects (
                         id, name, status, total_hours, id_alias, description, created_at,
-                        project_invoices (id, invoice_number, total, status, invoice_date),
                         project_budgets (id, budget_number, total, status, budget_date, created_at),
                         project_milestones (id, title, status, target_date),
                         project_payments (id, amount, payment_date, payment_method, invoice_id, payment_number),
@@ -51,6 +51,14 @@ export default function ClienteDetail() {
                 .single();
 
             if (error) throw error;
+
+            // 2. Facturas: ahora viven en `facturas` con client_id directo (sin pasar por proyectos)
+            const { data: facturasData } = await supabase
+                .from('facturas')
+                .select('id, numero, total, estado, fecha_emision, project_id, projects(name)')
+                .eq('client_id', id)
+                .order('fecha_emision', { ascending: false });
+            data.facturas = facturasData || [];
             setCliente(data);
             setEditForm({
                 first_name: data.first_name || '',
@@ -97,10 +105,11 @@ export default function ClienteDetail() {
         }
     };
 
-    // Agregados desde proyectos
-    const allInvoices = (cliente?.projects || []).flatMap(p =>
-        (p.project_invoices || []).map(i => ({ ...i, project_name: p.name, project_id: p.id }))
-    );
+    // Facturas: ya vienen filtradas por client_id; adaptamos forma para la lista
+    const allInvoices = (cliente?.facturas || []).map(f => ({
+        ...f,
+        project_name: f.projects?.name || '—',
+    }));
     const allBudgets = (cliente?.projects || []).flatMap(p =>
         (p.project_budgets || []).map(b => ({ ...b, project_name: p.name, project_id: p.id }))
     );
@@ -275,14 +284,14 @@ export default function ClienteDetail() {
                             renderItem={(i) => (
                                 <div key={i.id} className="flex items-center justify-between p-4 rounded-xl border border-variable">
                                     <div>
-                                        <p className="font-bold text-variable-main">{i.invoice_number || `Factura #${i.id.slice(0, 8)}`}</p>
+                                        <p className="font-bold text-variable-main">{i.numero || `Factura #${i.id.slice(0, 8)}`}</p>
                                         <p className="text-xs text-variable-muted">
                                             Proyecto: {i.project_name}
-                                            {i.invoice_date && ` · ${new Date(i.invoice_date).toLocaleDateString('es-ES')}`}
+                                            {i.fecha_emision && ` · ${new Date(i.fecha_emision).toLocaleDateString('es-ES')}`}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">{i.status}</span>
+                                        <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">{i.estado}</span>
                                         <span className="font-bold text-variable-main">{parseFloat(i.total || 0).toFixed(2)}€</span>
                                     </div>
                                 </div>
