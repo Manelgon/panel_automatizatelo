@@ -6,6 +6,7 @@ import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../..
 import { enviarDocumento } from '../../../lib/enviarEmail';
 import { registrarAccion } from '../../../lib/auditoria';
 import Sidebar from '../../../components/Sidebar';
+import DataTable from '../../../components/DataTable';
 import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
@@ -241,35 +242,29 @@ export default function Facturas() {
                     />
                 </div>
 
-                {/* Lista */}
-                <div className="glass rounded-2xl border border-variable overflow-hidden">
-                    {loading ? (
-                        <div className="p-10 flex justify-center">
-                            <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                        </div>
-                    ) : filtered.length === 0 ? (
-                        <div className="p-10 text-center">
-                            <FileWarning className="mx-auto text-variable-muted mb-3" size={36} />
-                            <p className="text-variable-muted text-sm">
-                                {facturas.length === 0
-                                    ? 'Todavía no hay facturas. Crea una desde un proyecto (confirmando un presupuesto o generando manualmente).'
-                                    : 'No hay facturas que coincidan con los filtros.'}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-variable">
-                            {filtered.map(f => {
+                {/* Lista — el mismo DataTable que usan Leads, Clientes y compañía */}
+                <DataTable
+                    tableId="facturas"
+                    data={filtered}
+                    loading={loading}
+                    rowKey="id"
+                    defaultSort={{ key: 'fecha_emision', dir: 'desc' }}
+                    emptyIcon={<FileWarning size={36} className="opacity-40" />}
+                    emptyTitle={facturas.length === 0 ? 'Todavía no hay facturas' : 'Nada coincide con los filtros'}
+                    emptySub={facturas.length === 0 ? 'Crea una desde un proyecto (confirmando un presupuesto) o desde una formación.' : ''}
+                    columns={[
+                        {
+                            key: 'numero',
+                            label: 'Factura',
+                            hideable: false,
+                            render: (f) => {
                                 const badge = BADGE_ESTADO[f.estado] || 'bg-zinc-500/15 text-zinc-400';
                                 return (
-                                    <div
-                                        key={f.id}
-                                        className="flex items-center gap-4 p-4 sm:p-5 hover:bg-primary/5 transition-colors"
-                                    >
-                                        <div className="p-3 bg-primary/10 rounded-xl text-primary shrink-0">
-                                            <Receipt size={20} />
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0">
+                                            <Receipt size={18} />
                                         </div>
-
-                                        <div className="flex-1 min-w-0">
+                                        <div className="min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <p className="font-bold text-variable-main text-sm">{f.numero}</p>
                                                 <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold ${badge}`}>
@@ -279,74 +274,100 @@ export default function Facturas() {
                                             <p className="text-xs text-variable-muted truncate">
                                                 {f.cliente_nombre}
                                                 {f.cliente_nif && ` · ${f.cliente_nif}`}
-                                                {f.projects?.name && (
-                                                    <> · <Link to={`/projects/${f.project_id}`} className="hover:text-primary">{f.projects.name}</Link></>
-                                                )}
-                                                {f.formaciones?.titulo && (
-                                                    <> · <Link to={`/formaciones/${f.formacion_id}`} className="hover:text-primary">{f.formaciones.titulo}</Link></>
-                                                )}
-                                            </p>
-                                            <p className="text-[10px] text-variable-muted mt-1">
-                                                Emitida: {new Date(f.fecha_emision).toLocaleDateString('es-ES')}
-                                                {f.fecha_vencimiento && ` · Vence: ${new Date(f.fecha_vencimiento).toLocaleDateString('es-ES')}`}
                                             </p>
                                         </div>
-
-                                        <div className="text-right">
-                                            <p className="font-black text-variable-main text-base">€{parseFloat(f.total || 0).toFixed(2)}</p>
-                                            <p className="text-[10px] text-variable-muted">
-                                                Base €{parseFloat(f.base_imponible || 0).toFixed(2)}
-                                            </p>
-                                        </div>
-
-                                        {f.estado !== 'anulada' && (
-                                            <button
-                                                onClick={() => handleMarcarPagada(f)}
-                                                className={`p-2.5 rounded-xl glass border transition-all ${
-                                                    f.estado === 'pagada'
-                                                        ? 'border-emerald-500/30 text-emerald-400 hover:text-variable-muted hover:border-variable'
-                                                        : 'border-variable text-variable-muted hover:text-emerald-400 hover:border-emerald-500/30'
-                                                }`}
-                                                title={f.estado === 'pagada' ? 'Cobrada — clic para volver a pendiente' : 'Marcar como cobrada'}
-                                            >
-                                                <CheckCircle2 size={16} />
-                                            </button>
-                                        )}
-
-                                        {f.estado !== 'anulada' && (
-                                            <button
-                                                onClick={() => handleEnviar(f)}
-                                                disabled={enviandoId === f.id}
-                                                className="p-2.5 rounded-xl glass border border-variable text-variable-muted hover:text-sky-400 hover:border-sky-500/30 transition-all disabled:opacity-40"
-                                                title="Enviar por email al cliente"
-                                            >
-                                                <Send size={16} className={enviandoId === f.id ? 'animate-pulse' : ''} />
-                                            </button>
-                                        )}
-
-                                        <button
-                                            onClick={() => handleDescargar(f.id)}
-                                            className="p-2.5 rounded-xl glass border border-variable text-variable-muted hover:text-primary hover:border-primary/30 transition-all"
-                                            title="Descargar PDF"
-                                        >
-                                            <Download size={16} />
-                                        </button>
-
-                                        {f.client_id && (
-                                            <Link
-                                                to={`/clientes/${f.client_id}`}
-                                                className="p-2.5 rounded-xl glass border border-variable text-variable-muted hover:text-primary hover:border-primary/30 transition-all"
-                                                title="Ver cliente"
-                                            >
-                                                <ChevronRight size={16} />
-                                            </Link>
-                                        )}
                                     </div>
                                 );
-                            })}
-                        </div>
-                    )}
-                </div>
+                            },
+                        },
+                        {
+                            key: 'origen',
+                            label: 'Origen',
+                            sortable: false,
+                            render: (f) => (
+                                f.projects?.name ? (
+                                    <Link to={`/projects/${f.project_id}`} className="text-xs text-variable-muted hover:text-primary">
+                                        {f.projects.name}
+                                    </Link>
+                                ) : f.formaciones?.titulo ? (
+                                    <Link to={`/formaciones/${f.formacion_id}`} className="text-xs text-variable-muted hover:text-primary">
+                                        {f.formaciones.titulo}
+                                    </Link>
+                                ) : <span className="text-xs text-variable-muted">—</span>
+                            ),
+                        },
+                        {
+                            key: 'fecha_emision',
+                            label: 'Fechas',
+                            render: (f) => (
+                                <div className="text-xs text-variable-muted">
+                                    <p>Emitida: {new Date(f.fecha_emision).toLocaleDateString('es-ES')}</p>
+                                    {f.fecha_vencimiento && <p>Vence: {new Date(f.fecha_vencimiento).toLocaleDateString('es-ES')}</p>}
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'total',
+                            label: 'Importe',
+                            align: 'right',
+                            render: (f) => (
+                                <div className="text-right">
+                                    <p className="font-black text-variable-main">€{parseFloat(f.total || 0).toFixed(2)}</p>
+                                    <p className="text-[10px] text-variable-muted">Base €{parseFloat(f.base_imponible || 0).toFixed(2)}</p>
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'acciones',
+                            label: '',
+                            sortable: false,
+                            hideable: false,
+                            render: (f) => (
+                                <div className="flex gap-2 justify-end">
+                                    {f.estado !== 'anulada' && (
+                                        <button
+                                            onClick={() => handleMarcarPagada(f)}
+                                            className={`p-2.5 rounded-xl glass border transition-all ${
+                                                f.estado === 'pagada'
+                                                    ? 'border-emerald-500/30 text-emerald-400 hover:text-variable-muted hover:border-variable'
+                                                    : 'border-variable text-variable-muted hover:text-emerald-400 hover:border-emerald-500/30'
+                                            }`}
+                                            title={f.estado === 'pagada' ? 'Cobrada — clic para volver a pendiente' : 'Marcar como cobrada'}
+                                        >
+                                            <CheckCircle2 size={16} />
+                                        </button>
+                                    )}
+                                    {f.estado !== 'anulada' && (
+                                        <button
+                                            onClick={() => handleEnviar(f)}
+                                            disabled={enviandoId === f.id}
+                                            className="p-2.5 rounded-xl glass border border-variable text-variable-muted hover:text-sky-400 hover:border-sky-500/30 transition-all disabled:opacity-40"
+                                            title="Enviar por email al cliente"
+                                        >
+                                            <Send size={16} className={enviandoId === f.id ? 'animate-pulse' : ''} />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => handleDescargar(f.id)}
+                                        className="p-2.5 rounded-xl glass border border-variable text-variable-muted hover:text-primary hover:border-primary/30 transition-all"
+                                        title="Descargar PDF"
+                                    >
+                                        <Download size={16} />
+                                    </button>
+                                    {f.client_id && (
+                                        <Link
+                                            to={`/clientes/${f.client_id}`}
+                                            className="p-2.5 rounded-xl glass border border-variable text-variable-muted hover:text-primary hover:border-primary/30 transition-all"
+                                            title="Ver cliente"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </Link>
+                                    )}
+                                </div>
+                            ),
+                        },
+                    ]}
+                />
             </main>
         </div>
     );
