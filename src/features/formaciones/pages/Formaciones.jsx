@@ -142,6 +142,8 @@ export default function Formaciones() {
                 </div>
 
                 <DataTable
+                    buscarEn={(f) => [f.titulo, f.clients?.company_name, f.clients?.first_name, f.clients?.last_name, f.estado].filter(Boolean).join(' ')}
+                    placeholderBusqueda="Buscar formación o cliente…"
                     cabecera={(
                 <div className="flex flex-wrap gap-2 mb-6">
                     {tabs.map(t => (

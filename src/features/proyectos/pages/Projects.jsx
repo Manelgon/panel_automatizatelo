@@ -318,6 +318,8 @@ export default function Projects() {
                 </header>
 
                 <DataTable
+                    buscarEn={(p) => [p.name, p.id_alias, p.status, p.leads?.company, p.leads?.first_name].filter(Boolean).join(' ')}
+                    placeholderBusqueda="Buscar proyecto…"
                     data={projectsList}
                     loading={loading}
                     emptyMessage="No hay proyectos registrados"

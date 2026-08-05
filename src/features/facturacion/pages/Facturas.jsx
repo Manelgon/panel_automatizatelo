@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Receipt, Search, Download, ChevronRight, FileWarning, CheckCircle2, Send } from 'lucide-react';
+import { Receipt, Download, ChevronRight, FileWarning, CheckCircle2, Send } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../../../lib/facturas';
 import { enviarDocumento } from '../../../lib/enviarEmail';
@@ -31,7 +31,6 @@ export default function Facturas() {
     const [loading, setLoading] = useState(false);
     const [facturas, setFacturas] = useState([]);
     const [activeTab, setActiveTab] = useState('todos');
-    const [search, setSearch] = useState('');
     const [enviandoId, setEnviandoId] = useState(null);
 
     const fetchFacturas = async () => {
@@ -87,16 +86,6 @@ export default function Facturas() {
 
     const filtered = facturas.filter(f => {
         if (activeTab !== 'todos' && f.estado !== activeTab) return false;
-        if (search) {
-            const q = search.toLowerCase();
-            return (
-                (f.numero || '').toLowerCase().includes(q) ||
-                (f.cliente_nombre || '').toLowerCase().includes(q) ||
-                (f.cliente_nif || '').toLowerCase().includes(q) ||
-                (f.projects?.name || '').toLowerCase().includes(q) ||
-                (f.formaciones?.titulo || '').toLowerCase().includes(q)
-            );
-        }
         return true;
     });
 
@@ -205,18 +194,6 @@ export default function Facturas() {
                     </div>
                 </div>
 
-                {/* Buscador */}
-                <div className="relative mb-5">
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar por número, cliente, NIF o proyecto…"
-                        className="w-full glass border border-variable rounded-2xl pl-12 pr-4 py-3 text-sm text-variable-main placeholder:text-variable-muted outline-none focus:border-primary"
-                    />
-                </div>
-
                 {/* Lista — el mismo DataTable que usan Leads, Clientes y compañía */}
                 <DataTable
                     cabecera={(
@@ -237,6 +214,8 @@ export default function Facturas() {
                 </div>
                     )}
                     tableId="facturas"
+                    buscarEn={(f) => [f.numero, f.cliente_nombre, f.cliente_nif, f.projects?.name, f.formaciones?.titulo].filter(Boolean).join(' ')}
+                    placeholderBusqueda="Buscar por número, cliente, NIF…"
                     data={filtered}
                     loading={loading}
                     rowKey="id"

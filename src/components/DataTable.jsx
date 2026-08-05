@@ -9,6 +9,8 @@ import {
     Columns3,
     Eye,
     EyeOff,
+    Search,
+    X,
 } from 'lucide-react';
 
 /**
@@ -26,6 +28,9 @@ import {
  *  - rowKey       : string — property used as React key (default "id")
  *  - defaultSort  : { key, dir } (default none)
  *  - onRowClick   : optional callback(row)
+ *  - buscarEn     : optional (row) => string. Si se pasa, aparece un buscador
+ *                   en la barra (junto a Columnas) que filtra sobre ese texto.
+ *  - placeholderBusqueda : placeholder del buscador
  */
 export default function DataTable({
     tableId = 'default',
@@ -39,6 +44,8 @@ export default function DataTable({
     rowKey = 'id',
     defaultSort,
     onRowClick,
+    buscarEn = null,
+    placeholderBusqueda = 'Buscar…',
 }) {
     // ================================================================
     // COLUMN VISIBILITY  (persisted in localStorage)
@@ -97,6 +104,16 @@ export default function DataTable({
     const visibleHideableCount = hideableColumns.filter((col) => colVisibility[col.key] !== false).length;
 
     // ================================================================
+    // BÚSQUEDA (opcional, sobre el texto que devuelve buscarEn)
+    // ================================================================
+    const [busqueda, setBusqueda] = useState('');
+    const filtrada = useMemo(() => {
+        if (!buscarEn || !busqueda.trim()) return data;
+        const q = busqueda.trim().toLowerCase();
+        return data.filter((row) => (buscarEn(row) || '').toLowerCase().includes(q));
+    }, [data, busqueda, buscarEn]);
+
+    // ================================================================
     // SORTING
     // ================================================================
     const [sortKey, setSortKey] = useState(defaultSort?.key ?? null);
@@ -112,11 +129,11 @@ export default function DataTable({
     };
 
     const sortedData = useMemo(() => {
-        if (!sortKey) return data;
+        if (!sortKey) return filtrada;
         const col = columns.find((c) => c.key === sortKey);
-        if (!col) return data;
+        if (!col) return filtrada;
 
-        return [...data].sort((a, b) => {
+        return [...filtrada].sort((a, b) => {
             let va = a[sortKey];
             let vb = b[sortKey];
 
@@ -141,7 +158,7 @@ export default function DataTable({
             if (strA > strB) return sortDir === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [data, sortKey, sortDir, columns]);
+    }, [filtrada, sortKey, sortDir, columns]);
 
     // ================================================================
     // PAGINATION
@@ -169,6 +186,29 @@ export default function DataTable({
                         compartan fila con el botón de columnas */}
                     {cabecera}
                 </div>
+
+                {buscarEn && (
+                    <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-variable-muted pointer-events-none" />
+                        <input
+                            value={busqueda}
+                            onChange={(e) => { setBusqueda(e.target.value); setCurrentPage(1); }}
+                            placeholder={placeholderBusqueda}
+                            className="w-44 sm:w-64 bg-white/[0.03] border rounded-xl pl-9 pr-8 py-2 text-xs text-variable-main placeholder:text-variable-muted outline-none transition-all focus:border-primary"
+                            style={{ borderColor: busqueda ? 'var(--primary)' : 'rgba(243,121,27,0.25)' }}
+                        />
+                        {busqueda && (
+                            <button
+                                type="button"
+                                onClick={() => { setBusqueda(''); setCurrentPage(1); }}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-variable-muted hover:text-primary"
+                                title="Limpiar búsqueda"
+                            >
+                                <X size={13} />
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 <div ref={colMenuRef} className="relative">
                     <button
@@ -331,13 +371,15 @@ export default function DataTable({
                                     </div>
                                 </td>
                             </tr>
-                        ) : data.length === 0 ? (
+                        ) : filtrada.length === 0 ? (
                             <tr>
                                 <td colSpan={visibleColumns.length} className="py-12 text-center">
                                     <div className="flex flex-col items-center gap-4 text-variable-muted">
                                         {emptyIcon}
-                                        <p className="font-medium">{emptyTitle}</p>
-                                        {emptySub && <p className="text-xs italic">{emptySub}</p>}
+                                        <p className="font-medium">
+                                            {data.length > 0 ? `Nada coincide con «${busqueda.trim()}»` : emptyTitle}
+                                        </p>
+                                        {data.length === 0 && emptySub && <p className="text-xs italic">{emptySub}</p>}
                                     </div>
                                 </td>
                             </tr>
@@ -366,7 +408,7 @@ export default function DataTable({
             </div>
 
             {/* ----- PAGINATION BAR ----- */}
-            {data.length > 0 && (
+            {filtrada.length > 0 && (
                 <div className="flex flex-col items-center justify-between gap-4 mt-3 pt-3 border-t border-variable lg:flex-row">
                     {/* Rows per page */}
                     <div className="flex items-center gap-3">

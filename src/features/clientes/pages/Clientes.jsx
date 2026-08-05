@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
-    UserCheck, Search, Clock, ChevronRight,
+    UserCheck, ChevronRight,
     Building2, User, UserPlus, X} from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
@@ -33,7 +33,6 @@ export default function Clientes() {
     const [loading, setLoading] = useState(false);
     const [clientes, setClientes] = useState([]);
     const [activeTab, setActiveTab] = useState('todos');
-    const [search, setSearch] = useState('');
     const [modalAbierto, setModalAbierto] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [form, setForm] = useState(FORM_VACIO);
@@ -137,17 +136,6 @@ export default function Clientes() {
         if (activeTab !== 'archived' && activeTab !== 'todos' && c.client_type !== activeTab) return false;
         if (activeTab !== 'archived' && c.status === 'archived') return false;
 
-        // Search
-        if (search) {
-            const q = search.toLowerCase();
-            return (
-                (c.first_name || '').toLowerCase().includes(q) ||
-                (c.last_name || '').toLowerCase().includes(q) ||
-                (c.email || '').toLowerCase().includes(q) ||
-                (c.company_name || '').toLowerCase().includes(q) ||
-                (c.tax_id || '').toLowerCase().includes(q)
-            );
-        }
         return true;
     });
 
@@ -164,23 +152,6 @@ export default function Clientes() {
                         </h1>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-                        <div className="relative flex-1 sm:flex-none">
-                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Buscar por nombre, email, NIF/CIF..."
-                                className="w-full sm:w-72 bg-white/5 border border-variable rounded-2xl pl-10 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm"
-                            />
-                        </div>
-                        <button
-                            onClick={fetchClientes}
-                            className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all flex items-center justify-center"
-                            title="Recargar"
-                        >
-                            <Clock size={20} />
-                        </button>
                         <button
                             onClick={() => setModalAbierto(true)}
                             className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2"
@@ -211,6 +182,8 @@ export default function Clientes() {
                 </div>
                     )}
                     tableId="clientes"
+                    buscarEn={(c) => [c.first_name, c.last_name, c.email, c.company_name, c.tax_id, c.phone].filter(Boolean).join(' ')}
+                    placeholderBusqueda="Buscar por nombre, email, NIF/CIF…"
                     loading={loading}
                     data={filtered}
                     rowKey="id"

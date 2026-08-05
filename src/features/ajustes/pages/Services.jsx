@@ -11,7 +11,6 @@ import {
     Type,
     FileText,
     DollarSign,
-    Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../../lib/supabase';
@@ -194,13 +193,6 @@ export default function Services() {
                     </div>
                     <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                         <button
-                            onClick={fetchServices}
-                            className="p-3 glass rounded-2xl text-variable-muted hover:text-primary transition-all flex items-center justify-center"
-                            title="Recargar Lista"
-                        >
-                            <Clock size={20} />
-                        </button>
-                        <button
                             onClick={() => setIsModalOpen(true)}
                             className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2"
                         >
@@ -210,6 +202,8 @@ export default function Services() {
                 </header>
 
                 <DataTable
+                    buscarEn={(s) => [s.name, s.description, s.category].filter(Boolean).join(' ')}
+                    placeholderBusqueda="Buscar servicio…"
                     data={servicesList}
                     loading={loading}
                     columns={[
