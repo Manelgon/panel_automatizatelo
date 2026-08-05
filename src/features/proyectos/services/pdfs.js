@@ -11,6 +11,11 @@ import autoTable from 'jspdf-autotable';
 // Son funciones puras: reciben datos, devuelven el documento jsPDF. Quien llama
 // decide si guardarlo, subirlo o las dos cosas. Nada de estado ni de Supabase
 // aquí dentro.
+//
+// `emisor` es la fila de company_settings; `receptor` es
+// { nombre, nif, direccion, email }. Ambos opcionales: sin ellos el documento
+// sale como antes, pero un presupuesto sin las dos partes identificadas vale
+// poco como documento comercial.
 // =============================================================================
 
 const TINTA_CABECERA = [30, 30, 40];
@@ -19,8 +24,8 @@ const VERDE = [80, 200, 120];
 const GRIS_CLARO = [180, 180, 190];
 const GRIS_TEXTO = [60, 60, 70];
 
-/** Cabecera oscura común: título grande + líneas pequeñas debajo. */
-function cabecera(doc, titulo, lineas, color) {
+/** Cabecera oscura: título + líneas a la izquierda, identidad del emisor a la derecha. */
+function cabecera(doc, titulo, lineas, color, emisor) {
     doc.setFillColor(...TINTA_CABECERA);
     doc.rect(0, 0, 220, 42, 'F');
     doc.setTextColor(...color);
@@ -31,32 +36,62 @@ function cabecera(doc, titulo, lineas, color) {
     doc.setTextColor(...GRIS_CLARO);
     lineas.forEach((l, i) => doc.text(l, 15, 32 + i * 6));
 
-    // Marca a la derecha
+    // Emisor a la derecha: nombre, NIF, dirección y contacto
+    const nombre = emisor?.emisor_nombre || 'Automátízatelo';
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
+    doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.text('Automátízatelo', 195, 18, { align: 'right' });
-    doc.setFontSize(8);
+    doc.text(nombre, 195, 14, { align: 'right' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
     doc.setTextColor(...GRIS_CLARO);
-    doc.text('automatizatelo.com', 195, 25, { align: 'right' });
+    const lineasEmisor = [
+        emisor?.emisor_nif ? `NIF: ${emisor.emisor_nif}` : null,
+        emisor?.emisor_direccion || null,
+        [emisor?.emisor_cp, emisor?.emisor_ciudad, emisor?.emisor_provincia].filter(Boolean).join(' · ') || null,
+        [emisor?.emisor_email, emisor?.emisor_telefono].filter(Boolean).join(' · ') || null,
+        emisor?.emisor_web || 'automatizatelo.com',
+    ].filter(Boolean);
+    lineasEmisor.forEach((l, i) => doc.text(l, 195, 20 + i * 4.5, { align: 'right' }));
 }
 
-/** Bloque PROYECTO / CLIENTE debajo de la cabecera. */
-function fichaProyecto(doc, proyecto) {
-    const nombre = proyecto?.name || 'Proyecto';
+/** Bloque PROYECTO + datos del receptor debajo de la cabecera. Devuelve la Y donde acaba. */
+function fichaPartes(doc, proyecto, receptor) {
+    const nombreProyecto = proyecto?.name || 'Proyecto';
     const alias = proyecto?.id_alias || '';
-    const cliente = proyecto?.client || 'Cliente';
 
     doc.setTextColor(...GRIS_TEXTO);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('PROYECTO:', 15, 55);
     doc.setFont('helvetica', 'normal');
-    doc.text(`${nombre}${alias ? ` (${alias})` : ''}`, 50, 55);
+    doc.text(`${nombreProyecto}${alias ? ` (${alias})` : ''}`, 50, 55);
+
     doc.setFont('helvetica', 'bold');
     doc.text('CLIENTE:', 15, 62);
     doc.setFont('helvetica', 'normal');
-    doc.text(cliente, 50, 62);
+    doc.text(receptor?.nombre || proyecto?.client || 'Cliente', 50, 62);
+
+    let y = 69;
+    if (receptor?.nif) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('NIF:', 15, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(receptor.nif, 50, y);
+        y += 7;
+    }
+    if (receptor?.direccion) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('DIRECCIÓN:', 15, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        const lineas = doc.splitTextToSize(receptor.direccion, 130);
+        doc.text(lineas, 50, y);
+        doc.setFontSize(10);
+        y += lineas.length * 5 + 2;
+    }
+    return y;
 }
 
 /**
@@ -64,15 +99,15 @@ function fichaProyecto(doc, proyecto) {
  * { description, quantity, unit_price, iva_percent, base, total }.
  * Una sola implementación para generar y para re-descargar.
  */
-export function generarPdfPresupuesto({ numero, fecha, proyecto, lineas, subtotal, ivaTotal, total }) {
+export function generarPdfPresupuesto({ numero, fecha, proyecto, lineas, subtotal, ivaTotal, total, emisor, receptor }) {
     const doc = new jsPDF();
     const fechaTxt = fecha ? new Date(fecha).toLocaleDateString('es-ES') : new Date().toLocaleDateString('es-ES');
 
-    cabecera(doc, 'PRESUPUESTO', [numero ? `N.º ${numero}` : null, `Fecha: ${fechaTxt}`].filter(Boolean), NARANJA);
-    fichaProyecto(doc, proyecto);
+    cabecera(doc, 'PRESUPUESTO', [numero ? `N.º ${numero}` : null, `Fecha: ${fechaTxt}`].filter(Boolean), NARANJA, emisor);
+    const finFicha = fichaPartes(doc, proyecto, receptor);
 
     autoTable(doc, {
-        startY: 72,
+        startY: Math.max(76, finFicha + 4),
         head: [['Concepto', 'Cant.', 'Precio Unit.', 'IVA', 'Base', 'Total']],
         body: (lineas || []).map(l => [
             l.description,
@@ -116,47 +151,48 @@ export function generarPdfPresupuesto({ numero, fecha, proyecto, lineas, subtota
  * Recibo de pago. `totalCobrado` es lo cobrado ANTES de este pago: el resumen
  * de cuenta suma el pago actual él solo, igual que hacía el código original.
  */
-export function generarPdfRecibo({ pago, metodoEtiqueta, proyecto, totalFacturado, totalCobrado }) {
+export function generarPdfRecibo({ pago, metodoEtiqueta, proyecto, totalFacturado, totalCobrado, emisor, receptor }) {
     const doc = new jsPDF();
 
     cabecera(doc, 'RECIBO DE PAGO', [
         `N.º ${pago.payment_number}`,
         `Fecha: ${new Date(pago.payment_date).toLocaleDateString('es-ES')}`,
-    ], VERDE);
-    fichaProyecto(doc, proyecto);
+    ], VERDE, emisor);
+    const finFicha = fichaPartes(doc, proyecto, receptor);
 
     // Caja del importe
+    const cajaY = Math.max(75, finFicha + 4);
     doc.setFillColor(245, 250, 245);
-    doc.roundedRect(15, 75, 180, 60, 4, 4, 'F');
+    doc.roundedRect(15, cajaY, 180, 60, 4, 4, 'F');
     doc.setDrawColor(...VERDE);
     doc.setLineWidth(0.5);
-    doc.roundedRect(15, 75, 180, 60, 4, 4, 'S');
+    doc.roundedRect(15, cajaY, 180, 60, 4, 4, 'S');
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...GRIS_TEXTO);
-    doc.text('IMPORTE RECIBIDO:', 25, 90);
+    doc.text('IMPORTE RECIBIDO:', 25, cajaY + 15);
     doc.setFontSize(28);
     doc.setTextColor(...VERDE);
-    doc.text(`€${parseFloat(pago.amount).toFixed(2)}`, 25, 108);
+    doc.text(`€${parseFloat(pago.amount).toFixed(2)}`, 25, cajaY + 33);
 
     doc.setFontSize(10);
     doc.setTextColor(80, 80, 90);
     doc.setFont('helvetica', 'bold');
-    doc.text('Método de Pago:', 120, 90);
+    doc.text('Método de Pago:', 120, cajaY + 15);
     doc.setFont('helvetica', 'normal');
-    doc.text(metodoEtiqueta || 'Otro', 120, 100);
+    doc.text(metodoEtiqueta || 'Otro', 120, cajaY + 25);
 
     if (pago.notes) {
         doc.setFont('helvetica', 'bold');
-        doc.text('Notas:', 120, 115);
+        doc.text('Notas:', 120, cajaY + 40);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
-        doc.text(doc.splitTextToSize(pago.notes, 65), 120, 123);
+        doc.text(doc.splitTextToSize(pago.notes, 65), 120, cajaY + 48);
     }
 
     // Resumen de cuenta
-    const y = 150;
+    const y = cajaY + 75;
     doc.setDrawColor(200, 200, 210);
     doc.line(15, y, 195, y);
     doc.setFontSize(9);
@@ -193,7 +229,7 @@ export function generarPdfRecibo({ pago, metodoEtiqueta, proyecto, totalFacturad
 
     doc.setFontSize(7);
     doc.setTextColor(150, 150, 160);
-    doc.text('Este recibo ha sido generado automáticamente por el Panel de Automátízatelo.', 105, 285, { align: 'center' });
+    doc.text(`Este recibo ha sido generado automáticamente por el Panel de ${emisor?.emisor_nombre || 'Automátízatelo'}.`, 105, 285, { align: 'center' });
 
     return doc;
 }

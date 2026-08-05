@@ -255,14 +255,23 @@ export function generarPdfFactura(factura, settings, proyecto = null) {
     doc.text(`N.º ${factura.numero}`, 15, 32);
     doc.text(`Fecha: ${new Date(factura.fecha_emision).toLocaleDateString('es-ES')}`, 15, 38);
 
+    // Emisor completo a la derecha: el RD 1619/2012 exige nombre, NIF y
+    // domicilio de las dos partes, no solo de una.
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(14);
+    doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.text(emisorNombre, 195, 18, { align: 'right' });
-    doc.setFontSize(8);
+    doc.text(emisorNombre, 195, 14, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
     doc.setTextColor(180, 180, 190);
-    if (emisorNif) doc.text(`NIF: ${emisorNif}`, 195, 25, { align: 'right' });
-    doc.text(emisorWeb, 195, 30, { align: 'right' });
+    const lineasEmisor = [
+        emisorNif ? `NIF: ${emisorNif}` : null,
+        settings?.emisor_direccion || null,
+        [settings?.emisor_cp, settings?.emisor_ciudad, settings?.emisor_provincia].filter(Boolean).join(' · ') || null,
+        [settings?.emisor_email, settings?.emisor_telefono].filter(Boolean).join(' · ') || null,
+        emisorWeb,
+    ].filter(Boolean);
+    lineasEmisor.forEach((l, i) => doc.text(l, 195, 20 + i * 4.5, { align: 'right' }));
 
     doc.setTextColor(60, 60, 70);
     doc.setFontSize(10);
@@ -274,11 +283,24 @@ export function generarPdfFactura(factura, settings, proyecto = null) {
     doc.text('CLIENTE:', 15, 62);
     doc.setFont('helvetica', 'normal');
     doc.text(factura.cliente_nombre || 'Cliente', 50, 62);
+    let cabY = 69;
     if (factura.cliente_nif) {
         doc.setFont('helvetica', 'bold');
-        doc.text('NIF:', 15, 69);
+        doc.text('NIF:', 15, cabY);
         doc.setFont('helvetica', 'normal');
-        doc.text(factura.cliente_nif, 50, 69);
+        doc.text(factura.cliente_nif, 50, cabY);
+        cabY += 7;
+    }
+    // El domicilio del receptor ya se congelaba en la factura; solo faltaba imprimirlo
+    if (factura.cliente_direccion) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('DIRECCIÓN:', 15, cabY);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        const dirLineas = doc.splitTextToSize(factura.cliente_direccion, 130);
+        doc.text(dirLineas, 50, cabY);
+        doc.setFontSize(10);
+        cabY += dirLineas.length * 5 + 2;
     }
 
     const tableRows = lineas.map(l => [
@@ -290,7 +312,7 @@ export function generarPdfFactura(factura, settings, proyecto = null) {
     ]);
 
     autoTable(doc, {
-        startY: 76,
+        startY: Math.max(76, cabY + 4),
         head: [['Concepto', 'Cant.', 'Precio Unit.', 'Dto.', 'Base']],
         body: tableRows,
         headStyles: { fillColor: [255, 140, 50], textColor: 255, fontSize: 9, fontStyle: 'bold' },

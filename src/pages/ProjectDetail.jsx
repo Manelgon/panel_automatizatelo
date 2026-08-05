@@ -99,6 +99,15 @@ export default function ProjectDetail() {
 
     // GLOBAL action lock — blocks ALL interactions while any async operation runs
     const [actionLock, setActionLock] = useState(false);
+    const [clienteFactura, setClienteFactura] = useState(null);
+
+    // Receptor para los PDF: { nombre, nif, direccion, email }
+    const receptorPdf = () => clienteFactura ? {
+        nombre: clienteFactura.company_name || [clienteFactura.first_name, clienteFactura.last_name].filter(Boolean).join(' ') || 'Cliente',
+        nif: clienteFactura.tax_id || null,
+        direccion: [clienteFactura.billing_address, clienteFactura.billing_postal_code, clienteFactura.billing_city, clienteFactura.billing_country].filter(Boolean).join(', ') || null,
+        email: clienteFactura.email || null,
+    } : null;
 
     // Helper that wraps any async function with the global lock + global loading overlay.
     // El catch importa: sin él, un fallo dentro (NIF inválido, RPC caída…) se
@@ -134,6 +143,18 @@ export default function ProjectDetail() {
             return;
         }
         setProject(proj);
+
+        // La ficha completa del cliente: presupuestos, facturas y recibos deben
+        // identificar a las dos partes (nombre, NIF, domicilio), no solo una
+        // etiqueta de texto.
+        if (proj.client_id) {
+            const { data: cli } = await supabase
+                .from('clients')
+                .select('company_name, first_name, last_name, tax_id, email, billing_address, billing_postal_code, billing_city, billing_country')
+                .eq('id', proj.client_id)
+                .maybeSingle();
+            setClienteFactura(cli || null);
+        }
 
         // El resto en paralelo, y cada uno cae solo. Antes iban encadenados en
         // un mismo try: cuando project_sprints no existía en la base de datos,
@@ -608,6 +629,8 @@ export default function ProjectDetail() {
                 subtotal: budgetSubtotal,
                 ivaTotal: budgetIVA,
                 total: budgetTotal,
+                emisor: await getCompanySettings(),
+                receptor: receptorPdf(),
             });
             doc.save(`${fileName}.pdf`);
             showNotification(previousBudgetId ? 'Presupuesto anterior denegado. Nuevo presupuesto generado ✅' : 'Presupuesto generado y guardado ✅');
@@ -642,7 +665,7 @@ export default function ProjectDetail() {
     };
 
 
-    const handleRedownloadBudget = (budgetId) => {
+    const handleRedownloadBudget = async (budgetId) => {
         const bud = budgets.find(b => b.id === budgetId);
         if (!bud) { showNotification('Presupuesto no encontrado', 'error'); return; }
 
@@ -655,6 +678,8 @@ export default function ProjectDetail() {
             subtotal: bud.subtotal,
             ivaTotal: bud.iva_total,
             total: bud.total,
+            emisor: await getCompanySettings(),
+            receptor: receptorPdf(),
         });
 
         const bDate = new Date(bud.budget_date).toLocaleDateString('es-ES');
@@ -740,12 +765,14 @@ export default function ProjectDetail() {
     const getPaymentMethodInfo = (method) => PAYMENT_METHODS.find(m => m.value === method) || PAYMENT_METHODS[4];
 
     // Generar PDF de recibo — el dibujo vive en features/proyectos/services/pdfs.js
-    const generateReceiptPDF = (paymentData) => generarPdfRecibo({
+    const generateReceiptPDF = async (paymentData) => generarPdfRecibo({
         pago: paymentData,
         metodoEtiqueta: getPaymentMethodInfo(paymentData.payment_method).label,
         proyecto: project,
         totalFacturado: totalInvoiced,
         totalCobrado: totalPaid,
+        emisor: await getCompanySettings(),
+        receptor: receptorPdf(),
     });
 
     const handleRegisterPayment = async (e) => {
@@ -795,7 +822,7 @@ export default function ProjectDetail() {
             }]);
 
             // Generate and download receipt PDF
-            const doc = generateReceiptPDF(payment);
+            const doc = await generateReceiptPDF(payment);
             doc.save(`${fileName}.pdf`);
 
             // El puente que faltaba: si con este cobro queda cubierto el total
@@ -820,10 +847,10 @@ export default function ProjectDetail() {
         }, 'Registrando pago...');
     };
 
-    const handleRedownloadReceipt = (paymentId) => {
+    const handleRedownloadReceipt = async (paymentId) => {
         const pay = payments.find(p => p.id === paymentId);
         if (!pay) { showNotification('Recibo no encontrado', 'error'); return; }
-        const doc = generateReceiptPDF(pay);
+        const doc = await generateReceiptPDF(pay);
         const alias = project?.id_alias || project?.id?.substring(0, 8).toUpperCase() || '';
         const dateStr = new Date(pay.payment_date).toLocaleDateString('es-ES').replace(/\//g, '-');
         doc.save(`Recibo - ${project?.name} - ${alias} - ${dateStr}.pdf`);
