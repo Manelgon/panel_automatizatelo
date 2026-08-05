@@ -114,60 +114,42 @@ export default function ProjectDetail() {
     };
 
     const fetchProjectData = async () => {
-        try {
-            setLoading(true);
+        setLoading(true);
 
-            // Fetch project
-            const { data: proj, error: projErr } = await supabase
-                .from('projects')
-                .select('*, leads(*)')
-                .eq('id', id)
-                .single();
-            if (projErr) throw projErr;
-            setProject(proj);
+        // Sin el proyecto no hay página: este sí es fatal
+        const { data: proj, error: projErr } = await supabase
+            .from('projects')
+            .select('*, leads(*)')
+            .eq('id', id)
+            .single();
 
-            // Fetch milestones
-            const { data: miles, error: milesErr } = await supabase
-                .from('project_milestones')
-                .select('*')
-                .eq('project_id', id)
-                .order('target_date', { ascending: true });
-            if (milesErr) throw milesErr;
-            setMilestones(miles);
-
-            // Fetch tasks (Top priority 10)
-            const { data: tks, error: tksErr } = await supabase
-                .from('project_tasks')
-                .select('*')
-                .eq('project_id', id)
-                .order('created_at', { ascending: false });
-            if (tksErr) throw tksErr;
-            setTasks(tks);
-
-            // Fetch sprints
-            const { data: sprs, error: sprsErr } = await supabase
-                .from('project_sprints')
-                .select('*')
-                .eq('project_id', id)
-                .order('created_at', { ascending: false });
-            if (sprsErr) throw sprsErr;
-            setSprints(sprs || []);
-
-            // Fetch files
-            const { data: fls, error: flsErr } = await supabase
-                .from('project_files')
-                .select('*')
-                .eq('project_id', id)
-                .order('created_at', { ascending: false });
-            if (flsErr) throw flsErr;
-            setFiles(fls);
-
-        } catch (error) {
-            console.error('Error fetching project detail:', error);
-            // navigate('/projects');
-        } finally {
+        if (projErr) {
+            console.error('Error fetching project:', projErr);
             setLoading(false);
+            return;
         }
+        setProject(proj);
+
+        // El resto en paralelo, y cada uno cae solo. Antes iban encadenados en
+        // un mismo try: cuando project_sprints no existía en la base de datos,
+        // su throw cortaba la función y la tarjeta de Archivos se quedaba en
+        // «No hay archivos adjuntos» con los archivos perfectamente guardados.
+        const [miles, tks, sprs, fls] = await Promise.all([
+            supabase.from('project_milestones').select('*').eq('project_id', id).order('target_date', { ascending: true }),
+            supabase.from('project_tasks').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+            supabase.from('project_sprints').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+            supabase.from('project_files').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+        ]);
+
+        [['hitos', miles], ['tareas', tks], ['sprints', sprs], ['archivos', fls]]
+            .filter(([, r]) => r.error)
+            .forEach(([que, r]) => console.error(`Error cargando ${que}:`, r.error.message));
+
+        setMilestones(miles.data || []);
+        setTasks(tks.data || []);
+        setSprints(sprs.data || []);
+        setFiles(fls.data || []);
+        setLoading(false);
     };
 
     const fetchUsers = async () => {
