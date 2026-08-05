@@ -13,21 +13,13 @@ import {
     Moon,
     Plus,
     X,
-    Briefcase,
     Target,
-    Trash2,
     Receipt,
-    ChevronDown,
-    ChevronUp,
-    DollarSign,
     CreditCard,
     Banknote,
     Building2,
     Smartphone,
     Wallet,
-    TrendingDown,
-    TrendingUp,
-    AlertTriangle,
     Zap,
     Package,
     Send
@@ -42,6 +34,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useGlobalLoading } from '../context/LoadingContext';
 import { generarPdfPresupuesto, generarPdfRecibo } from '../features/proyectos/services/pdfs';
+import SeccionCobros from '../features/proyectos/components/SeccionCobros';
+import SeccionPresupuesto from '../features/proyectos/components/SeccionPresupuesto';
 import { enviarDocumento } from '../lib/enviarEmail';
 
 export default function ProjectDetail() {
@@ -1388,353 +1382,55 @@ export default function ProjectDetail() {
                     </div>
                 </div>
 
-                {/* ═══════════════════════════════════════════════ */}
-                {/* SECCIÓN PRESUPUESTO / SERVICIOS                */}
-                {/* ═══════════════════════════════════════════════ */}
-                <section className="mt-10">
-                    <div className="glass rounded-[2.5rem] p-8 sm:p-10">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-                            <button onClick={() => setBudgetExpanded(!budgetExpanded)} className="flex items-center gap-3 group">
-                                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                                    <Receipt size={22} />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-variable-main flex items-center gap-2">
-                                        Presupuesto / Servicios
-                                        {budgetExpanded ? <ChevronUp size={18} className="text-variable-muted" /> : <ChevronDown size={18} className="text-variable-muted" />}
-                                    </h3>
-                                    <p className="text-xs text-variable-muted italic">Líneas de servicio contratadas y extras manuales</p>
-                                </div>
-                            </button>
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                {hasPendingBudget && (
-                                    <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] text-amber-500 font-bold uppercase tracking-wider animate-pulse">
-                                        <AlertTriangle size={12} /> Presupuesto Pendiente (Edición Bloqueada)
-                                    </div>
-                                )}
-                                <button onClick={handleGenerateBudgetPDF} className="flex items-center gap-2 px-4 py-2.5 glass text-variable-muted rounded-xl text-xs font-bold hover:text-primary transition-all">
-                                    <FileText size={14} /> Presupuesto PDF
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (hasPendingBudget) {
-                                            showNotification('Hay un presupuesto pendiente activo. Debes gestionarlo antes de añadir más conceptos.', 'error');
-                                        } else {
-                                            setBudgetLineModal(true);
-                                        }
-                                    }}
-                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${hasPendingBudget ? 'bg-variable/10 text-variable-muted cursor-not-allowed' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
-                                >
-                                    <Plus size={14} /> Añadir Concepto
-                                </button>
-                                <button disabled={invoiceLoading || (uninvoicedLines.length === 0 && !hasPendingBudget)} onClick={handleGenerateInvoice} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20 ${uninvoicedLines.length === 0 && !hasPendingBudget ? 'bg-variable text-variable-muted cursor-not-allowed opacity-50' : 'bg-primary text-white hover:brightness-110'}`}>
-                                    <Receipt size={14} /> {invoiceLoading ? 'Generando...' : (hasPendingBudget ? 'Confirmar y Facturar' : (uninvoicedLines.length === 0 ? 'Todo Facturado' : `Facturar (${uninvoicedLines.length} líneas)`))}
-                                </button>
-                            </div>
-                        </div>
+                {/* Presupuesto / servicios: JSX en features/proyectos/components/SeccionPresupuesto */}
+                <SeccionPresupuesto
+                    expanded={budgetExpanded}
+                    onToggle={() => setBudgetExpanded(!budgetExpanded)}
+                    hasPendingBudget={hasPendingBudget}
+                    onGenerarPdf={handleGenerateBudgetPDF}
+                    onAnadirConcepto={() => {
+                        if (hasPendingBudget) {
+                            showNotification('Hay un presupuesto pendiente activo. Debes gestionarlo antes de añadir más conceptos.', 'error');
+                        } else {
+                            setBudgetLineModal(true);
+                        }
+                    }}
+                    invoiceLoading={invoiceLoading}
+                    uninvoicedLines={uninvoicedLines}
+                    onFacturar={handleGenerateInvoice}
+                    allBudgetLines={allBudgetLines}
+                    editingLineId={editingLineId}
+                    tempLine={tempLine}
+                    setTempLine={setTempLine}
+                    onGuardarLinea={handleSaveLine}
+                    onCancelarEdicion={() => { setEditingLineId(null); setTempLine(null); }}
+                    onEditarLinea={handleEditLine}
+                    onQuitarServicio={handleRemoveProjectService}
+                    onBorrarLinea={handleDeleteBudgetLine}
+                    invoices={invoices}
+                    invoicesExpanded={invoicesExpanded}
+                    onToggleInvoices={() => setInvoicesExpanded(!invoicesExpanded)}
+                    onDescargarFactura={handleRedownloadInvoice}
+                    budgetSubtotal={budgetSubtotal}
+                    budgetIVA={budgetIVA}
+                    budgetTotal={budgetTotal}
+                    uninvoicedTotal={uninvoicedTotal}
+                />
 
-                        {budgetExpanded && (
-                            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                                {/* Header de la tabla */}
-                                <div className="hidden sm:grid grid-cols-12 gap-4 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-variable-muted">
-                                    <div className="col-span-5">Concepto</div>
-                                    <div className="col-span-1 text-right">Cant.</div>
-                                    <div className="col-span-2 text-right">Precio Unit.</div>
-                                    <div className="col-span-1 text-right">IVA %</div>
-                                    <div className="col-span-2 text-right">Total</div>
-                                    <div className="col-span-1"></div>
-                                </div>
-
-                                {allBudgetLines.length === 0 && (
-                                    <div className="py-12 text-center border-2 border-dashed border-variable rounded-3xl">
-                                        <Receipt size={32} className="mx-auto text-variable-muted mb-3 opacity-50" />
-                                        <p className="text-sm text-variable-muted">No hay líneas de presupuesto.</p>
-                                        <p className="text-xs text-variable-muted italic mt-1">Añade servicios al crear el proyecto o agrega líneas manuales.</p>
-                                    </div>
-                                )}
-
-                                {/* Todas las líneas — con badge de estado */}
-                                {allBudgetLines.map((line) => {
-                                    const isEditing = editingLineId === line.id;
-                                    return (
-                                        <div key={`${line.isService ? 'svc' : 'man'}-${line.id}`} className={`grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 items-center px-5 py-4 rounded-2xl border transition-colors ${line.invoiced ? 'bg-emerald-500/5 border-emerald-500/20 opacity-70' : isEditing ? 'bg-primary/5 border-primary/50' : 'bg-white/5 border-variable hover:bg-white/[0.08]'}`}>
-                                            <div className="sm:col-span-5 flex items-center gap-3">
-                                                <div className={`size-8 rounded-lg flex items-center justify-center flex-shrink-0 ${line.isService ? 'bg-primary/10' : 'bg-emerald-500/10'}`}>
-                                                    {line.isService ? <Briefcase size={14} className="text-primary" /> : <DollarSign size={14} className="text-emerald-500" />}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-variable-main">{line.description}</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <p className={`text-[9px] font-bold uppercase tracking-widest ${line.isService ? 'text-primary' : 'text-emerald-500'}`}>
-                                                            {line.isService ? 'Servicio contratado' : 'Línea manual'}
-                                                        </p>
-                                                        {line.invoiced && (
-                                                            <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-600 px-2 py-0.5 rounded-md uppercase">Facturada ✓</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="sm:col-span-1 text-right">
-                                                {isEditing ? (
-                                                    <input type="number" value={tempLine.quantity} onChange={e => setTempLine({ ...tempLine, quantity: e.target.value })} className="w-full bg-white/10 border border-primary/30 rounded-lg px-2 py-1 text-xs text-variable-main focus:outline-none focus:border-primary" />
-                                                ) : (
-                                                    <span className="text-xs text-variable-muted font-bold">{line.quantity || 1}</span>
-                                                )}
-                                            </div>
-                                            <div className="sm:col-span-2 text-right">
-                                                {isEditing ? (
-                                                    <div className="relative">
-                                                        <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[10px] text-variable-muted">€</span>
-                                                        <input type="number" step="0.01" value={tempLine.unit_price} onChange={e => setTempLine({ ...tempLine, unit_price: e.target.value })} className="w-full bg-white/10 border border-primary/30 rounded-lg pl-4 pr-1 py-1 text-xs text-variable-main focus:outline-none focus:border-primary" />
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-variable-main font-bold">€{parseFloat(line.unit_price || 0).toFixed(2)}</span>
-                                                )}
-                                            </div>
-                                            <div className="sm:col-span-1 text-right">
-                                                {isEditing ? (
-                                                    <input type="number" value={tempLine.iva_percent} onChange={e => setTempLine({ ...tempLine, iva_percent: e.target.value })} className="w-full bg-white/10 border border-primary/30 rounded-lg px-2 py-1 text-xs text-variable-main focus:outline-none focus:border-primary" />
-                                                ) : (
-                                                    <span className="text-xs text-variable-muted font-bold">{line.iva_percent}%</span>
-                                                )}
-                                            </div>
-                                            <div className="sm:col-span-2 text-right text-sm font-black text-variable-main">€{line.total.toFixed(2)}</div>
-                                            <div className="sm:col-span-1 flex justify-end gap-2">
-                                                {!line.invoiced && (
-                                                    isEditing ? (
-                                                        <>
-                                                            <button onClick={() => handleSaveLine(line.id, line.isService)} className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 transition-colors rounded-lg" title="Guardar">
-                                                                <CheckCircle2 size={16} />
-                                                            </button>
-                                                            <button onClick={() => { setEditingLineId(null); setTempLine(null); }} className="p-1.5 text-rose-500 hover:bg-rose-500/10 transition-colors rounded-lg" title="Cancelar">
-                                                                <X size={16} />
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => handleEditLine(line)} className="p-1.5 text-variable-muted hover:text-primary transition-colors rounded-lg hover:bg-primary/10" title="Editar">
-                                                                <Edit3 size={14} />
-                                                            </button>
-                                                            <button onClick={() => line.isService ? handleRemoveProjectService(line.id) : handleDeleteBudgetLine(line.id)} className="p-1.5 text-variable-muted hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-500/10" title="Eliminar">
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </>
-                                                    )
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        {/* Facturas anteriores — Ahora como desplegable opcional */}
-                        {invoices.length > 0 && (
-                            <div className="mt-6 pt-6 border-t border-variable">
-                                <button
-                                    onClick={() => setInvoicesExpanded(!invoicesExpanded)}
-                                    className="flex items-center justify-between w-full group"
-                                >
-                                    <p className="text-[10px] font-black text-variable-muted uppercase tracking-widest flex items-center gap-2 group-hover:text-primary transition-colors text-left sm:text-center">
-                                        <Receipt size={12} /> Facturas Emitidas ({invoices.length})
-                                        {invoicesExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                    </p>
-                                    {!invoicesExpanded && (
-                                        <span className="text-[10px] font-bold text-primary px-3 py-1 bg-primary/5 rounded-lg border border-primary/20">Ver historial</span>
-                                    )}
-                                </button>
-
-                                <AnimatePresence>
-                                    {invoicesExpanded && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className="overflow-hidden mt-4"
-                                        >
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                                {invoices.map(inv => (
-                                                    <div key={inv.id} onClick={() => handleRedownloadInvoice(inv.id)} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-variable hover:border-primary/30 hover:bg-primary/5 cursor-pointer transition-all group">
-                                                        <div className="p-2.5 bg-primary/10 rounded-xl text-primary group-hover:scale-110 transition-transform"><Receipt size={18} /></div>
-                                                        <div className="flex-1">
-                                                            <p className="text-sm font-bold text-variable-main">{inv.numero}</p>
-                                                            <p className="text-[9px] text-variable-muted font-bold">{new Date(inv.fecha_emision).toLocaleDateString('es-ES')} • {inv.factura_lineas?.length || 0} líneas</p>
-                                                        </div>
-                                                        <div className="text-right flex flex-col items-end gap-1">
-                                                            <span className="text-sm font-black text-primary">€{parseFloat(inv.total).toFixed(2)}</span>
-                                                            <Download size={12} className="text-variable-muted group-hover:text-primary" />
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        )}
-
-                        {/* Totales */}
-                        {allBudgetLines.length > 0 && (
-                            <div className="mt-6 pt-6 border-t border-variable">
-                                <div className="flex flex-col items-end gap-2">
-                                    <div className="flex justify-between w-full sm:w-80 text-sm">
-                                        <span className="text-variable-muted font-bold">Total General (Base)</span>
-                                        <span className="text-variable-main font-bold">€{budgetSubtotal.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between w-full sm:w-80 text-sm">
-                                        <span className="text-variable-muted font-bold">IVA Total</span>
-                                        <span className="text-variable-main font-bold">€{budgetIVA.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between w-full sm:w-80 text-lg pt-2 border-t border-variable">
-                                        <span className="text-primary font-black uppercase tracking-widest text-sm">Total</span>
-                                        <span className="text-primary font-black">€{budgetTotal.toFixed(2)}</span>
-                                    </div>
-                                    {uninvoicedLines.length > 0 && uninvoicedLines.length < allBudgetLines.length && (
-                                        <div className="flex justify-between w-full sm:w-80 text-sm mt-3 pt-3 border-t border-dashed border-amber-500/30">
-                                            <span className="text-amber-500 font-bold text-xs uppercase">Pendiente de facturar</span>
-                                            <span className="text-amber-500 font-black">€{uninvoicedTotal.toFixed(2)}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </section>
-
-                {/* ══════════════════════════════════════════════ */}
-                {/* SECCIÓN COBROS / PAGOS                           */}
-                {/* ══════════════════════════════════════════════ */}
-                {
-                    invoices.length > 0 && (
-                        <section className="mt-10">
-                            <div className="glass rounded-[2.5rem] p-8 sm:p-10">
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-                                    <button onClick={() => setPaymentsExpanded(!paymentsExpanded)} className="flex items-center gap-3 group">
-                                        <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
-                                            <Banknote size={22} />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-xl font-bold text-variable-main flex items-center gap-2">
-                                                Cobros / Pagos
-                                                {paymentsExpanded ? <ChevronUp size={18} className="text-variable-muted" /> : <ChevronDown size={18} className="text-variable-muted" />}
-                                            </h3>
-                                            <p className="text-xs text-variable-muted italic">Registro de pagos recibidos del cliente</p>
-                                        </div>
-                                    </button>
-                                    <button
-                                        onClick={() => setPaymentModal(true)}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:brightness-110 transition-all shadow-lg shadow-emerald-500/20"
-                                    >
-                                        <Plus size={14} /> Registrar Cobro
-                                    </button>
-                                </div>
-
-                                {paymentsExpanded && (
-                                    <div className="space-y-6">
-                                        {/* Balance Cards */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <div className="p-5 rounded-2xl bg-primary/5 border border-primary/20">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <Receipt size={16} className="text-primary" />
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Total Facturado</p>
-                                                </div>
-                                                <p className="text-2xl font-black text-variable-main">€{totalInvoiced.toFixed(2)}</p>
-                                                <p className="text-[9px] text-variable-muted mt-1">{invoices.length} factura{invoices.length !== 1 ? 's' : ''} emitida{invoices.length !== 1 ? 's' : ''}</p>
-                                            </div>
-                                            <div className="p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <TrendingUp size={16} className="text-emerald-500" />
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Total Cobrado</p>
-                                                </div>
-                                                <p className="text-2xl font-black text-variable-main">€{totalPaid.toFixed(2)}</p>
-                                                <p className="text-[9px] text-variable-muted mt-1">{payments.length} pago{payments.length !== 1 ? 's' : ''} registrado{payments.length !== 1 ? 's' : ''}</p>
-                                            </div>
-                                            <div className={`p-5 rounded-2xl border ${pendingBalance <= 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/5 border-amber-500/20'}`}>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <TrendingDown size={16} className={pendingBalance <= 0 ? 'text-emerald-500' : 'text-amber-500'} />
-                                                    <p className={`text-[10px] font-black uppercase tracking-widest ${pendingBalance <= 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                        {pendingBalance <= 0 ? 'Pagado Completo' : 'Pendiente de Cobro'}
-                                                    </p>
-                                                </div>
-                                                <p className={`text-2xl font-black ${pendingBalance <= 0 ? 'text-emerald-500' : 'text-variable-main'}`}>
-                                                    {pendingBalance <= 0 ? '✓ €0.00' : `€${pendingBalance.toFixed(2)}`}
-                                                </p>
-                                                <p className="text-[9px] text-variable-muted mt-1">{Math.round(paidPercent)}% del total facturado</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Progress bar */}
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between text-xs font-bold">
-                                                <span className="text-variable-muted uppercase tracking-widest">Progreso de Cobro</span>
-                                                <span className="text-emerald-500">{Math.round(paidPercent)}%</span>
-                                            </div>
-                                            <div className="h-3 bg-white/5 border border-variable rounded-full overflow-hidden">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${paidPercent}%` }}
-                                                    transition={{ duration: 1.2, ease: 'easeOut' }}
-                                                    className={`h-full rounded-full ${paidPercent >= 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-emerald-500 to-emerald-400'}`}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Payment History */}
-                                        {payments.length === 0 ? (
-                                            <div className="py-12 text-center border-2 border-dashed border-variable rounded-3xl">
-                                                <Banknote size={32} className="mx-auto text-variable-muted mb-3 opacity-50" />
-                                                <p className="text-sm text-variable-muted">No hay pagos registrados aún.</p>
-                                                <p className="text-xs text-variable-muted italic mt-1">Registra el primer cobro para empezar a controlar el balance.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                <p className="text-[10px] font-black text-variable-muted uppercase tracking-widest">Historial de Cobros ({payments.length})</p>
-                                                {payments.map((pay) => {
-                                                    const methodInfo = getPaymentMethodInfo(pay.payment_method);
-                                                    const MethodIcon = methodInfo.icon;
-                                                    return (
-                                                        <div key={pay.id} onClick={() => handleRedownloadReceipt(pay.id)} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-variable hover:bg-white/[0.08] cursor-pointer transition-all group">
-                                                            <div className={`p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20`}>
-                                                                <MethodIcon size={18} className={methodInfo.color} />
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="text-sm font-bold text-variable-main">{pay.payment_number}</p>
-                                                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase ${methodInfo.color} bg-white/5 border border-current/10`}>
-                                                                        {methodInfo.label}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex items-center gap-3 mt-1">
-                                                                    <span className="text-[9px] text-variable-muted font-bold">
-                                                                        {new Date(pay.payment_date).toLocaleDateString('es-ES')}
-                                                                    </span>
-                                                                    {pay.notes && (
-                                                                        <span className="text-[9px] text-variable-muted italic truncate">
-                                                                            {pay.notes}
-                                                                        </span>
-                                                                    )}
-                                                                    {pay.created_by_user && (
-                                                                        <span className="text-[8px] text-variable-muted italic">
-                                                                            por {pay.created_by_user.nombre}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-lg font-black text-emerald-500">€{parseFloat(pay.amount).toFixed(2)}</span>
-                                                            <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" title="Descargar Recibo">
-                                                                <Download size={14} />
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </section>
-                    )
-                }
+                {/* Cobros / pagos: JSX en features/proyectos/components/SeccionCobros */}
+                <SeccionCobros
+                    invoices={invoices}
+                    payments={payments}
+                    totalInvoiced={totalInvoiced}
+                    totalPaid={totalPaid}
+                    pendingBalance={pendingBalance}
+                    paidPercent={paidPercent}
+                    expanded={paymentsExpanded}
+                    onToggle={() => setPaymentsExpanded(!paymentsExpanded)}
+                    onRegistrar={() => setPaymentModal(true)}
+                    getPaymentMethodInfo={getPaymentMethodInfo}
+                    onDescargarRecibo={handleRedownloadReceipt}
+                />
             </main >
 
             {/* MODALS */}
