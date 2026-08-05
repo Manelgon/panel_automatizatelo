@@ -3,7 +3,7 @@ import { GraduationCap, Plus, Sun, Moon, X, Clock, Users as UsersIcon, ShieldChe
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import CustomDropdown from '../../../components/CustomDropdown';
 import DataTable from '../../../components/DataTable';
 import { useTheme } from '../../../context/ThemeContext';
@@ -107,7 +107,7 @@ export default function Formaciones() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">

@@ -27,7 +27,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
 import { crearFactura, getCompanySettings, getFacturaCompleta, generarPdfFactura, registrarVerifactu } from '../../../lib/facturas';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
@@ -1004,7 +1004,7 @@ export default function ProjectDetail() {
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
             {/* Global loading overlay is now handled by LoadingContext */}
 
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">

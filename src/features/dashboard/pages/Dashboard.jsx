@@ -27,7 +27,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 import { supabase } from '../../../lib/supabase';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 
 /* ─── Stat Card ─── */
 const StatCard = ({ title, value, subtitle, icon: Icon, color = 'primary', delay = 0 }) => {
@@ -310,7 +310,7 @@ export default function Dashboard() {
     if (loading) {
         return (
             <div className="flex flex-col min-h-screen">
-                <Sidebar />
+                <BarraNavegacion />
                 <main className="flex-1 flex items-center justify-center" style={{ backgroundColor: 'var(--bg-main)' }}>
                     <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </main>
@@ -320,7 +320,7 @@ export default function Dashboard() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 {/* ═══ HEADER ═══ */}

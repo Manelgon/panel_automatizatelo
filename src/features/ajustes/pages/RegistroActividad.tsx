@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollText, Sun, Moon, RefreshCw, Search, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
@@ -99,7 +99,7 @@ export default function RegistroActividad() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">

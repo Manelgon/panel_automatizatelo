@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../../lib/supabase';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import DataTable from '../../../components/DataTable';
 import CustomDropdown from '../../../components/CustomDropdown';
 import { useAuth } from '../../../context/AuthContext';
@@ -253,7 +253,7 @@ export default function Projects() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">

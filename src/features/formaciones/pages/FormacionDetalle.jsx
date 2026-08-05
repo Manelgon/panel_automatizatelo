@@ -5,7 +5,7 @@ import {
     Clock, Calendar, MapPin, Euro, Sun, Moon, AlertTriangle, UserPlus
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import CustomDropdown from '../../../components/CustomDropdown';
 import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
@@ -194,7 +194,7 @@ export default function FormacionDetalle() {
     if (loading) {
         return (
             <div className="flex flex-col min-h-screen">
-                <Sidebar />
+                <BarraNavegacion />
                 <main className="flex-1 flex items-center justify-center">
                     <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </main>
@@ -205,7 +205,7 @@ export default function FormacionDetalle() {
     if (!formacion) {
         return (
             <div className="flex flex-col min-h-screen">
-                <Sidebar />
+                <BarraNavegacion />
                 <main className="flex-1 flex items-center justify-center text-center p-10">
                     <div>
                         <p className="text-variable-main font-bold mb-2">No se encontró la formación</p>
@@ -223,7 +223,7 @@ export default function FormacionDetalle() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <Link to="/formaciones" className="inline-flex items-center gap-2 text-xs font-bold text-variable-muted hover:text-primary mb-6">

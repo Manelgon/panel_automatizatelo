@@ -11,7 +11,7 @@ import {
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 
@@ -724,7 +724,7 @@ export default function Tasks() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-8 overflow-y-auto pb-8 custom-scrollbar">
                 {/* ─── Header ─── */}

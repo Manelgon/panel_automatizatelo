@@ -7,7 +7,7 @@ import {
     ChevronRight, Calendar, CheckCircle, GraduationCap, ShieldCheck, CalendarClock
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 
 import { useNotifications } from '../../../context/NotificationContext';
 
@@ -148,7 +148,7 @@ export default function ClienteDetail() {
     if (loading) {
         return (
             <div className="flex flex-col min-h-screen">
-                <Sidebar />
+                <BarraNavegacion />
                 <main className="flex-1 flex items-center justify-center">
                     <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </main>
@@ -162,7 +162,7 @@ export default function ClienteDetail() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 {/* Header */}

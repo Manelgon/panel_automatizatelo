@@ -6,9 +6,8 @@ import { useAuth } from '../context/AuthContext';
 // =============================================================================
 // BARRA DE NAVEGACIÓN SUPERIOR
 // =============================================================================
-// Antes era un raíl lateral de solo-iconos. A petición de Manel: arriba, con
-// texto y desplegables. El fichero conserva el nombre Sidebar para no tocar el
-// import de las 18 páginas; el layout de cada página pasa a columna.
+// Antes era un raíl lateral de solo-iconos llamado Sidebar. A petición de
+// Manel: arriba, con texto y desplegables — y renombrado a lo que es.
 //
 // La agrupación es la de la auditoría (§7.2): Facturación y Agenda dejan de ser
 // iconos sueltos y Configuración recoge lo administrativo.
@@ -53,7 +52,7 @@ const rutaActiva = (pathname, to) =>
 const grupoActivo = (pathname, items) =>
     items.some((i) => rutaActiva(pathname, i.to));
 
-export default function Sidebar() {
+export default function BarraNavegacion() {
     const { signOut } = useAuth();
     const navigate = useNavigate();
     const { pathname } = useLocation();

@@ -5,7 +5,7 @@ import { supabase } from '../../../lib/supabase';
 import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../../../lib/facturas';
 import { enviarDocumento } from '../../../lib/enviarEmail';
 import { registrarAccion } from '../../../lib/auditoria';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import DataTable from '../../../components/DataTable';
 import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
@@ -175,7 +175,7 @@ export default function Facturas() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 {/* Header */}

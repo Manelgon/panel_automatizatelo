@@ -9,7 +9,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../context/AuthContext';
 import { motion } from 'framer-motion';
 import { X, Calendar as CalendarIcon, User, FolderOpen, AlignLeft} from 'lucide-react';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 
@@ -305,7 +305,7 @@ export default function Calendar() {
 
     return (
         <div className="min-h-screen font-display overflow-x-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-main)' }}>
-            <Sidebar />
+            <BarraNavegacion />
             <div className="flex-1 p-4 sm:p-8 pb-8 transition-all relative z-10 min-h-screen overflow-y-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                     <div>

@@ -4,7 +4,7 @@ import {
     Inbox, Zap, FileCode2, History, RefreshCw, KeyRound
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import Sidebar from '../../../components/Sidebar';
+import BarraNavegacion from '../../../components/BarraNavegacion';
 import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
 
@@ -219,7 +219,7 @@ export default function AjustesEmail() {
     if (loading) {
         return (
             <div className="flex flex-col min-h-screen">
-                <Sidebar />
+                <BarraNavegacion />
                 <main className="flex-1 flex items-center justify-center">
                     <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
                 </main>
@@ -229,7 +229,7 @@ export default function AjustesEmail() {
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
-            <Sidebar />
+            <BarraNavegacion />
 
             <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
