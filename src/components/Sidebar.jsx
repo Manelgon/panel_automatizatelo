@@ -4,7 +4,8 @@ import {
     LayoutDashboard,
     Users,
     FolderOpen,
-    FileText,
+    Receipt,
+    ShieldCheck,
     Settings,
     LogOut,
     Target,
@@ -13,7 +14,8 @@ import {
     Calendar as CalendarIcon,
     ChevronRight,
     PenLine,
-    UserCheck
+    UserCheck,
+    Mail
 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
@@ -62,7 +64,9 @@ export default function Sidebar() {
     const location = useLocation();
     const [configOpen, setConfigOpen] = useState(false);
 
-    const isConfigActive = location.pathname.startsWith('/users') || location.pathname.startsWith('/services');
+    const isConfigActive = location.pathname.startsWith('/users')
+        || location.pathname.startsWith('/services')
+        || location.pathname.startsWith('/ajustes-');
 
     const handleSignOut = async () => {
         try {
@@ -88,10 +92,11 @@ export default function Sidebar() {
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
                     <SidebarItem icon={UserCheck} to="/clientes" label="Clientes" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
+                    <SidebarItem icon={Receipt} to="/facturas" label="Facturas" />
+                    <SidebarItem icon={ShieldCheck} to="/verifactu" label="Veri*factu" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario / Hitos" />
                     <SidebarItem icon={PenLine} to="/blog" label="Blog" />
-                    <SidebarItem icon={FileText} label="Documentos" />
                 </div>
 
                 <div className="mt-auto flex flex-col gap-6 items-center w-full px-4 relative">
@@ -128,10 +133,11 @@ export default function Sidebar() {
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
                     <SidebarItem icon={UserCheck} to="/clientes" label="Clientes" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
+                    <SidebarItem icon={Receipt} to="/facturas" label="Facturas" />
+                    <SidebarItem icon={ShieldCheck} to="/verifactu" label="Veri*factu" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
                     <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario" />
                     <SidebarItem icon={PenLine} to="/blog" label="Blog" />
-                    <SidebarItem icon={FileText} label="Documentos" />
 
                     {/* Botón configuración */}
                     <button
@@ -170,6 +176,8 @@ export default function Sidebar() {
                         <div className="p-2 flex flex-col gap-1">
                             <SubMenuItem icon={Users} to="/users" label="Gestión de Equipo" onClick={() => setConfigOpen(false)} />
                             <SubMenuItem icon={Briefcase} to="/services" label="Catálogo de Servicios" onClick={() => setConfigOpen(false)} />
+                            <SubMenuItem icon={Settings} to="/ajustes-emisor" label="Ajustes del emisor" onClick={() => setConfigOpen(false)} />
+                            <SubMenuItem icon={Mail} to="/ajustes-email" label="Correo del panel" onClick={() => setConfigOpen(false)} />
                         </div>
                     </div>
                 </>
