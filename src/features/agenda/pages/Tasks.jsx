@@ -723,10 +723,10 @@ export default function Tasks() {
     };
 
     return (
-        <div className="flex min-h-screen transition-colors duration-300 overflow-hidden">
+        <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
             <Sidebar />
 
-            <main className="flex-1 p-4 sm:p-8 overflow-y-auto pb-32 md:pb-8 custom-scrollbar">
+            <main className="flex-1 p-4 sm:p-8 overflow-y-auto pb-8 custom-scrollbar">
                 {/* ─── Header ─── */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div>

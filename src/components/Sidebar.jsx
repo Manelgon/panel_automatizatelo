@@ -1,76 +1,82 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import {
-    LayoutDashboard,
-    Users,
-    FolderOpen,
-    Receipt,
-    ShieldCheck,
-    Settings,
-    LogOut,
-    Target,
-    Briefcase,
-    ListTodo,
-    Calendar as CalendarIcon,
-    ChevronRight,
-    PenLine,
-    UserCheck,
-    Mail,
-    ScrollText,
-    GraduationCap
-} from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
 
-const SidebarItem = ({ icon: Icon, to = "#", label, activeOverride }) => {
-    const location = useLocation();
-    let active = false;
-    if (activeOverride !== undefined) {
-        active = activeOverride;
-    } else if (to !== "#") {
-        active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
-    }
+// =============================================================================
+// BARRA DE NAVEGACIÓN SUPERIOR
+// =============================================================================
+// Antes era un raíl lateral de solo-iconos. A petición de Manel: arriba, con
+// texto y desplegables. El fichero conserva el nombre Sidebar para no tocar el
+// import de las 18 páginas; el layout de cada página pasa a columna.
+//
+// La agrupación es la de la auditoría (§7.2): Facturación y Agenda dejan de ser
+// iconos sueltos y Configuración recoge lo administrativo.
+// =============================================================================
 
-    return (
-        <Link
-            to={to}
-            title={label}
-            className={`p-3 md:p-4 rounded-2xl transition-all duration-300 flex items-center justify-center flex-shrink-0 ${active ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
-        >
-            <Icon size={24} />
-        </Link>
-    );
-};
+const NAV = [
+    { label: 'Inicio', to: '/' },
+    { label: 'Leads', to: '/leads' },
+    { label: 'Clientes', to: '/clientes' },
+    { label: 'Proyectos', to: '/projects' },
+    { label: 'Formaciones', to: '/formaciones' },
+    {
+        label: 'Facturación',
+        items: [
+            { label: 'Facturas', to: '/facturas' },
+            { label: 'Veri*factu', to: '/verifactu' },
+        ],
+    },
+    {
+        label: 'Agenda',
+        items: [
+            { label: 'Tareas', to: '/tasks' },
+            { label: 'Calendario', to: '/calendar' },
+        ],
+    },
+    { label: 'Blog', to: '/blog' },
+    {
+        label: 'Configuración',
+        items: [
+            { label: 'Gestión de equipo', to: '/users' },
+            { label: 'Catálogo de servicios', to: '/services' },
+            { label: 'Ajustes del emisor', to: '/ajustes-emisor' },
+            { label: 'Correo del panel', to: '/ajustes-email' },
+            { label: 'Registro de actividad', to: '/registro-actividad' },
+        ],
+    },
+];
 
-// Settings submenu item (smaller, for inside the popover)
-const SubMenuItem = ({ icon: Icon, to, label, onClick }) => {
-    const location = useLocation();
-    const active = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
+const rutaActiva = (pathname, to) =>
+    to === '/' ? pathname === '/' : pathname.startsWith(to);
 
-    return (
-        <Link
-            to={to}
-            onClick={onClick}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full ${active ? 'bg-primary text-white' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
-        >
-            <Icon size={18} />
-            <span className="text-sm font-semibold whitespace-nowrap">{label}</span>
-            {active && <ChevronRight size={14} className="ml-auto opacity-60" />}
-        </Link>
-    );
-};
+const grupoActivo = (pathname, items) =>
+    items.some((i) => rutaActiva(pathname, i.to));
 
 export default function Sidebar() {
     const { signOut } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation();
-    const [configOpen, setConfigOpen] = useState(false);
+    const { pathname } = useLocation();
 
-    const isConfigActive = location.pathname.startsWith('/users')
-        || location.pathname.startsWith('/services')
-        || location.pathname.startsWith('/ajustes-');
+    const [abierto, setAbierto] = useState(null);   // label del desplegable abierto
+    const [movilAbierto, setMovilAbierto] = useState(false);
+    const ref = useRef(null);
 
-    const handleSignOut = async () => {
+    // Cerrar al pinchar fuera y al navegar
+    useEffect(() => {
+        const fuera = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) {
+                setAbierto(null);
+                setMovilAbierto(false);
+            }
+        };
+        document.addEventListener('mousedown', fuera);
+        return () => document.removeEventListener('mousedown', fuera);
+    }, []);
+
+    useEffect(() => { setAbierto(null); setMovilAbierto(false); }, [pathname]);
+
+    const salir = async () => {
         try {
             await signOut();
             navigate('/login');
@@ -79,115 +85,120 @@ export default function Sidebar() {
         }
     };
 
+    const claseItem = (activo) =>
+        `px-3 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+            activo ? 'text-primary bg-primary/10' : 'text-variable-muted hover:text-primary hover:bg-white/5'
+        }`;
+
     return (
-        <>
-            {/* Desktop Sidebar */}
-            <aside className="hidden md:flex w-28 flex-col items-center py-8 glass border-r border-variable h-screen sticky top-0 shrink-0 z-50">
-                <div className="mb-12">
-                    <div className="size-14 rounded-2xl bg-white/5 flex items-center justify-center p-2 shadow-xl border border-variable">
-                        <img src={logo} alt="Automatizatelo" className="w-full h-full object-contain" />
-                    </div>
-                </div>
+        <header ref={ref} className="sticky top-0 z-[100] glass border-b border-variable">
+            <div className="flex items-center gap-2 px-4 sm:px-8 h-16">
+                {/* Marca */}
+                <Link to="/" className="flex items-center gap-3 mr-4 shrink-0">
+                    <img src={logo} alt="Automatízatelo" className="size-9 object-contain" />
+                    <span className="hidden lg:block text-sm font-black tracking-tight text-variable-main">
+                        Automatízatelo
+                    </span>
+                </Link>
 
-                <div className="flex flex-col gap-6 flex-1 w-full px-4 items-center">
-                    <SidebarItem icon={LayoutDashboard} to="/" label="Dashboard" />
-                    <SidebarItem icon={Target} to="/leads" label="Leads" />
-                    <SidebarItem icon={UserCheck} to="/clientes" label="Clientes" />
-                    <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
-                    <SidebarItem icon={GraduationCap} to="/formaciones" label="Formaciones" />
-                    <SidebarItem icon={Receipt} to="/facturas" label="Facturas" />
-                    <SidebarItem icon={ShieldCheck} to="/verifactu" label="Veri*factu" />
-                    <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
-                    <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario / Hitos" />
-                    <SidebarItem icon={PenLine} to="/blog" label="Blog" />
-                </div>
+                {/* Navegación de escritorio */}
+                <nav className="hidden md:flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar">
+                    {NAV.map((seccion) => (
+                        seccion.items ? (
+                            <div key={seccion.label} className="relative">
+                                <button
+                                    onClick={() => setAbierto(abierto === seccion.label ? null : seccion.label)}
+                                    className={claseItem(grupoActivo(pathname, seccion.items) || abierto === seccion.label)}
+                                >
+                                    {seccion.label} <span className="text-[10px] opacity-70">▾</span>
+                                </button>
 
-                <div className="mt-auto flex flex-col gap-6 items-center w-full px-4 relative">
-                    {/* Configuración con submenu */}
-                    <div className="relative w-full flex justify-center">
-                        <button
-                            onClick={() => setConfigOpen(prev => !prev)}
-                            title="Configuración"
-                            className={`p-3 md:p-4 rounded-2xl transition-all duration-300 flex items-center justify-center flex-shrink-0 ${isConfigActive || configOpen ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
-                        >
-                            <Settings size={24} />
-                        </button>
+                                {abierto === seccion.label && (
+                                    <div className="absolute left-0 top-full mt-2 min-w-[220px] glass border border-variable rounded-2xl shadow-2xl p-2 space-y-1">
+                                        {seccion.items.map((item) => (
+                                            <Link
+                                                key={item.to}
+                                                to={item.to}
+                                                className={`block px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                                                    rutaActiva(pathname, item.to)
+                                                        ? 'bg-primary text-white'
+                                                        : 'text-variable-muted hover:text-primary hover:bg-white/5'
+                                                }`}
+                                            >
+                                                {item.label}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <Link key={seccion.to} to={seccion.to} className={claseItem(rutaActiva(pathname, seccion.to))}>
+                                {seccion.label}
+                            </Link>
+                        )
+                    ))}
+                </nav>
 
-                    </div>
+                <div className="flex-1 md:hidden" />
 
+                {/* Salir (escritorio) */}
+                <button
+                    onClick={salir}
+                    className="hidden md:block px-3 py-2 rounded-xl text-sm font-bold text-variable-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all shrink-0"
+                >
+                    Salir
+                </button>
+
+                {/* Menú móvil */}
+                <button
+                    onClick={() => setMovilAbierto(!movilAbierto)}
+                    className="md:hidden px-3 py-2 rounded-xl text-sm font-bold text-variable-main glass border border-variable"
+                >
+                    Menú <span className="text-[10px] opacity-70">{movilAbierto ? '▴' : '▾'}</span>
+                </button>
+            </div>
+
+            {/* Panel móvil: todo el mapa, con cabeceras de grupo */}
+            {movilAbierto && (
+                <div className="md:hidden border-t border-variable px-4 py-4 space-y-1 max-h-[70vh] overflow-y-auto">
+                    {NAV.map((seccion) => (
+                        seccion.items ? (
+                            <div key={seccion.label} className="pt-2">
+                                <p className="px-3 pb-1 text-[10px] uppercase font-black tracking-widest text-variable-muted">
+                                    {seccion.label}
+                                </p>
+                                {seccion.items.map((item) => (
+                                    <Link
+                                        key={item.to}
+                                        to={item.to}
+                                        className={`block px-5 py-2.5 rounded-xl text-sm font-semibold ${
+                                            rutaActiva(pathname, item.to) ? 'bg-primary text-white' : 'text-variable-muted'
+                                        }`}
+                                    >
+                                        {item.label}
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <Link
+                                key={seccion.to}
+                                to={seccion.to}
+                                className={`block px-3 py-2.5 rounded-xl text-sm font-bold ${
+                                    rutaActiva(pathname, seccion.to) ? 'bg-primary text-white' : 'text-variable-main'
+                                }`}
+                            >
+                                {seccion.label}
+                            </Link>
+                        )
+                    ))}
                     <button
-                        onClick={handleSignOut}
-                        className="p-4 rounded-2xl text-variable-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-300 flex items-center justify-center"
-                        title="Cerrar Sesión"
+                        onClick={salir}
+                        className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-500/10"
                     >
-                        <LogOut size={24} />
-                    </button>
-
-                    <div className="size-12 rounded-2xl border-2 border-primary/20 p-0.5 mt-2">
-                        <img className="rounded-xl w-full h-full object-cover" src="https://ui-avatars.com/api/?name=Admin&background=f3791b&color=fff" alt="User" />
-                    </div>
-                </div>
-            </aside>
-
-            {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-variable z-[100] safe-area-bottom">
-                <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto no-scrollbar">
-                    <SidebarItem icon={LayoutDashboard} to="/" label="Dashboard" />
-                    <SidebarItem icon={Target} to="/leads" label="Leads" />
-                    <SidebarItem icon={UserCheck} to="/clientes" label="Clientes" />
-                    <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
-                    <SidebarItem icon={GraduationCap} to="/formaciones" label="Formaciones" />
-                    <SidebarItem icon={Receipt} to="/facturas" label="Facturas" />
-                    <SidebarItem icon={ShieldCheck} to="/verifactu" label="Veri*factu" />
-                    <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
-                    <SidebarItem icon={CalendarIcon} to="/calendar" label="Calendario" />
-                    <SidebarItem icon={PenLine} to="/blog" label="Blog" />
-
-                    {/* Botón configuración */}
-                    <button
-                        onClick={() => setConfigOpen(prev => !prev)}
-                        title="Configuración"
-                        className={`p-3 rounded-2xl transition-all duration-300 flex items-center justify-center flex-shrink-0 ${isConfigActive || configOpen ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-variable-muted hover:text-primary hover:bg-white/5'}`}
-                    >
-                        <Settings size={22} />
-                    </button>
-
-                    <button
-                        onClick={handleSignOut}
-                        className="p-3 rounded-xl text-variable-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all flex-shrink-0 flex items-center justify-center"
-                        title="Cerrar Sesión"
-                    >
-                        <LogOut size={22} />
+                        Salir
                     </button>
                 </div>
-            </nav>
-
-            {/* Submenu Popover (Common for Desktop and Mobile) */}
-            {configOpen && (
-                <>
-                    {/* Backdrop */}
-                    <div
-                        className="fixed inset-0 z-[998] bg-black/5 md:bg-transparent"
-                        onClick={() => setConfigOpen(false)}
-                    />
-                    <div className={`fixed glass border border-variable rounded-2xl shadow-2xl z-[999] overflow-hidden min-w-[220px] transition-all duration-300
-                        ${/* Desktop position */ 'md:bottom-auto md:top-[75%] md:left-32'}
-                        ${/* Mobile position */ 'bottom-24 right-4 md:right-auto'}
-                    `}>
-                        <div className="px-4 py-3 border-b border-variable bg-white/5 text-center md:text-left">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-variable-muted">Configuración</p>
-                        </div>
-                        <div className="p-2 flex flex-col gap-1">
-                            <SubMenuItem icon={Users} to="/users" label="Gestión de Equipo" onClick={() => setConfigOpen(false)} />
-                            <SubMenuItem icon={Briefcase} to="/services" label="Catálogo de Servicios" onClick={() => setConfigOpen(false)} />
-                            <SubMenuItem icon={Settings} to="/ajustes-emisor" label="Ajustes del emisor" onClick={() => setConfigOpen(false)} />
-                            <SubMenuItem icon={Mail} to="/ajustes-email" label="Correo del panel" onClick={() => setConfigOpen(false)} />
-                            <SubMenuItem icon={ScrollText} to="/registro-actividad" label="Registro de actividad" onClick={() => setConfigOpen(false)} />
-                        </div>
-                    </div>
-                </>
             )}
-        </>
+        </header>
     );
 }
-

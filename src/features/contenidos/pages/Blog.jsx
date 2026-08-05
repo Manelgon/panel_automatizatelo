@@ -574,10 +574,10 @@ export default function Blog() {
 
     // ─── Render ─────────────────────
     return (
-        <div className="flex min-h-screen transition-colors duration-300 overflow-hidden">
+        <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
             <Sidebar />
 
-            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-32 md:pb-10">
+            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 {/* Header */}
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
                     <div>

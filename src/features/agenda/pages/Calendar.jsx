@@ -304,9 +304,9 @@ export default function Calendar() {
     }
 
     return (
-        <div className="min-h-screen font-display overflow-x-hidden flex" style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-main)' }}>
+        <div className="min-h-screen font-display overflow-x-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-main)' }}>
             <Sidebar />
-            <div className="flex-1 p-4 sm:p-8 pb-32 md:pb-8 transition-all relative z-10 min-h-screen overflow-y-auto">
+            <div className="flex-1 p-4 sm:p-8 pb-8 transition-all relative z-10 min-h-screen overflow-y-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                     <div>
                         <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">

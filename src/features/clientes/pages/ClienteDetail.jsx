@@ -147,7 +147,7 @@ export default function ClienteDetail() {
 
     if (loading) {
         return (
-            <div className="flex min-h-screen">
+            <div className="flex flex-col min-h-screen">
                 <Sidebar />
                 <main className="flex-1 flex items-center justify-center">
                     <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -161,10 +161,10 @@ export default function ClienteDetail() {
     const displayName = cliente.company_name || `${cliente.first_name} ${cliente.last_name || ''}`.trim();
 
     return (
-        <div className="flex min-h-screen transition-colors duration-300 overflow-hidden">
+        <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
             <Sidebar />
 
-            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-32 md:pb-10">
+            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-8">
                     <button

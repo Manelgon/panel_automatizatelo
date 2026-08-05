@@ -193,7 +193,7 @@ export default function FormacionDetalle() {
 
     if (loading) {
         return (
-            <div className="flex min-h-screen">
+            <div className="flex flex-col min-h-screen">
                 <Sidebar />
                 <main className="flex-1 flex items-center justify-center">
                     <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -204,7 +204,7 @@ export default function FormacionDetalle() {
 
     if (!formacion) {
         return (
-            <div className="flex min-h-screen">
+            <div className="flex flex-col min-h-screen">
                 <Sidebar />
                 <main className="flex-1 flex items-center justify-center text-center p-10">
                     <div>
@@ -222,10 +222,10 @@ export default function FormacionDetalle() {
     const sinContenidos = !formacion.contenidos?.trim();
 
     return (
-        <div className="flex min-h-screen transition-colors duration-300 overflow-hidden">
+        <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
             <Sidebar />
 
-            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-32 md:pb-10">
+            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <Link to="/formaciones" className="inline-flex items-center gap-2 text-xs font-bold text-variable-muted hover:text-primary mb-6">
                     <ArrowLeft size={14} /> Formaciones
                 </Link>

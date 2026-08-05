@@ -185,10 +185,10 @@ export default function Services() {
     }, []);
 
     return (
-        <div className="flex min-h-screen transition-colors duration-300 overflow-hidden">
+        <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
             <Sidebar />
 
-            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-32 md:pb-10">
+            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 sm:mb-12">
                     <div>
                         <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-1 text-variable-main">Catálogo de <span className="text-primary italic">Servicios</span></h1>

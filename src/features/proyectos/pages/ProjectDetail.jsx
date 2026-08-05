@@ -999,12 +999,12 @@ export default function ProjectDetail() {
     };
 
     return (
-        <div className="flex min-h-screen transition-colors duration-300 overflow-hidden">
+        <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
             {/* Global loading overlay is now handled by LoadingContext */}
 
             <Sidebar />
 
-            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-32 md:pb-10">
+            <main className="flex-1 p-4 sm:p-10 overflow-y-auto pb-10">
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <Link to="/projects" className="inline-flex items-center gap-2 text-variable-muted hover:text-primary transition-colors mb-6 sm:mb-8 group">
                         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
