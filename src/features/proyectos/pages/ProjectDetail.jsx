@@ -538,6 +538,37 @@ export default function ProjectDetail() {
         }, 'Generando factura...');
     };
 
+    // Enviar la factura al cliente con el PDF adjunto. El email va al que quedó
+    // congelado en la propia factura al emitirla.
+    const handleEnviarInvoice = async (invoiceId) => {
+        await withLock(async () => {
+            const [{ factura }, settings] = await Promise.all([
+                getFacturaCompleta(invoiceId),
+                getCompanySettings(),
+            ]);
+            if (!factura) throw new Error('Factura no encontrada');
+
+            const doc = generateInvoicePDF(factura, settings);
+            const res = await enviarDocumento({
+                para: factura.cliente_email,
+                asunto: `Factura ${factura.numero} · Automatizatelo`,
+                saludo: '¡Hola!',
+                lineas: [
+                    `Soy Manel. Te adjunto la factura ${factura.numero} por un total de €${parseFloat(factura.total).toFixed(2)}.`,
+                    factura.fecha_vencimiento
+                        ? `El vencimiento es el ${new Date(factura.fecha_vencimiento).toLocaleDateString('es-ES')}. En el propio documento tienes la forma de pago.`
+                        : 'En el propio documento tienes la forma de pago.',
+                    'Cualquier duda, responde a este correo y lo vemos.',
+                ],
+                doc,
+                nombreAdjunto: `${factura.numero}.pdf`,
+            });
+
+            if (res.error) throw new Error(res.error);
+            showNotification(`Factura enviada a ${factura.cliente_email} 📤`, 'success');
+        }, 'Enviando factura...');
+    };
+
     const handleRedownloadInvoice = async (invoiceId) => {
         try {
             const [{ factura }, settings] = await Promise.all([
@@ -1327,6 +1358,19 @@ export default function ProjectDetail() {
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Enviar la factura al cliente, sin salir de Archivos */}
+                                            {isInvoice && (
+                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all bg-dark/80 backdrop-blur-md p-1 rounded-xl border border-variable shadow-xl mr-10">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleEnviarInvoice(invoiceId); }}
+                                                        className="p-1.5 text-sky-400 rounded-lg transition-colors hover:bg-sky-500/10"
+                                                        title="Enviar factura al cliente por email"
+                                                    >
+                                                        <Send size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
 
                                             {/* Acciones de Presupuesto */}
                                             {/* Enviar se puede siempre (también confirmado: al cliente
