@@ -92,7 +92,8 @@ export default function Sidebar() {
 
     return (
         <header ref={ref} className="sticky top-0 z-[100] glass border-b border-variable">
-            <div className="flex items-center gap-2 px-4 sm:px-8 h-16">
+            {/* min-h en vez de h fija: si la fila envuelve, la barra crece */}
+            <div className="flex items-center gap-2 px-4 sm:px-8 min-h-16 py-2">
                 {/* Marca */}
                 <Link to="/" className="flex items-center gap-3 mr-4 shrink-0">
                     <img src={logo} alt="Automatízatelo" className="size-9 object-contain" />
@@ -101,8 +102,11 @@ export default function Sidebar() {
                     </span>
                 </Link>
 
-                {/* Navegación de escritorio */}
-                <nav className="hidden md:flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar">
+                {/* Navegación de escritorio.
+                    OJO: nada de overflow aquí — un contenedor con overflow-x
+                    recorta a los hijos absolutos y los desplegables se abren
+                    pero quedan invisibles. Si no cabe, se envuelve en dos filas. */}
+                <nav className="hidden md:flex items-center gap-1 flex-1 flex-wrap">
                     {NAV.map((seccion) => (
                         seccion.items ? (
                             <div key={seccion.label} className="relative">
@@ -114,7 +118,7 @@ export default function Sidebar() {
                                 </button>
 
                                 {abierto === seccion.label && (
-                                    <div className="absolute left-0 top-full mt-2 min-w-[220px] glass border border-variable rounded-2xl shadow-2xl p-2 space-y-1">
+                                    <div className="absolute left-0 top-full mt-2 z-50 min-w-[220px] glass border border-variable rounded-2xl shadow-2xl p-2 space-y-1">
                                         {seccion.items.map((item) => (
                                             <Link
                                                 key={item.to}
