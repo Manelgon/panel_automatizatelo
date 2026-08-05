@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { registrarAccion } from './auditoria';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -221,6 +222,8 @@ export async function crearFactura({
     await supabase.from('facturas').delete().eq('id', factura.id);
     return { error: `Error insertando líneas: ${linErr.message}` };
   }
+
+  registrarAccion('factura.emitida', { tipo: 'factura', id: factura.id, label: factura.numero, metadata: { total } });
 
   return { ok: true, factura, lineas: lineasFinal };
 }

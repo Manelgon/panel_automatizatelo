@@ -478,6 +478,19 @@ export interface EmailEnvio {
     created_at: string;
 }
 
+// ── Auditoría (migración 018) ────────────────────────────────────────────────
+
+export interface Auditoria {
+    id: string;
+    user_id: string | null;
+    accion: string;
+    recurso_tipo: string | null;
+    recurso_id: string | null;
+    recurso_label: string | null;
+    metadata: Json;
+    created_at: string;
+}
+
 // ── Contenidos ───────────────────────────────────────────────────────────────
 
 export interface BlogPost {
@@ -532,10 +545,42 @@ export interface Database {
             email_plantillas: Fila<EmailPlantilla>;
             email_envios: Fila<EmailEnvio>;
             blog_posts: Fila<BlogPost>;
+            audit_logs: Fila<Auditoria>;
         };
-        Views: Record<string, never>;
-        Functions: Record<string, never>;
-        Enums: Record<string, never>;
-        CompositeTypes: Record<string, never>;
+        Views: { [_ in never]: never };
+        Functions: {
+            registrar_accion: {
+                Args: {
+                    p_accion: string;
+                    p_recurso_tipo?: string | null;
+                    p_recurso_id?: string | null;
+                    p_recurso_label?: string | null;
+                    p_metadata?: Json;
+                };
+                Returns: null;
+            };
+            aplicar_retencion: { Args: Record<string, never>; Returns: Json };
+            generar_codigo_certificado: { Args: Record<string, never>; Returns: string };
+            forget_lead_by_email: { Args: { p_email: string; p_dry_run?: boolean }; Returns: Json };
+            next_numero_factura: {
+                Args: { p_serie: string | null };
+                Returns: { serie: string; anio: number; correlativo: number; numero: string }[];
+            };
+            create_project: {
+                Args: {
+                    p_name: string;
+                    p_client_id: string;
+                    p_description?: string;
+                    p_alias?: string | null;
+                    p_total_hours?: number;
+                    p_lead_id?: string | null;
+                    p_assigned_users?: string[];
+                    p_service_ids?: string[];
+                };
+                Returns: string;
+            };
+        };
+        Enums: { [_ in never]: never };
+        CompositeTypes: { [_ in never]: never };
     };
 }

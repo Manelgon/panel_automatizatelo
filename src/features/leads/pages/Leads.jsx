@@ -25,6 +25,7 @@ import { supabase } from '../../../lib/supabase';
 import Sidebar from '../../../components/Sidebar';
 import CustomDropdown from '../../../components/CustomDropdown';
 import AgendarCitaModal from '../../citas/AgendarCitaModal';
+import { registrarAccion } from '../../../lib/auditoria';
 import DataTable from '../../../components/DataTable';
 import { useAuth } from '../../../context/AuthContext';
 import { useNotifications } from '../../../context/NotificationContext';
@@ -250,6 +251,7 @@ export default function Leads() {
                 ? 'Datos anonimizados (proyecto conservado por obligación fiscal)'
                 : 'Datos eliminados completamente';
 
+            registrarAccion('lead.olvidado', { tipo: 'lead', label: gdprLead.email, metadata: { resultado: data?.status } });
             showNotification(`${action} para ${gdprLead.email}`, 'success');
             closeGdprModal();
             fetchLeads();

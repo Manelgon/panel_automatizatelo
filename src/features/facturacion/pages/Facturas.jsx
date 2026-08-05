@@ -4,6 +4,7 @@ import { Receipt, Search, Download, Sun, Moon, ChevronRight, FileWarning, CheckC
 import { supabase } from '../../../lib/supabase';
 import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../../../lib/facturas';
 import { enviarDocumento } from '../../../lib/enviarEmail';
+import { registrarAccion } from '../../../lib/auditoria';
 import Sidebar from '../../../components/Sidebar';
 import { useTheme } from '../../../context/ThemeContext';
 import { useNotifications } from '../../../context/NotificationContext';
@@ -113,6 +114,7 @@ export default function Facturas() {
             .eq('id', f.id);
 
         if (error) return showNotification(`No se pudo cambiar el estado: ${error.message}`, 'error');
+        registrarAccion(aPagada ? 'factura.pagada' : 'factura.pendiente', { tipo: 'factura', id: f.id, label: f.numero, metadata: { total: f.total } });
         showNotification(aPagada ? `Factura ${f.numero} marcada como pagada 💚` : `Factura ${f.numero} vuelve a pendiente`);
         fetchFacturas();
     };

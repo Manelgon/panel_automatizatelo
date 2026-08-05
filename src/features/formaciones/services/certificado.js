@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { supabase } from '../../../lib/supabase';
 import { getCompanySettings } from '../../../lib/facturas';
+import { registrarAccion } from '../../../lib/auditoria';
 import { TIPOS, MODALIDADES } from '../constantes';
 
 // =============================================================================
@@ -214,6 +215,8 @@ export async function emitirCertificado(alumnoId) {
         .eq('id', alumnoId);
 
     if (errUpdate) return { error: `Certificado generado pero no registrado: ${errUpdate.message}` };
+
+    registrarAccion('certificado.emitido', { tipo: 'certificado', id: alumnoId, label: codigo });
 
     return { ok: true, codigo, ruta, doc };
 }

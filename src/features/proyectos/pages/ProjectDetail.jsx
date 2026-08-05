@@ -37,6 +37,7 @@ import { generarPdfPresupuesto, generarPdfRecibo } from '../../proyectos/service
 import SeccionCobros from '../../proyectos/components/SeccionCobros';
 import SeccionPresupuesto from '../../proyectos/components/SeccionPresupuesto';
 import { enviarDocumento } from '../../../lib/enviarEmail';
+import { registrarAccion } from '../../../lib/auditoria';
 
 export default function ProjectDetail() {
     const { id } = useParams();
@@ -927,6 +928,7 @@ export default function ProjectDetail() {
 
             setPaymentModal(false);
             setNewPayment({ amount: '', payment_method: 'transferencia', notes: '' });
+            registrarAccion('cobro.registrado', { tipo: 'cobro', id: payment.id, label: paymentNumber, metadata: { importe: amount, metodo: newPayment.payment_method } });
             showNotification(`Pago ${paymentNumber} registrado correctamente \u2705`);
             fetchBudgetData();
             fetchProjectData();
