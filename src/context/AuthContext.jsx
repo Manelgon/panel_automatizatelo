@@ -9,6 +9,9 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [profileLoading, setProfileLoading] = useState(false);
     const initializedRef = useRef(false);
+    // Qué usuario tenemos ya cargado. Sirve para distinguir un inicio de sesión
+    // de verdad de un simple refresco de token.
+    const usuarioCargadoRef = useRef(null);
 
     // Fetch profile with timeout — never blocks the UI
     const fetchProfileSafe = async (userId) => {
@@ -46,6 +49,7 @@ export const AuthProvider = ({ children }) => {
             initializedRef.current = true;
 
             if (event === 'SIGNED_OUT') {
+                usuarioCargadoRef.current = null;
                 setUser(null);
                 setProfile(null);
                 setLoading(false);
@@ -53,11 +57,22 @@ export const AuthProvider = ({ children }) => {
             }
 
             if (session?.user) {
-                setUser(session.user);
+                const mismoUsuario = usuarioCargadoRef.current === session.user.id;
+                usuarioCargadoRef.current = session.user.id;
                 setLoading(false); // Unblock UI immediately
+
+                // Al volver a la pestaña, supabase-js refresca el token y vuelve a
+                // disparar este callback con el MISMO usuario. Si en ese caso
+                // tocáramos el estado, ProtectedRoute cambiaría la página por el
+                // spinner y desmontaría lo que hubiera abierto: modales a medio
+                // rellenar incluidos. Así que no hacemos nada.
+                if (mismoUsuario) return;
+
+                setUser(session.user);
                 // Fetch profile in background — don't block rendering
                 fetchProfileSafe(session.user.id);
             } else {
+                usuarioCargadoRef.current = null;
                 setUser(null);
                 setProfile(null);
                 setLoading(false);
@@ -77,6 +92,7 @@ export const AuthProvider = ({ children }) => {
                 // If onAuthStateChange hasn't fired yet, use this result
                 if (!initializedRef.current && data?.session?.user) {
                     console.log('[Auth] getSession found user:', data.session.user.email);
+                    usuarioCargadoRef.current = data.session.user.id;
                     setUser(data.session.user);
                     setLoading(false);
                     fetchProfileSafe(data.session.user.id);

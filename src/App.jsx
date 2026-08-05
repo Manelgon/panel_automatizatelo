@@ -38,8 +38,11 @@ const ProtectedRoute = ({ children, requireAdmin = true }) => {
         return <Navigate to="/login" />;
     }
 
-    // Profile is still loading → show spinner (not "Acceso Denegado")
-    if (profileLoading) {
+    // Profile is still loading → show spinner (not "Acceso Denegado").
+    // Solo la PRIMERA vez: si ya tenemos perfil, un refresco en segundo plano no
+    // debe sustituir la página por el spinner. Hacerlo desmontaba lo que hubiera
+    // abierto — un modal a medio rellenar se perdía entero al volver a la pestaña.
+    if (profileLoading && !profile) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#0F0716]">
                 <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
