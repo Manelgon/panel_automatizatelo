@@ -272,8 +272,20 @@ export interface Formacion {
     lugar: string | null;
     contenidos: string | null;
     notas: string | null;
+    checklist: Json;               // migración 020: marcas manuales {clave: true}
     created_at: string;
     updated_at: string;
+}
+
+export interface FormacionContrato {
+    id: string;
+    formacion_id: string;
+    estado: 'pendiente_firma' | 'firmado' | 'anulado';
+    ruta_pdf: string;
+    ruta_pdf_firmado: string | null;
+    firmado_at: string | null;
+    created_at: string;
+    created_by: string | null;
 }
 
 export interface FormacionSesion {
@@ -544,6 +556,7 @@ export interface Database {
             formaciones: Fila<Formacion>;
             formacion_sesiones: Fila<FormacionSesion>;
             formacion_alumnos: Fila<FormacionAlumno>;
+            formacion_contratos: Fila<FormacionContrato>;
             citas: Fila<Cita>;
             facturas: Fila<Factura>;
             factura_lineas: Fila<FacturaLinea>;

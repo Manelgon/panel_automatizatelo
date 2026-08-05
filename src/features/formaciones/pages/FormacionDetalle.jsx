@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
     ArrowLeft, GraduationCap, Plus, Trash2, ShieldCheck, Download, Receipt,
-    Clock, Calendar, MapPin, Euro, AlertTriangle, UserPlus
+    Clock, Calendar, MapPin, Euro, AlertTriangle, UserPlus,
+    FileSignature, Upload, CheckCircle2, Circle
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
@@ -11,6 +12,7 @@ import { useNotifications } from '../../../context/NotificationContext';
 import { useGlobalLoading } from '../../../context/LoadingContext';
 import { crearFactura, registrarVerifactu } from '../../../lib/facturas';
 import { emitirCertificado, urlCertificado, nombreCompletoAlumno } from '../../formaciones/services/certificado';
+import { generarContrato, subirContratoFirmado, urlContrato } from '../../formaciones/services/contrato';
 import { TIPOS, MODALIDADES, ESTADOS, APROVECHAMIENTO, nombreCliente } from '../../formaciones/constantes';
 
 export default function FormacionDetalle() {
@@ -23,16 +25,18 @@ export default function FormacionDetalle() {
     const [sesiones, setSesiones] = useState([]);
     const [alumnos, setAlumnos] = useState([]);
     const [facturas, setFacturas] = useState([]);
+    const [contratos, setContratos] = useState([]);
 
     const [nuevaSesion, setNuevaSesion] = useState({ fecha: '', hora_inicio: '', hora_fin: '', horas: '', lugar: '' });
     const [nuevoAlumno, setNuevoAlumno] = useState({ nombre: '', apellidos: '', email: '', dni: '', cargo: '' });
 
     const cargar = useCallback(async () => {
-        const [{ data: f, error }, { data: s }, { data: a }, { data: fac }] = await Promise.all([
+        const [{ data: f, error }, { data: s }, { data: a }, { data: fac }, { data: con }] = await Promise.all([
             supabase.from('formaciones').select('*, clients:clientes(*)').eq('id', id).single(),
             supabase.from('formacion_sesiones').select('*').eq('formacion_id', id).order('fecha'),
             supabase.from('formacion_alumnos').select('*').eq('formacion_id', id).order('apellidos'),
             supabase.from('facturas').select('id, numero, total, estado, fecha_emision').eq('formacion_id', id),
+            supabase.from('formacion_contratos').select('*').eq('formacion_id', id).order('created_at', { ascending: false }),
         ]);
 
         if (error) showNotification(`Error cargando la formación: ${error.message}`, 'error');
@@ -40,6 +44,7 @@ export default function FormacionDetalle() {
         setSesiones(s || []);
         setAlumnos(a || []);
         setFacturas(fac || []);
+        setContratos(con || []);
         setLoading(false);
     }, [id]);
 
@@ -151,6 +156,53 @@ export default function FormacionDetalle() {
         window.open(res.url, '_blank', 'noopener');
     };
 
+    // ── Contrato ──────────────────────────────────────────────────────────────
+    const contratoVigente = contratos.find(c => c.estado !== 'anulado') || null;
+
+    const generarContratoHandler = async () => {
+        if (contratoVigente) {
+            const ok = await confirm({
+                title: '¿Generar un contrato nuevo?',
+                message: contratoVigente.estado === 'firmado'
+                    ? 'Ya hay un contrato firmado. El nuevo lo sustituirá como vigente, aunque el firmado se conserva.'
+                    : 'El contrato pendiente de firma actual quedará anulado y lo sustituirá el nuevo.',
+                confirmText: 'Generar',
+            });
+            if (!ok) return;
+        }
+        await withLoading(async () => {
+            const res = await generarContrato(id);
+            if (res.error) return showNotification(res.error, 'error');
+            res.doc?.save(`Contrato ${formacion.titulo}.pdf`);
+            showNotification('Contrato generado, pendiente de firma', 'success');
+            cargar();
+        }, 'Generando contrato...');
+    };
+
+    const subirFirmadoHandler = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';   // permitir volver a elegir el mismo archivo
+        if (!file || !contratoVigente) return;
+        await withLoading(async () => {
+            const res = await subirContratoFirmado(contratoVigente, file);
+            if (res.error) return showNotification(res.error, 'error');
+            showNotification('Contrato firmado guardado', 'success');
+            cargar();
+        }, 'Subiendo contrato firmado...');
+    };
+
+    const descargarContrato = async (ruta) => {
+        const res = await urlContrato(ruta);
+        if (res.error) return showNotification(res.error, 'error');
+        window.open(res.url, '_blank', 'noopener');
+    };
+
+    // ── Checklist ─────────────────────────────────────────────────────────────
+    const marcarManual = (clave) => {
+        const actual = formacion.checklist || {};
+        actualizar({ checklist: { ...actual, [clave]: !actual[clave] } });
+    };
+
     // ── Facturación ───────────────────────────────────────────────────────────
     const facturar = async () => {
         if (!formacion?.cliente_id) return showNotification('La formación no tiene cliente', 'error');
@@ -218,6 +270,29 @@ export default function FormacionDetalle() {
     const aptos = alumnos.filter(a => a.aprovechamiento === 'apto').length;
     const certificados = alumnos.filter(a => a.certificado_emitido_at).length;
     const sinContenidos = !formacion.contenidos?.trim();
+
+    // Checklist: lo automático se deduce de los datos reales; lo manual se
+    // guarda en formaciones.checklist (jsonb) y se marca a mano.
+    const checklistAuto = [
+        { label: 'Datos fiscales del cliente (NIF y dirección)', ok: !!(formacion.clients?.tax_id && formacion.clients?.billing_address) },
+        { label: 'Fechas de la formación definidas', ok: !!formacion.fecha_inicio },
+        { label: 'Sesiones planificadas', ok: sesiones.length > 0 },
+        { label: 'Precio cerrado puesto', ok: Number(formacion.precio_cerrado) > 0 },
+        { label: 'Contenidos del temario', ok: !!formacion.contenidos?.trim() },
+        { label: 'Alumnos registrados', ok: alumnos.length > 0 },
+        { label: 'Contrato generado', ok: !!contratoVigente },
+        { label: 'Contrato firmado por el cliente', ok: contratoVigente?.estado === 'firmado' },
+        { label: 'Factura emitida', ok: facturas.length > 0 },
+        { label: 'Certificados emitidos a los aptos', ok: aptos > 0 && certificados >= aptos },
+    ];
+    const checklistManual = [
+        { clave: 'asistentes_convocados', label: 'Asistentes convocados por el cliente' },
+        { clave: 'sala_confirmada', label: 'Sala y equipos confirmados' },
+        { clave: 'material_preparado', label: 'Material didáctico preparado' },
+    ];
+    const checklistHechas = checklistAuto.filter(i => i.ok).length
+        + checklistManual.filter(i => formacion.checklist?.[i.clave]).length;
+    const checklistTotal = checklistAuto.length + checklistManual.length;
 
     return (
         <div className="flex flex-col min-h-screen transition-colors duration-300 overflow-hidden">
@@ -413,6 +488,119 @@ export default function FormacionDetalle() {
                                 <ShieldCheck size={16} /> Certificar a los {aptos - certificados} aptos pendientes
                             </button>
                         )}
+                    </section>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+                    {/* ── Contrato ── */}
+                    <section className="glass rounded-2xl border border-variable p-6">
+                        <div className="flex items-center justify-between mb-5">
+                            <h2 className="text-sm font-black uppercase tracking-widest text-variable-muted">
+                                Contrato de prestación de servicios
+                            </h2>
+                            {contratoVigente && (
+                                <span className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold uppercase ${
+                                    contratoVigente.estado === 'firmado'
+                                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                                        : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                                }`}>
+                                    {contratoVigente.estado === 'firmado' ? 'Firmado' : 'Pendiente de firma'}
+                                </span>
+                            )}
+                        </div>
+
+                        {!contratoVigente ? (
+                            <>
+                                <p className="text-xs text-variable-muted mb-4">
+                                    Se genera con los datos del cliente y de esta formación (horas, fechas,
+                                    precio cerrado y calendario de sesiones como anexo). Nace pendiente de
+                                    firma; cuando el cliente lo devuelva firmado, se sube aquí.
+                                </p>
+                                <button
+                                    onClick={generarContratoHandler}
+                                    className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2"
+                                >
+                                    <FileSignature size={16} /> Generar contrato
+                                </button>
+                            </>
+                        ) : (
+                            <div className="space-y-3">
+                                <p className="text-xs text-variable-muted">
+                                    Generado el {new Date(contratoVigente.created_at).toLocaleDateString('es-ES')}
+                                    {contratoVigente.firmado_at && ` · firmado el ${new Date(contratoVigente.firmado_at).toLocaleDateString('es-ES')}`}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => descargarContrato(contratoVigente.ruta_pdf)}
+                                        className="px-3.5 py-2.5 rounded-xl glass border border-variable text-xs font-bold text-variable-main hover:text-primary hover:border-primary flex items-center gap-2"
+                                    >
+                                        <Download size={14} /> Sin firmar
+                                    </button>
+                                    {contratoVigente.ruta_pdf_firmado && (
+                                        <button
+                                            onClick={() => descargarContrato(contratoVigente.ruta_pdf_firmado)}
+                                            className="px-3.5 py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-bold flex items-center gap-2"
+                                        >
+                                            <Download size={14} /> Firmado
+                                        </button>
+                                    )}
+                                    {contratoVigente.estado === 'pendiente_firma' && (
+                                        <label className="px-3.5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:opacity-90 flex items-center gap-2 cursor-pointer">
+                                            <Upload size={14} /> Subir firmado
+                                            <input type="file" accept="application/pdf" onChange={subirFirmadoHandler} className="hidden" />
+                                        </label>
+                                    )}
+                                    <button
+                                        onClick={generarContratoHandler}
+                                        className="px-3.5 py-2.5 rounded-xl glass border border-variable text-xs font-bold text-variable-muted hover:text-primary hover:border-primary"
+                                        title="Anula el vigente y genera uno nuevo con los datos actuales"
+                                    >
+                                        Regenerar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* ── Checklist ── */}
+                    <section className="glass rounded-2xl border border-variable p-6">
+                        <div className="flex items-center justify-between mb-5">
+                            <h2 className="text-sm font-black uppercase tracking-widest text-variable-muted">Checklist</h2>
+                            <span className={`text-xs font-bold ${checklistHechas === checklistTotal ? 'text-emerald-400' : 'text-variable-muted'}`}>
+                                {checklistHechas}/{checklistTotal}
+                            </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            {checklistAuto.map(item => (
+                                <div key={item.label} className="flex items-center gap-2.5 py-1" title="Se marca sola con los datos de la ficha">
+                                    {item.ok
+                                        ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                                        : <Circle size={15} className="text-variable-muted/40 shrink-0" />}
+                                    <span className={`text-xs ${item.ok ? 'text-variable-muted line-through decoration-variable-muted/40' : 'text-variable-main'}`}>
+                                        {item.label}
+                                    </span>
+                                </div>
+                            ))}
+                            <div className="border-t border-variable my-2" />
+                            {checklistManual.map(item => {
+                                const hecho = !!formacion.checklist?.[item.clave];
+                                return (
+                                    <button
+                                        key={item.clave}
+                                        onClick={() => marcarManual(item.clave)}
+                                        className="flex items-center gap-2.5 py-1 w-full text-left hover:opacity-80"
+                                    >
+                                        {hecho
+                                            ? <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                                            : <Circle size={15} className="text-variable-muted/40 shrink-0" />}
+                                        <span className={`text-xs ${hecho ? 'text-variable-muted line-through decoration-variable-muted/40' : 'text-variable-main'}`}>
+                                            {item.label}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </section>
                 </div>
 
