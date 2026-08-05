@@ -100,13 +100,18 @@ export default function ProjectDetail() {
     // GLOBAL action lock — blocks ALL interactions while any async operation runs
     const [actionLock, setActionLock] = useState(false);
 
-    // Helper that wraps any async function with the global lock + global loading overlay
+    // Helper that wraps any async function with the global lock + global loading overlay.
+    // El catch importa: sin él, un fallo dentro (NIF inválido, RPC caída…) se
+    // perdía como promesa sin capturar y el botón parecía "no hacer nada".
     const withLock = async (fn, loadingMsg = '') => {
         if (actionLock) return;
         setActionLock(true);
         if (loadingMsg) showLoading(loadingMsg);
         try {
             await fn();
+        } catch (error) {
+            console.error('Acción fallida:', error);
+            showNotification(error.message || 'La acción falló', 'error');
         } finally {
             setActionLock(false);
             hideLoading();
@@ -664,14 +669,14 @@ export default function ProjectDetail() {
             try {
                 const bud = budgets.find(b => b.id === budgetId);
                 if (!bud) throw new Error('Presupuesto no encontrado');
-                const { error } = await supabase
-                    .from('project_budgets')
-                    .update({ status: newStatus })
-                    .eq('id', budgetId);
-                if (error) throw error;
+
                 if (newStatus === 'confirmado') {
-                    // Reutilizamos el snapshot del presupuesto (bud.line_items) como líneas.
-                    // line_items legacy del presupuesto: { description, quantity, unit_price, iva_percent }
+                    // LA FACTURA VA PRIMERO. Antes se marcaba 'confirmado' y
+                    // luego se intentaba facturar: si la factura fallaba (NIF
+                    // del cliente inválido, por ejemplo), el presupuesto se
+                    // quedaba confirmado sin factura.
+                    //
+                    // Reutilizamos el snapshot del presupuesto (bud.line_items).
                     const lineasUI = (bud.line_items || []).map(l => ({
                         description: l.description,
                         quantity: l.quantity || 1,
@@ -688,12 +693,24 @@ export default function ProjectDetail() {
                         budgetLineIdsAfectados: budgetLines.filter(bl => !bl.invoice_id).map(bl => bl.id),
                         ivaPct,
                     });
+
+                    const { error } = await supabase
+                        .from('project_budgets')
+                        .update({ status: 'confirmado' })
+                        .eq('id', budgetId);
+                    if (error) throw error;
+
                     // Limpiar borrador (servicios/líneas de presupuesto consumidos por la factura)
                     await supabase.from('project_services').delete().eq('project_id', id);
                     await supabase.from('project_budget_lines').delete().eq('project_id', id);
                     showNotification(`¡Presupuesto confirmado y factura ${factura.numero} generada! 🚀`);
-                } else if (newStatus === 'denegado') {
-                    showNotification('Presupuesto marcado como denegado ✖️');
+                } else {
+                    const { error } = await supabase
+                        .from('project_budgets')
+                        .update({ status: newStatus })
+                        .eq('id', budgetId);
+                    if (error) throw error;
+                    if (newStatus === 'denegado') showNotification('Presupuesto marcado como denegado ✖️');
                 }
                 fetchBudgetData();
                 fetchProjectData();
