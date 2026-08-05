@@ -61,6 +61,23 @@ desaparecen, hay que reintroducir todas las contraseñas.
 - Contenido: todo `supabase/functions/email/index.ts`.
 - Deploy.
 
+**Y en la configuración de la función, «Verify JWT with legacy secret» tiene que
+quedar en OFF.** No es opcional, por dos motivos:
+
+- Con ese interruptor en ON, la pasarela de Supabase valida el token *antes* de
+  ejecutar la función. El preflight `OPTIONS` del navegador no lleva cabecera
+  `Authorization`, así que recibe un 401 **sin cabeceras CORS**: el navegador
+  bloquea la respuesta y supabase-js lo reporta como *«Failed to send a request
+  to the Edge Function»* — un error de red, sin pista de la causa real.
+- El trigger de bienvenida llama a la función desde la base de datos, sin sesión
+  de usuario: se identifica con la cabecera `x-email-secret`. Con la pasarela
+  validando JWT, ese aviso nunca llegaría.
+
+No baja la seguridad. La función hace su propia autenticación y es más estricta
+que la pasarela: resuelve el usuario del token y **exige rol de admin** contra la
+tabla `users`, o bien el secreto compartido. La pasarela solo comprobaba que el
+token estuviera firmado, no quién era.
+
 Y el secreto, en **Project Settings → Edge Functions → Secrets**:
 
 | Nombre | Valor |
