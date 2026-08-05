@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Receipt, Search, Download, Sun, Moon, ChevronRight, FileWarning } from 'lucide-react';
+import { Receipt, Search, Download, Sun, Moon, ChevronRight, FileWarning, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../lib/facturas';
 import Sidebar from '../components/Sidebar';
@@ -97,6 +97,23 @@ export default function Facturas() {
         }
         return true;
     });
+
+    // Emitida no es cobrada. Este botón registra el cobro del importe completo:
+    // el caso Jennifer — llega la transferencia y la marcas. Los cobros
+    // parciales con recibo viven en la ficha del proyecto.
+    const handleMarcarPagada = async (f) => {
+        const aPagada = f.estado === 'pendiente' || f.estado === 'vencida';
+        const { error } = await supabase
+            .from('facturas')
+            .update(aPagada
+                ? { estado: 'pagada', fecha_pago: new Date().toISOString().split('T')[0] }
+                : { estado: 'pendiente', fecha_pago: null })
+            .eq('id', f.id);
+
+        if (error) return showNotification(`No se pudo cambiar el estado: ${error.message}`, 'error');
+        showNotification(aPagada ? `Factura ${f.numero} marcada como pagada 💚` : `Factura ${f.numero} vuelve a pendiente`);
+        fetchFacturas();
+    };
 
     const handleDescargar = async (facturaId) => {
         try {
@@ -242,6 +259,20 @@ export default function Facturas() {
                                                 Base €{parseFloat(f.base_imponible || 0).toFixed(2)}
                                             </p>
                                         </div>
+
+                                        {f.estado !== 'anulada' && (
+                                            <button
+                                                onClick={() => handleMarcarPagada(f)}
+                                                className={`p-2.5 rounded-xl glass border transition-all ${
+                                                    f.estado === 'pagada'
+                                                        ? 'border-emerald-500/30 text-emerald-400 hover:text-variable-muted hover:border-variable'
+                                                        : 'border-variable text-variable-muted hover:text-emerald-400 hover:border-emerald-500/30'
+                                                }`}
+                                                title={f.estado === 'pagada' ? 'Cobrada — clic para volver a pendiente' : 'Marcar como cobrada'}
+                                            >
+                                                <CheckCircle2 size={16} />
+                                            </button>
+                                        )}
 
                                         <button
                                             onClick={() => handleDescargar(f.id)}

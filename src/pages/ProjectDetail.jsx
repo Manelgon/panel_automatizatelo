@@ -798,6 +798,20 @@ export default function ProjectDetail() {
             const doc = generateReceiptPDF(payment);
             doc.save(`${fileName}.pdf`);
 
+            // El puente que faltaba: si con este cobro queda cubierto el total
+            // facturado, las facturas del proyecto pasan a 'pagada'. Si no,
+            // siguen en 'pendiente' — factura emitida no es factura cobrada.
+            const cobradoConEste = totalPaid + amount;
+            if (cobradoConEste >= totalInvoiced - 0.01) {
+                const { error: estadoErr } = await supabase
+                    .from('facturas')
+                    .update({ estado: 'pagada', fecha_pago: today })
+                    .eq('project_id', id)
+                    .eq('estado', 'pendiente');
+                if (estadoErr) console.error('Cobro registrado, pero no se pudo marcar la factura como pagada:', estadoErr.message);
+                else showNotification('Cobro completado: factura marcada como pagada 💚');
+            }
+
             setPaymentModal(false);
             setNewPayment({ amount: '', payment_method: 'transferencia', notes: '' });
             showNotification(`Pago ${paymentNumber} registrado correctamente \u2705`);
