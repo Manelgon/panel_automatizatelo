@@ -81,10 +81,12 @@ export default function CustomDropdown({
             <button
                 type="button"
                 onClick={handleOpen}
-                className="w-full flex items-center gap-2 bg-white/5 border-2 border-primary/30 rounded-2xl px-4 py-3 text-sm transition-all hover:border-primary/60 focus:outline-none focus:border-primary"
+                className="w-full flex items-center gap-2 bg-white/5 text-variable-main border-[1.5px] border-[var(--primary)]/40 rounded-2xl px-4 py-3 text-sm transition-all duration-200 cursor-pointer select-none hover:border-[var(--primary)]/70 focus:outline-none"
                 style={{
-                    borderColor: open ? 'var(--primary)' : undefined,
-                    boxShadow: open ? '0 0 0 3px rgba(243,121,27,0.12)' : 'none',
+                    borderColor: open ? 'var(--primary)' : 'rgba(243,121,27,0.35)',
+                    boxShadow: open
+                        ? '0 0 0 3px rgba(243,121,27,0.12), 0 0 16px rgba(243,121,27,0.1)'
+                        : 'none',
                 }}
             >
                 {Icon && <Icon size={18} className="text-variable-muted shrink-0" />}
@@ -99,9 +101,17 @@ export default function CustomDropdown({
 
             {/* ── Dropdown panel ── */}
             {open && (
-                <div className="absolute z-[100] mt-2 w-full bg-white border-2 border-primary/30 rounded-2xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar">
+                <div
+                    className="absolute z-[100] mt-2 w-full rounded-2xl shadow-2xl max-h-52 overflow-y-auto custom-scrollbar"
+                    style={{
+                        border: '1.5px solid rgba(243,121,27,0.4)',
+                        backgroundColor: 'var(--bg-main)',
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
+                    }}
+                >
                     {options.length === 0 && (
-                        <p className="text-[10px] text-gray-400 italic text-center py-4">Sin opciones disponibles</p>
+                        <p className="text-[10px] text-variable-muted italic text-center py-4">Sin opciones disponibles</p>
                     )}
                     {options.map(opt => {
                         const isActive = multiple
@@ -119,25 +129,41 @@ export default function CustomDropdown({
                                         setOpen(false);
                                     }
                                 }}
-                                className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-colors hover:bg-primary ${isActive ? 'bg-primary/10' : ''}`}
+                                className="group flex items-center justify-between px-4 py-3 cursor-pointer transition-colors duration-150"
+                                style={{
+                                    backgroundColor: isActive ? 'rgba(243,121,27,0.15)' : 'transparent',
+                                    color: isActive ? 'var(--primary)' : 'var(--text-main)',
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!isActive) {
+                                        e.currentTarget.style.backgroundColor = 'rgba(243,121,27,0.1)';
+                                        e.currentTarget.style.color = 'var(--primary)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!isActive) {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                        e.currentTarget.style.color = 'var(--text-main)';
+                                    }
+                                }}
                             >
                                 <div className="flex items-center gap-3">
                                     {multiple && (
-                                        <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all ${isActive ? 'bg-primary border-primary' : 'border-gray-300 group-hover:border-white/50'}`}>
+                                        <div className={`size-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${isActive ? 'bg-primary border-primary' : 'border-[var(--primary)]/40'}`}>
                                             {isActive && <CheckCircle2 size={12} className="text-white" />}
                                         </div>
                                     )}
                                     <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-gray-800 group-hover:text-white">{opt.label}</span>
+                                        <span className="text-xs font-bold">{opt.label}</span>
                                         {opt.secondary && (
-                                            <span className={`text-[8px] uppercase font-black tracking-widest group-hover:text-white/70 ${opt.secondaryColor || 'text-gray-400'}`}>
+                                            <span className={`text-[8px] uppercase font-black tracking-widest opacity-70 ${opt.secondaryColor || ''}`}>
                                                 {opt.secondary}
                                             </span>
                                         )}
                                     </div>
                                 </div>
                                 {opt.right && (
-                                    <span className="text-[10px] text-gray-500 font-bold group-hover:text-white/80">{opt.right}</span>
+                                    <span className="text-[10px] font-bold opacity-70">{opt.right}</span>
                                 )}
                             </div>
                         );
