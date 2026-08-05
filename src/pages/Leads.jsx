@@ -23,7 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
-import CustomSelect from '../components/CustomSelect';
+import CustomDropdown from '../components/CustomDropdown';
 import AgendarCitaModal from '../features/citas/AgendarCitaModal';
 import DataTable from '../components/DataTable';
 import { useAuth } from '../context/AuthContext';
@@ -969,7 +969,7 @@ export default function Leads() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Tipo de Cliente</label>
-                                        <CustomSelect
+                                        <CustomDropdown
                                             value={formData.client_type}
                                             onChange={(val) => setFormData({ ...formData, client_type: val })}
                                             icon={Target}
@@ -978,7 +978,7 @@ export default function Leads() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Interés</label>
-                                        <CustomSelect
+                                        <CustomDropdown
                                             value={formData.service_interest}
                                             onChange={(val) => setFormData({ ...formData, service_interest: val })}
                                             icon={Briefcase}
