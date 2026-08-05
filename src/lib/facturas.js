@@ -104,6 +104,7 @@ export async function getCompanySettings() {
 export async function crearFactura({
   clientId,
   projectId = null,
+  formacionId = null,
   lineas,
   ivaPorcentaje = 21,
   irpfPorcentaje = 0,
@@ -190,6 +191,7 @@ export async function crearFactura({
       numero: num.numero,
       client_id: clientId,
       project_id: projectId,
+      formacion_id: formacionId,
       cliente_nombre: clienteNombre,
       cliente_nif: nif.normalizado,
       cliente_direccion: clienteDireccion || null,

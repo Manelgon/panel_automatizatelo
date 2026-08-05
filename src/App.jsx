@@ -9,6 +9,8 @@ import ClienteDetail from './pages/ClienteDetail';
 import Blog from './pages/Blog';
 import Services from './pages/Services';
 import Projects from './pages/Projects';
+import Formaciones from './pages/Formaciones';
+import FormacionDetalle from './pages/FormacionDetalle';
 import Tasks from './pages/Tasks';
 import Facturas from './pages/Facturas';
 import AjustesEmisor from './pages/AjustesEmisor';
@@ -122,6 +124,18 @@ function App() {
                                 <Route path="/projects" element={
                                     <ProtectedRoute>
                                         <Projects />
+                                    </ProtectedRoute>
+                                } />
+
+                                <Route path="/formaciones/:id" element={
+                                    <ProtectedRoute>
+                                        <FormacionDetalle />
+                                    </ProtectedRoute>
+                                } />
+
+                                <Route path="/formaciones" element={
+                                    <ProtectedRoute>
+                                        <Formaciones />
                                     </ProtectedRoute>
                                 } />
 

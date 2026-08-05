@@ -332,7 +332,7 @@ para partir el bundle, y ESLint en `npm run lint`.
 | ~~**0**~~ ✅ | Cerrar la escalada de privilegios. Arreglar las políticas mentirosas. Quitar el enlace muerto. → `migrations/008_seguridad_rls.sql` | Nulo | Hecho |
 | **1** 🟡 | Reconstruir el esquema como migraciones aplicables. Hecho salvo verificar la parte reconstruida por inferencia (tres consultas de radiografía). → `docs/BASE-DE-DATOS.md` | Bajo | Casi |
 | ~~**2**~~ ✅ | Modelo: PK en `project_services`, `projects.client_id` de verdad, fusión de las tablas 1:1 en `leads`, desambiguación de `users`. → migraciones 010-013 | Medio — tocó la web también | Hecho |
-| **3** | **Formaciones**: tablas, página, alumnos, certificados y registro del Art. 4. | Bajo (todo nuevo) | 1-2 días |
+| ~~**3**~~ ✅ | **Formaciones**: tablas, página, sesiones, alumnos, certificados en PDF con código de verificación y facturación desde la ficha. → migración 014 y `features/formaciones/` | Bajo (todo nuevo) | Hecho |
 | **4** | Reorganizar el front en `features/`, partir `ProjectDetail.jsx`, code splitting, TypeScript. | Medio, mecánico | 2-3 días |
 | **5** | `audit_logs`, citas, RGPD (retención, consentimientos, RAT). | Bajo | 1-2 días |
 

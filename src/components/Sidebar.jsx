@@ -15,7 +15,8 @@ import {
     ChevronRight,
     PenLine,
     UserCheck,
-    Mail
+    Mail,
+    GraduationCap
 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../context/AuthContext';
@@ -92,6 +93,7 @@ export default function Sidebar() {
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
                     <SidebarItem icon={UserCheck} to="/clientes" label="Clientes" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
+                    <SidebarItem icon={GraduationCap} to="/formaciones" label="Formaciones" />
                     <SidebarItem icon={Receipt} to="/facturas" label="Facturas" />
                     <SidebarItem icon={ShieldCheck} to="/verifactu" label="Veri*factu" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
@@ -133,6 +135,7 @@ export default function Sidebar() {
                     <SidebarItem icon={Target} to="/leads" label="Leads" />
                     <SidebarItem icon={UserCheck} to="/clientes" label="Clientes" />
                     <SidebarItem icon={FolderOpen} to="/projects" label="Proyectos" />
+                    <SidebarItem icon={GraduationCap} to="/formaciones" label="Formaciones" />
                     <SidebarItem icon={Receipt} to="/facturas" label="Facturas" />
                     <SidebarItem icon={ShieldCheck} to="/verifactu" label="Veri*factu" />
                     <SidebarItem icon={ListTodo} to="/tasks" label="Tareas" />
