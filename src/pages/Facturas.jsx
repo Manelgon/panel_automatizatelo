@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Receipt, Search, Download, Sun, Moon, ChevronRight, FileWarning, CheckCircle2 } from 'lucide-react';
+import { Receipt, Search, Download, Sun, Moon, ChevronRight, FileWarning, CheckCircle2, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getCompanySettings, getFacturaCompleta, generarPdfFactura } from '../lib/facturas';
+import { enviarDocumento } from '../lib/enviarEmail';
 import Sidebar from '../components/Sidebar';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -31,6 +32,7 @@ export default function Facturas() {
     const [facturas, setFacturas] = useState([]);
     const [activeTab, setActiveTab] = useState('todos');
     const [search, setSearch] = useState('');
+    const [enviandoId, setEnviandoId] = useState(null);
 
     const fetchFacturas = async () => {
         setLoading(true);
@@ -113,6 +115,41 @@ export default function Facturas() {
         if (error) return showNotification(`No se pudo cambiar el estado: ${error.message}`, 'error');
         showNotification(aPagada ? `Factura ${f.numero} marcada como pagada 💚` : `Factura ${f.numero} vuelve a pendiente`);
         fetchFacturas();
+    };
+
+    const handleEnviar = async (f) => {
+        if (enviandoId) return;
+        setEnviandoId(f.id);
+        try {
+            const [{ factura, error }, settings] = await Promise.all([
+                getFacturaCompleta(f.id),
+                getCompanySettings(),
+            ]);
+            if (error || !factura) return showNotification(error || 'Factura no encontrada', 'error');
+
+            const doc = generarPdfFactura(factura, settings);
+            const res = await enviarDocumento({
+                para: factura.cliente_email,
+                asunto: `Factura ${factura.numero} · Automatizatelo`,
+                saludo: '¡Hola!',
+                lineas: [
+                    `Soy Manel. Te adjunto la factura ${factura.numero} por un total de €${parseFloat(factura.total).toFixed(2)}.`,
+                    factura.fecha_vencimiento
+                        ? `El vencimiento es el ${new Date(factura.fecha_vencimiento).toLocaleDateString('es-ES')}. En el propio documento tienes la forma de pago.`
+                        : 'En el propio documento tienes la forma de pago.',
+                    'Cualquier duda, responde a este correo y lo vemos.',
+                ],
+                doc,
+                nombreAdjunto: `${factura.numero}.pdf`,
+            });
+
+            if (res.error) showNotification(res.error, 'error');
+            else showNotification(`Factura enviada a ${factura.cliente_email} 📤`, 'success');
+        } catch (err) {
+            showNotification(`No se pudo enviar: ${err.message}`, 'error');
+        } finally {
+            setEnviandoId(null);
+        }
     };
 
     const handleDescargar = async (facturaId) => {
@@ -271,6 +308,17 @@ export default function Facturas() {
                                                 title={f.estado === 'pagada' ? 'Cobrada — clic para volver a pendiente' : 'Marcar como cobrada'}
                                             >
                                                 <CheckCircle2 size={16} />
+                                            </button>
+                                        )}
+
+                                        {f.estado !== 'anulada' && (
+                                            <button
+                                                onClick={() => handleEnviar(f)}
+                                                disabled={enviandoId === f.id}
+                                                className="p-2.5 rounded-xl glass border border-variable text-variable-muted hover:text-sky-400 hover:border-sky-500/30 transition-all disabled:opacity-40"
+                                                title="Enviar por email al cliente"
+                                            >
+                                                <Send size={16} className={enviandoId === f.id ? 'animate-pulse' : ''} />
                                             </button>
                                         )}
 

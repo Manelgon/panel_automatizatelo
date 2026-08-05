@@ -145,7 +145,16 @@ function render(texto: string, vars: Record<string, string>): string {
 // =============================================================================
 // ENVÍO SMTP
 // =============================================================================
-async function enviarSmtp(cfg: Record<string, unknown>, pass: string, to: string, subject: string, html: string) {
+// `adjuntos`: [{ nombre, base64, tipo }] — pensado para los PDF del panel
+// (presupuestos, facturas, recibos). denomailer acepta contenido en base64.
+async function enviarSmtp(
+  cfg: Record<string, unknown>,
+  pass: string,
+  to: string,
+  subject: string,
+  html: string,
+  adjuntos: Array<{ nombre: string; base64: string; tipo?: string }> = [],
+) {
   const port = Number(cfg.smtp_port) || 465;
   const ssl = (cfg.smtp_encryption as string) !== 'starttls'; // 465 = TLS directo; 587 = STARTTLS
 
@@ -166,6 +175,12 @@ async function enviarSmtp(cfg: Record<string, unknown>, pass: string, to: string
       subject,
       html,
       content: 'auto', // genera la alternativa en texto plano
+      attachments: adjuntos.map((a) => ({
+        filename: a.nombre,
+        content: a.base64,
+        encoding: 'base64' as const,
+        contentType: a.tipo || 'application/pdf',
+      })),
     });
   } finally {
     await client.close().catch(() => {});
@@ -320,6 +335,21 @@ Deno.serve(async (req) => {
     const plantillaClave = body.plantilla ? String(body.plantilla) : null;
     const leadId = body.lead_id ? String(body.lead_id) : null;
 
+    // Adjuntos: [{ nombre, base64, tipo }]. Tope de 8 MB en total — el límite
+    // habitual de los buzones ronda los 10 y conviene margen para el HTML.
+    const adjuntos: Array<{ nombre: string; base64: string; tipo?: string }> = [];
+    if (Array.isArray(body.adjuntos)) {
+      let bytes = 0;
+      for (const a of body.adjuntos as Array<Record<string, unknown>>) {
+        const nombre = String(a?.nombre ?? '').trim();
+        const base64 = String(a?.base64 ?? '');
+        if (!nombre || !base64) continue;
+        bytes += Math.floor(base64.length * 0.75);
+        if (bytes > 8_000_000) return json({ error: 'Los adjuntos superan los 8 MB' }, 400);
+        adjuntos.push({ nombre, base64, tipo: a?.tipo ? String(a.tipo) : undefined });
+      }
+    }
+
     // Si viene plantilla, la renderizamos con los datos del lead
     if (plantillaClave) {
       const { data: plantilla } = await admin
@@ -394,7 +424,7 @@ Deno.serve(async (req) => {
 
     try {
       const pass = await descifrar(settings.smtp_password as string);
-      await enviarSmtp(settings, pass, to, asunto, html);
+      await enviarSmtp(settings, pass, to, asunto, html, adjuntos);
 
       if (registroId) {
         await admin

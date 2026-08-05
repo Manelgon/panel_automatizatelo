@@ -29,7 +29,8 @@ import {
     TrendingUp,
     AlertTriangle,
     Zap,
-    Package
+    Package,
+    Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useParams, useNavigate } from 'react-router-dom';
@@ -41,6 +42,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useGlobalLoading } from '../context/LoadingContext';
 import { generarPdfPresupuesto, generarPdfRecibo } from '../features/proyectos/services/pdfs';
+import { enviarDocumento } from '../lib/enviarEmail';
 
 export default function ProjectDetail() {
     const { id } = useParams();
@@ -665,6 +667,43 @@ export default function ProjectDetail() {
     };
 
 
+    // Enviar el presupuesto al cliente por correo, con el PDF adjunto.
+    // Mismo dibujo que la descarga; el email sale de la ficha del cliente.
+    const handleEnviarBudget = async (budgetId) => {
+        const bud = budgets.find(b => b.id === budgetId);
+        if (!bud) { showNotification('Presupuesto no encontrado', 'error'); return; }
+
+        await withLock(async () => {
+            const doc = generarPdfPresupuesto({
+                numero: bud.budget_number,
+                fecha: bud.budget_date,
+                proyecto: project,
+                lineas: bud.line_items || [],
+                subtotal: bud.subtotal,
+                ivaTotal: bud.iva_total,
+                total: bud.total,
+                emisor: await getCompanySettings(),
+                receptor: receptorPdf(),
+            });
+
+            const res = await enviarDocumento({
+                para: clienteFactura?.email,
+                asunto: `Presupuesto ${bud.budget_number} · Automatizatelo`,
+                saludo: '¡Hola!',
+                lineas: [
+                    `Soy Manel. Te adjunto el presupuesto ${bud.budget_number} de «${project?.name || 'tu proyecto'}»: €${parseFloat(bud.total).toFixed(2)} en total (IVA incluido).`,
+                    'Precio y alcance cerrados: lo que pone es lo que es. Si te encaja, contéstame a este correo y arrancamos.',
+                    'Y si quieres ajustar algo, dímelo y te preparo otra versión.',
+                ],
+                doc,
+                nombreAdjunto: `${bud.budget_number}.pdf`,
+            });
+
+            if (res.error) throw new Error(res.error);
+            showNotification(`Presupuesto enviado a ${clienteFactura.email} 📤`, 'success');
+        }, 'Enviando presupuesto...');
+    };
+
     const handleRedownloadBudget = async (budgetId) => {
         const bud = budgets.find(b => b.id === budgetId);
         if (!bud) { showNotification('Presupuesto no encontrado', 'error'); return; }
@@ -1276,6 +1315,17 @@ export default function ProjectDetail() {
                                             {/* Acciones de Presupuesto */}
                                             {isBudget && budgetObj && budgetObj.status === 'pendiente' && (
                                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all bg-dark/80 backdrop-blur-md p-1 rounded-xl border border-variable shadow-xl mr-10">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleEnviarBudget(budgetId); }}
+                                                        disabled={budgetActionLoading === budgetId || !clienteFactura?.email}
+                                                        className={`p-1.5 text-sky-400 rounded-lg transition-colors ${budgetActionLoading === budgetId || !clienteFactura?.email
+                                                            ? 'opacity-40 cursor-not-allowed'
+                                                            : 'hover:bg-sky-500/10'
+                                                            }`}
+                                                        title={clienteFactura?.email ? `Enviar al cliente (${clienteFactura.email})` : 'El cliente no tiene email en su ficha'}
+                                                    >
+                                                        <Send size={14} />
+                                                    </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleUpdateBudgetStatus(budgetId, 'confirmado'); }}
                                                         disabled={budgetActionLoading === budgetId}
