@@ -145,9 +145,18 @@ seguridad reproducible, ni saber con certeza qué hay en producción cuando lleg
 | Veri\*factu | No | Sí |
 | Cliente | Ninguno | FK obligatoria |
 
-El primero es de la primera versión del panel. Sigue vivo, con sus políticas RLS y
-sus índices, y el Dashboard todavía lee `project_payments`. **Hay que borrarlo**, no
-mantener los dos.
+El primero es de la primera versión del panel.
+
+> **Corrección (agosto 2026), tras ver el esquema real.** `project_invoices` ya no
+> existe en Supabase: se retiró al pasar a `facturas`, y las columnas `invoice_id`
+> de `project_services`, `project_budget_lines` y `project_payments` ya apuntan a
+> `facturas`. Queda documentado en la migración 009.
+>
+> Y me equivoqué con `project_budgets`: **no es un duplicado**. Es el presupuesto
+> *emitido*, con sus líneas congeladas en `line_items` — el mismo patrón de
+> snapshot que usa `facturas` con los datos del cliente. Las líneas vivas del
+> proyecto son `project_services` (del catálogo) y `project_budget_lines`
+> (manuales). El diseño es correcto y se queda.
 
 ### 4.2 Los proyectos no conocen a sus clientes
 
