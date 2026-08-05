@@ -179,7 +179,7 @@ export default function ProjectDetail() {
     };
 
     const fetchUsers = async () => {
-        const { data } = await supabase.from('users').select('id, first_name, second_name').order('first_name');
+        const { data } = await supabase.from('users').select('id, nombre, apellido1').order('nombre');
         setUsers(data || []);
     };
 
@@ -218,7 +218,7 @@ export default function ProjectDetail() {
         // Fetch payments
         const { data: payData } = await supabase
             .from('project_payments')
-            .select('*, created_by_user:created_by(first_name, second_name)')
+            .select('*, created_by_user:created_by(nombre, apellido1)')
             .eq('project_id', id)
             .order('payment_date', { ascending: false });
         setPayments(payData || []);
@@ -1331,7 +1331,7 @@ export default function ProjectDetail() {
                                                     {/* Asignado */}
                                                     {task.assigned_to && (
                                                         <span className="text-[9px] text-variable-muted font-bold">
-                                                            → {users.find(u => u.id === task.assigned_to)?.first_name || 'Asignado'}
+                                                            → {users.find(u => u.id === task.assigned_to)?.nombre || 'Asignado'}
                                                         </span>
                                                     )}
                                                 </div>
@@ -1831,7 +1831,7 @@ export default function ProjectDetail() {
                                                                     )}
                                                                     {pay.created_by_user && (
                                                                         <span className="text-[8px] text-variable-muted italic">
-                                                                            por {pay.created_by_user.first_name}
+                                                                            por {pay.created_by_user.nombre}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -1920,7 +1920,7 @@ export default function ProjectDetail() {
                                         <select value={newTask.assigned_to} onChange={e => setNewTask({ ...newTask, assigned_to: e.target.value })} className="w-full bg-[#1a1321] border border-variable rounded-2xl px-4 py-4 text-variable-main focus:outline-none text-sm">
                                             <option value="">Sin asignar</option>
                                             {users.map(u => (
-                                                <option key={u.id} value={u.id}>{u.first_name} {u.second_name}</option>
+                                                <option key={u.id} value={u.id}>{u.nombre} {u.apellido1}</option>
                                             ))}
                                         </select>
                                     </div>

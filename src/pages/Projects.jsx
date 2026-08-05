@@ -46,11 +46,12 @@ export default function Projects() {
     const [leads, setLeads] = useState([]);
     const [users, setUsers] = useState([]);
     const [services, setServices] = useState([]);
+    const [clients, setClients] = useState([]);
     const [fetchError, setFetchError] = useState(null);
 
     const defaultForm = {
         name: '',
-        client: '',
+        client_id: '',
         description: '',
         status: 'Pendiente',
         total_hours: 0,
@@ -67,7 +68,7 @@ export default function Projects() {
         try {
             const { data, error } = await supabase
                 .from('projects')
-                .select('*, leads(first_name, last_name, company), project_members(user_id, role, users:user_id(first_name, second_name, avatar_url))')
+                .select('*, leads(first_name, last_name, company), project_members(user_id, role, users:user_id(nombre, apellido1, avatar_url))')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -92,8 +93,8 @@ export default function Projects() {
     const fetchUsers = async () => {
         const { data, error } = await supabase
             .from('users')
-            .select('id, first_name, second_name, role, status')
-            .order('first_name', { ascending: true });
+            .select('id, nombre, apellido1, role, status')
+            .order('nombre', { ascending: true });
 
         if (error) console.error("Error fetching users:", error);
         setUsers(data || []);
@@ -109,11 +110,28 @@ export default function Projects() {
         setServices(data || []);
     };
 
+    const fetchClients = async () => {
+        const { data, error } = await supabase
+            .from('clients')
+            .select('id, first_name, last_name, company_name, email, lead_id, status')
+            .neq('status', 'archived')
+            .order('company_name', { ascending: true });
+
+        if (error) console.error("Error fetching clients:", error);
+        setClients(data || []);
+        return data || [];
+    };
+
+    // Nombre presentable de un cliente: la empresa si la hay, si no la persona
+    const nombreCliente = (c) =>
+        (c?.company_name || '').trim() || [c?.first_name, c?.last_name].filter(Boolean).join(' ') || c?.email || 'Cliente';
+
     useEffect(() => {
         const init = async () => {
             await fetchProjects();
             await fetchUsers();
             await fetchServices();
+            const clientsData = await fetchClients();
             const leadsData = await fetchLeads();
 
             if (convertLeadId) {
@@ -124,11 +142,15 @@ export default function Projects() {
                     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
                     const randomDigits = Math.floor(1000 + Math.random() * 9000);
 
+                    // El lead ya convertido tiene ficha de cliente: la enganchamos.
+                    // Si no la tiene, hay que convertirlo primero desde Leads.
+                    const clienteDelLead = clientsData.find(c => c.lead_id === lead.id);
+
                     setFormData({
                         ...defaultForm,
                         lead_id: lead.id,
                         name: `Proyecto ${lead.service_interest || ''}`,
-                        client: lead.company || `${lead.first_name} ${lead.last_name}`,
+                        client_id: clienteDelLead?.id || '',
                         id_alias: `${firstInitial}${lastInitial}-${dateStr}-${randomDigits}`
                     });
                     setIsModalOpen(true);
@@ -153,6 +175,13 @@ export default function Projects() {
 
     const handleCreateProject = async (e) => {
         e.preventDefault();
+
+        // El cliente es obligatorio: sin él el proyecto no se puede facturar
+        if (!formData.client_id) {
+            showNotification('Elige un cliente. Sin cliente el proyecto no se puede facturar.', 'error');
+            return;
+        }
+
         setLoading(true);
         await withLoading(async () => {
             try {
@@ -164,17 +193,11 @@ export default function Projects() {
                     finalAlias = `PR-${dateStr}-${randomDigits}`;
                 }
 
-                const insertData = {
-                    ...formData,
-                    lead_id: formData.lead_id || null,
-                    id_alias: finalAlias
-                };
-
                 // 1. Call RPC function to create project safely
                 const { data: projectId, error: rpcError } = await supabase
                     .rpc('create_project', {
                         p_name: formData.name,
-                        p_client: formData.client,
+                        p_client_id: formData.client_id,
                         p_description: formData.description || '',
                         p_alias: finalAlias,
                         p_total_hours: parseInt(formData.total_hours) || 0,
@@ -319,9 +342,9 @@ export default function Projects() {
                                     <div className="flex items-center -space-x-2">
                                         {shown.map((m, i) => {
                                             const u = m.users;
-                                            const initials = u ? `${(u.first_name || '?')[0]}${(u.second_name || '?')[0]}` : '??';
+                                            const initials = u ? `${(u.nombre || '?')[0]}${(u.apellido1 || '?')[0]}` : '??';
                                             return (
-                                                <div key={i} title={u ? `${u.first_name} ${u.second_name}` : 'Usuario'} className="size-8 rounded-full bg-primary/15 border-2 border-[var(--bg-card,#fff)] flex items-center justify-center text-[10px] font-black text-primary uppercase">
+                                                <div key={i} title={u ? `${u.nombre} ${u.apellido1}` : 'Usuario'} className="size-8 rounded-full bg-primary/15 border-2 border-[var(--bg-card,#fff)] flex items-center justify-center text-[10px] font-black text-primary uppercase">
                                                     {initials}
                                                 </div>
                                             );
@@ -419,15 +442,25 @@ export default function Projects() {
                                             <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base" placeholder="Ej: Rediseño Web" />
                                         </div>
                                     </div>
-                                    {!formData.lead_id && (
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Cliente</label>
-                                            <div className="relative">
-                                                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-variable-muted" size={18} />
-                                                <input required value={formData.client} onChange={(e) => setFormData({ ...formData, client: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl pl-12 pr-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all text-sm sm:text-base" placeholder="Empresa o Particular" />
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* El cliente ya no se escribe a mano: sin ficha de cliente
+                                        el proyecto no se puede facturar. */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">
+                                            Cliente <span className="text-rose-400">*</span>
+                                        </label>
+                                        <CustomSelect
+                                            placeholder="-- Seleccionar cliente --"
+                                            value={formData.client_id}
+                                            onChange={(clientId) => setFormData({ ...formData, client_id: clientId })}
+                                            options={clients.map(c => ({ value: c.id, label: nombreCliente(c) }))}
+                                        />
+                                        {clients.length === 0 && (
+                                            <p className="text-xs text-amber-400 ml-1">
+                                                No hay clientes todavía. Convierte un lead desde la sección Leads,
+                                                o crea el cliente en la sección Clientes.
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -454,10 +487,12 @@ export default function Projects() {
                                                 const randomDigits = Math.floor(1000 + Math.random() * 9000);
                                                 newAlias = `${firstInitial}${lastInitial}-${dateStr}-${randomDigits}`;
                                             }
+                                            // Si ese lead ya tiene ficha de cliente, se selecciona sola
+                                            const clienteDelLead = clients.find(c => c.lead_id === leadId);
                                             setFormData({
                                                 ...formData,
                                                 lead_id: leadId,
-                                                client: selectedLead ? (selectedLead.company || `${selectedLead.first_name} ${selectedLead.last_name}`) : formData.client,
+                                                client_id: clienteDelLead?.id || formData.client_id,
                                                 id_alias: newAlias
                                             });
                                         }}
@@ -517,7 +552,7 @@ export default function Projects() {
                                         }))}
                                         options={users.map(u => ({
                                             value: u.id,
-                                            label: `${u.first_name} ${u.second_name}`,
+                                            label: `${u.nombre} ${u.apellido1}`,
                                             secondary: u.role,
                                             secondaryColor: u.role === 'admin' ? 'text-rose-500' : 'text-gray-400'
                                         }))}

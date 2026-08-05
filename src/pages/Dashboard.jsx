@@ -148,7 +148,7 @@ export default function Dashboard() {
                     supabase.from('project_milestones').select('*, projects(name)').gte('start_date', new Date().toISOString()).order('start_date', { ascending: true }).limit(6),
                     supabase.from('facturas').select('*').order('created_at', { ascending: false }),
                     supabase.from('project_payments').select('*').order('created_at', { ascending: false }),
-                    supabase.from('users').select('id, first_name, second_name, email, avatar_url'),
+                    supabase.from('users').select('id, nombre, apellido1, email, avatar_url'),
                     supabase.from('project_tasks').select('id, status, project_id'),
                 ]);
 
@@ -180,7 +180,7 @@ export default function Dashboard() {
     const userMap = useMemo(() => {
         const map = {};
         users.forEach(u => {
-            map[u.id] = { name: `${u.first_name || ''} ${u.second_name || ''}`.trim() || u.email, avatar: u.avatar_url };
+            map[u.id] = { name: `${u.nombre || ''} ${u.apellido1 || ''}`.trim() || u.email, avatar: u.avatar_url };
         });
         return map;
     }, [users]);
@@ -280,7 +280,7 @@ export default function Dashboard() {
     // Greeting
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
-    const userName = profile?.first_name || profile?.name || 'Admin';
+    const userName = profile?.nombre || 'Admin';
 
     if (loading) {
         return (

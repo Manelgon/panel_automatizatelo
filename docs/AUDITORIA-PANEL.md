@@ -331,7 +331,7 @@ para partir el bundle, y ESLint en `npm run lint`.
 |---|---|---|---|
 | ~~**0**~~ ✅ | Cerrar la escalada de privilegios. Arreglar las políticas mentirosas. Quitar el enlace muerto. → `migrations/008_seguridad_rls.sql` | Nulo | Hecho |
 | **1** 🟡 | Reconstruir el esquema como migraciones aplicables. Hecho salvo verificar la parte reconstruida por inferencia (tres consultas de radiografía). → `docs/BASE-DE-DATOS.md` | Bajo | Casi |
-| **2** | Modelo: `proyectos.cliente_id`, borrar el facturador duplicado, fusionar las tablas 1:1, renombrar todo a castellano. | Medio — toca la web también | 1 día |
+| ~~**2**~~ ✅ | Modelo: PK en `project_services`, `projects.client_id` de verdad, fusión de las tablas 1:1 en `leads`, desambiguación de `users`. → migraciones 010-013 | Medio — tocó la web también | Hecho |
 | **3** | **Formaciones**: tablas, página, alumnos, certificados y registro del Art. 4. | Bajo (todo nuevo) | 1-2 días |
 | **4** | Reorganizar el front en `features/`, partir `ProjectDetail.jsx`, code splitting, TypeScript. | Medio, mecánico | 2-3 días |
 | **5** | `audit_logs`, citas, RGPD (retención, consentimientos, RAT). | Bajo | 1-2 días |
@@ -340,3 +340,12 @@ El orden importa: la fase 1 antes que la 2 porque sin migraciones aplicables no 
 puede renombrar nada con seguridad. Y la fase 3 puede adelantarse si hace falta
 vender formaciones antes de tener el resto ordenado — es la única que no depende de
 las anteriores.
+
+> **Nota sobre el renombrado a castellano.** En la fase 2 se pospuso a la fase 4,
+> a propósito: renombrar tablas obliga a tocar las 16 páginas enteras, y en la
+> fase 4 hay que reorganizarlas igualmente en `features/`. Hacerlo dos veces es
+> trabajo doble y dos ocasiones de romper algo.
+>
+> La excepción fue `users`, que sí se renombró en la 013 — pero eso no era
+> cosmética: `first_name` guardaba el **primer apellido**, y cuatro pantallas
+> mostraban al equipo por sus apellidos sin el nombre.

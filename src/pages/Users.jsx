@@ -47,7 +47,7 @@ export default function Users() {
     const [usersList, setUsersList] = useState([]);
 
     const defaultForm = {
-        name: '', first_name: '', second_name: '',
+        nombre: '', apellido1: '', apellido2: '',
         email: '', password: '', role: 'user',
         birth_date: '', phone_prefix: '+34', phone: '',
         country: 'España', province: '', city: '',
@@ -105,9 +105,9 @@ export default function Users() {
                     .insert({
                         id: authData.user.id,
                         email: formData.email,
-                        name: formData.name,
-                        first_name: formData.first_name,
-                        second_name: formData.second_name,
+                        nombre: formData.nombre,
+                        apellido1: formData.apellido1,
+                        apellido2: formData.apellido2,
                         role: formData.role,
                         birth_date: formData.birth_date || null,
                         phone_prefix: formData.phone_prefix,
@@ -143,7 +143,7 @@ export default function Users() {
 
         const confirmed = await confirm({
             title: '¿Eliminar Miembro?',
-            message: `¿Estás seguro de que deseas eliminar a ${user.name}? Esta acción no se puede deshacer.`,
+            message: `¿Estás seguro de que deseas eliminar a ${user.nombre}? Esta acción no se puede deshacer.`,
             confirmText: 'Eliminar',
             cancelText: 'Cancelar'
         });
@@ -268,7 +268,7 @@ export default function Users() {
                     emptySub="Asegúrate de haber configurado las políticas RLS en Supabase"
                     columns={[
                         {
-                            key: 'name',
+                            key: 'nombre',
                             label: 'Usuario',
                             hideable: false,
                             render: (user) => (
@@ -277,8 +277,8 @@ export default function Users() {
                                         <UserCircle size={20} />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-variable-main">{user.name}</p>
-                                        <p className="text-[10px] text-variable-muted uppercase font-black tracking-widest">{user.first_name} {user.second_name}</p>
+                                        <p className="font-bold text-variable-main">{user.nombre}</p>
+                                        <p className="text-[10px] text-variable-muted uppercase font-black tracking-widest">{user.apellido1} {user.apellido2}</p>
                                     </div>
                                 </div>
                             ),
@@ -438,15 +438,15 @@ export default function Users() {
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">Nombre</label>
-                                        <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Juan" />
+                                        <input required value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Juan" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">1er Apellido</label>
-                                        <input required value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Pérez" />
+                                        <input required value={formData.apellido1} onChange={(e) => setFormData({ ...formData, apellido1: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="Pérez" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-variable-muted uppercase tracking-widest ml-1">2do Apellido</label>
-                                        <input value={formData.second_name} onChange={(e) => setFormData({ ...formData, second_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="García" />
+                                        <input value={formData.apellido2} onChange={(e) => setFormData({ ...formData, apellido2: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main transition-all" placeholder="García" />
                                     </div>
                                 </div>
 

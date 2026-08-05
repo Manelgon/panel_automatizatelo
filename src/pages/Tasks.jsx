@@ -84,7 +84,7 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
             supabase.from('task_subtasks').select('*').eq('task_id', task.id).order('created_at'),
             // `full_name` no es una columna de users: se compone aquí, igual que
             // en normalizedUsers más abajo.
-            supabase.from('task_comments').select('*, users(first_name, second_name, avatar_url)').eq('task_id', task.id).order('created_at'),
+            supabase.from('task_comments').select('*, users(nombre, apellido1, avatar_url)').eq('task_id', task.id).order('created_at'),
         ]);
         setSubtasks(subs || []);
         setComments(coms || []);
@@ -342,7 +342,7 @@ function TaskDetailPanel({ task, onClose, projectUsers, currentProfile, onRefres
 
                     <div className="space-y-4 mb-4">
                         {comments.map(c => {
-                            const autor = [c.users?.first_name, c.users?.second_name].filter(Boolean).join(' ');
+                            const autor = [c.users?.nombre, c.users?.apellido1].filter(Boolean).join(' ');
                             return (
                             <div key={c.id} className="flex gap-3 group">
                                 <Avatar name={autor || '?'} size={7} />
@@ -569,7 +569,7 @@ export default function Tasks() {
         try {
             const [{ data: projs }, { data: usrs }, { data: rawTasks }, { data: subtaskCounts }, { data: sprintData }] = await Promise.all([
                 supabase.from('projects').select('id, name, id_alias').order('name'),
-                supabase.from('users').select('id, first_name, second_name, avatar_url').order('first_name'),
+                supabase.from('users').select('id, nombre, apellido1, avatar_url').order('nombre'),
                 supabase.from('project_tasks').select('*').order('created_at', { ascending: false }),
                 supabase.from('task_subtasks').select('task_id, status'),
                 supabase.from('project_sprints').select('*').order('created_at', { ascending: false }),
@@ -580,7 +580,7 @@ export default function Tasks() {
 
             const normalizedUsers = (usrs || []).map(u => ({
                 ...u,
-                full_name: [u.first_name, u.second_name].filter(Boolean).join(' ') || 'Usuario',
+                full_name: [u.nombre, u.apellido1].filter(Boolean).join(' ') || 'Usuario',
             }));
             setUsers(normalizedUsers);
 

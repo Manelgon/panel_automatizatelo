@@ -80,50 +80,40 @@ export default function Leads() {
 
     const stats = {
         todos: leadsList.length,
-        nuevo: leadsList.filter(l => (l.current_status || 'nuevo') === 'nuevo').length,
-        en_proceso: leadsList.filter(l => l.current_status === 'en_proceso').length,
-        contactado: leadsList.filter(l => l.current_status === 'contactado').length,
-        convertido: leadsList.filter(l => l.current_status === 'convertido').length,
-        perdido: leadsList.filter(l => l.current_status === 'perdido').length
+        nuevo: leadsList.filter(l => (l.status || 'nuevo') === 'nuevo').length,
+        en_proceso: leadsList.filter(l => l.status === 'en_proceso').length,
+        contactado: leadsList.filter(l => l.status === 'contactado').length,
+        convertido: leadsList.filter(l => l.status === 'convertido').length,
+        perdido: leadsList.filter(l => l.status === 'perdido').length
     };
 
     const filteredLeads = activeTab === 'todos'
         ? leadsList
-        : leadsList.filter(l => (l.current_status || 'nuevo') === activeTab);
+        : leadsList.filter(l => (l.status || 'nuevo') === activeTab);
 
     const fetchLeads = async () => {
         setLoading(true);
         setFetchError(null);
         try {
+            // Desde la migración 012 el lead entero vive en una sola fila:
+            // service_segmentation y funnel_flows se fusionaron dentro de `leads`.
             const { data, error } = await supabase
                 .from('leads')
-                .select(`
-                    *,
-                    service_segmentation(*),
-                    funnel_flows(*)
-                `)
+                .select('*')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            const flatData = (data || []).map(lead => {
-                const segArray = lead.service_segmentation || [];
-                const flowArray = lead.funnel_flows || [];
-                const seg = Array.isArray(segArray) ? (segArray[0] || {}) : segArray;
-                const flow = Array.isArray(flowArray) ? (flowArray[0] || {}) : flowArray;
-
-                return {
-                    ...lead,
-                    company_size: seg.company_size || '',
-                    automation_goal: seg.automation_goal || '',
-                    flow_name: flow.flow_name || 'Panel Administrativo',
-                    current_status: flow.current_status || 'nuevo',
-                    activity: flow.activity || 'lead_inactivo',
-                    received_keyword: flow.received_keyword || '',
-                    process_tags: flow.process_tags || [],
-                    last_interaction_date: flow.last_interaction_date || lead.created_at
-                };
-            });
+            const flatData = (data || []).map(lead => ({
+                ...lead,
+                company_size: lead.company_size || '',
+                automation_goal: lead.automation_goal || '',
+                flow_name: lead.flow_name || 'Panel Administrativo',
+                activity: lead.activity || 'lead_inactivo',
+                received_keyword: lead.received_keyword || '',
+                process_tags: lead.process_tags || [],
+                last_interaction_date: lead.last_interaction_date || lead.created_at,
+            }));
 
             setLeadsList(flatData);
         } catch (error) {
@@ -353,18 +343,19 @@ export default function Leads() {
                 clientId = newClient.id;
             }
 
-            // 2) Marcar lead como 'ganado'
+            // 2) Marcar el lead como convertido.
+            //    Antes eran dos escrituras en dos tablas con dos vocabularios
+            //    ('ganado' aquí, 'convertido' en funnel_flows) que solo coincidían
+            //    mientras nadie se olvidara de actualizar una. Ahora es una.
             const { error: leadErr } = await supabase
                 .from('leads')
-                .update({ status: 'ganado' })
+                .update({
+                    status: 'convertido',
+                    activity: 'lead_activo',
+                    last_interaction_date: new Date().toISOString(),
+                })
                 .eq('id', convertLead.id);
             if (leadErr) throw leadErr;
-
-            // 3) Actualizar funnel_flow del lead (current_status = 'convertido')
-            await supabase
-                .from('funnel_flows')
-                .update({ current_status: 'convertido', activity: 'lead_activo' })
-                .eq('lead_id', convertLead.id);
 
             showNotification('Lead convertido a cliente correctamente', 'success');
             setConvertLead(null);
@@ -393,28 +384,18 @@ export default function Leads() {
                         client_type: formData.client_type,
                         service_interest: formData.service_interest,
                         source: formData.source,
-                        status: 'pendiente' // MUST match the check constraint
+                        // Un lead = una fila. Lo que antes eran tres inserciones
+                        // en tres tablas ahora son columnas de `leads`.
+                        status: 'nuevo',
+                        flow_name: formData.source || 'manual',
+                        activity: 'lead_inactivo',
+                        process_tags: ['nuevo'],
+                        last_interaction_date: new Date().toISOString(),
                     }])
                     .select('id')
                     .single();
 
                 if (leadError) throw leadError;
-                const leadId = newLead.id;
-
-                // 2. Insert service_segmentation
-                await supabase.from('service_segmentation').insert([{
-                    lead_id: leadId,
-                    automation_goal: '' // Can be updated later by N8N or UI
-                }]);
-
-                // 3. Insert funnel flows
-                await supabase.from('funnel_flows').insert([{
-                    lead_id: leadId,
-                    flow_name: formData.source || 'manual',
-                    current_status: 'nuevo',
-                    activity: 'lead_inactivo',
-                    process_tags: ['nuevo']
-                }]);
 
                 setFormData(defaultForm);
                 setIsModalOpen(false);
@@ -433,7 +414,7 @@ export default function Leads() {
         fetchLeads();
         fetchServices();
 
-        const tables = ['leads', 'service_segmentation', 'funnel_flows', 'services'];
+        const tables = ['leads', 'services'];
         const channels = tables.map(table =>
             supabase.channel(`${table}-changes`)
                 .on('postgres_changes', { event: '*', schema: 'public', table }, () => {
@@ -599,10 +580,10 @@ export default function Leads() {
                             ),
                         },
                         {
-                            key: 'current_status',
+                            key: 'status',
                             label: 'Embudo',
                             render: (lead) => {
-                                const st = lead.current_status || 'nuevo';
+                                const st = lead.status || 'nuevo';
                                 let bg = 'bg-primary/10 text-primary border-primary/20';
                                 if (st === 'convertido') bg = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
                                 if (st === 'perdido') bg = 'bg-rose-500/10 text-rose-500 border-rose-500/20';
@@ -847,8 +828,7 @@ export default function Leads() {
                                         <p>Se afectarán:</p>
                                         <ul className="space-y-1 pl-4">
                                             <li>• <strong>{gdprPreview.would_delete.leads}</strong> registro(s) en <code>leads</code></li>
-                                            <li>• <strong>{gdprPreview.would_delete.service_segmentation}</strong> en <code>service_segmentation</code></li>
-                                            <li>• <strong>{gdprPreview.would_delete.funnel_flows}</strong> en <code>funnel_flows</code></li>
+                                            <li>• <strong>{gdprPreview.would_delete.email_envios}</strong> correo(s) enviados en <code>email_envios</code></li>
                                             <li>• <strong>{gdprPreview.would_delete.project_milestones}</strong> en <code>project_milestones</code></li>
                                         </ul>
                                     </div>

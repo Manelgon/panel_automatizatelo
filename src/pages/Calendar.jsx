@@ -71,7 +71,7 @@ export default function Calendar() {
     const fetchMilestones = async () => {
         const { data, error } = await supabase
             .from('project_milestones')
-            .select('*, projects(id, name), assigned_user:users!assigned_to(id, first_name, second_name)');
+            .select('*, projects(id, name), assigned_user:users!assigned_to(id, nombre, apellido1)');
 
         if (error) {
             console.error('Error fetching milestones:', error);
@@ -89,7 +89,7 @@ export default function Calendar() {
     };
 
     const fetchUsers = async () => {
-        const { data } = await supabase.from('users').select('id, first_name, second_name').order('first_name');
+        const { data } = await supabase.from('users').select('id, nombre, apellido1').order('nombre');
         setUsers(data || []);
     };
 
@@ -458,7 +458,7 @@ export default function Calendar() {
                                         <User size={18} className="text-variable-muted" />
                                         <select value={formData.assigned_to} onChange={e => setFormData({ ...formData, assigned_to: e.target.value })} className="flex-1 bg-transparent border-none text-variable-main focus:outline-none text-sm font-bold">
                                             <option value="">Sin asignar</option>
-                                            {users.map(u => <option key={u.id} value={u.id}>{u.first_name} {u.second_name}</option>)}
+                                            {users.map(u => <option key={u.id} value={u.id}>{u.nombre} {u.apellido1}</option>)}
                                         </select>
                                     </div>
                                 </div>
