@@ -27,6 +27,7 @@ const Tasks = lazy(() => import('./features/agenda/pages/Tasks'));
 const Facturas = lazy(() => import('./features/facturacion/pages/Facturas'));
 const AjustesEmisor = lazy(() => import('./features/facturacion/pages/AjustesEmisor'));
 const AjustesEmail = lazy(() => import('./features/ajustes/pages/AjustesEmail'));
+const RegistroActividad = lazy(() => import('./features/ajustes/pages/RegistroActividad'));
 const Verifactu = lazy(() => import('./features/facturacion/pages/Verifactu'));
 const Calendar = lazy(() => import('./features/agenda/pages/Calendar'));
 
@@ -176,6 +177,12 @@ function App() {
                                 <Route path="/ajustes-emisor" element={
                                     <ProtectedRoute>
                                         <AjustesEmisor />
+                                    </ProtectedRoute>
+                                } />
+
+                                <Route path="/registro-actividad" element={
+                                    <ProtectedRoute>
+                                        <RegistroActividad />
                                     </ProtectedRoute>
                                 } />
 

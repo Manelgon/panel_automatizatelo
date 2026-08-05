@@ -16,6 +16,7 @@ import {
     PenLine,
     UserCheck,
     Mail,
+    ScrollText,
     GraduationCap
 } from 'lucide-react';
 import logo from '../assets/logo.png';
@@ -181,6 +182,7 @@ export default function Sidebar() {
                             <SubMenuItem icon={Briefcase} to="/services" label="Catálogo de Servicios" onClick={() => setConfigOpen(false)} />
                             <SubMenuItem icon={Settings} to="/ajustes-emisor" label="Ajustes del emisor" onClick={() => setConfigOpen(false)} />
                             <SubMenuItem icon={Mail} to="/ajustes-email" label="Correo del panel" onClick={() => setConfigOpen(false)} />
+                            <SubMenuItem icon={ScrollText} to="/registro-actividad" label="Registro de actividad" onClick={() => setConfigOpen(false)} />
                         </div>
                     </div>
                 </>

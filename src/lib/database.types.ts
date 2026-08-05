@@ -14,11 +14,18 @@
 // generados, pero suficiente para cazar columnas inexistentes y typos — que es
 // la clase de fallo que este panel ha sufrido de verdad (users.full_name,
 // status 'pendiente'…).
+//
+// ALCANCE REAL con supabase-js 2.97 (comprobado con sondeos):
+//   · ESCRITURAS tipadas: un update/insert con columna inexistente NO compila ✓
+//   · LECTURAS: el parser de resultados exige la forma exacta de los tipos
+//     generados y devuelve `never` — en ficheros TS, convertir el data con
+//     `as Tipo[]` hasta sustituir este fichero por `supabase gen types`
+//   · rpc(): resuelve por una ruta sin tipos; rodeo local en auditoria.ts
 // =============================================================================
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-type Fila<T> = { Row: T; Insert: Partial<T>; Update: Partial<T>; Relationships: [] };
+type Fila<T> = { Row: T; Insert: Partial<T>; Update: Partial<T>; Relationships: never[] };
 
 // ── Núcleo ───────────────────────────────────────────────────────────────────
 
@@ -514,6 +521,7 @@ export interface BlogPost {
 // ── El mapa que consume el cliente de Supabase ───────────────────────────────
 
 export interface Database {
+    __InternalSupabase: { PostgrestVersion: '12' };
     public: {
         Tables: {
             users: Fila<Usuario>;
