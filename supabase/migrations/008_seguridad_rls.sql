@@ -15,6 +15,10 @@
 --
 -- Reutilizamos public.is_admin() (definida en 001_facturacion.sql), que ya está
 -- bien hecha: security definer, search_path vacío, sin recursión de RLS.
+--
+-- RE-EJECUTABLE: cada `create policy` va precedido de su `drop policy if
+-- exists`, tanto del nombre viejo como del nuevo. Se puede lanzar las veces que
+-- haga falta y el resultado final es el mismo.
 -- =============================================================================
 
 
@@ -67,9 +71,12 @@ create trigger trg_proteger_rol_usuario
 -- asignar tareas. INSERT solo de la propia fila. DELETE solo admin (si un
 -- usuario borrase su fila, quedaría un fantasma en auth.users sin perfil).
 -- -----------------------------------------------------------------------------
-drop policy if exists "users_insert_authenticated" on public.users;
-drop policy if exists "users_update_own"           on public.users;
-drop policy if exists "users_delete_own"           on public.users;
+drop policy if exists "users_insert_authenticated"   on public.users;
+drop policy if exists "users_update_own"             on public.users;
+drop policy if exists "users_delete_own"             on public.users;
+drop policy if exists "users_insert_self"            on public.users;
+drop policy if exists "users_update_propio_o_admin"  on public.users;
+drop policy if exists "users_delete_admin"           on public.users;
 
 create policy "users_insert_self" on public.users
     for insert to authenticated
@@ -110,24 +117,27 @@ grant execute on function public.es_miembro_proyecto(uuid) to authenticated;
 -- 4. TABLAS HIJAS DE PROYECTO: admin o miembro del proyecto
 -- -----------------------------------------------------------------------------
 -- project_milestones
-drop policy if exists "milestones_select_member" on public.project_milestones;
-drop policy if exists "milestones_all_admin"     on public.project_milestones;
+drop policy if exists "milestones_select_member"    on public.project_milestones;
+drop policy if exists "milestones_all_admin"        on public.project_milestones;
+drop policy if exists "project_milestones_acceso"   on public.project_milestones;
 create policy "project_milestones_acceso" on public.project_milestones
     for all to authenticated
     using      (public.is_admin() or public.es_miembro_proyecto(project_id))
     with check (public.is_admin() or public.es_miembro_proyecto(project_id));
 
 -- project_tasks — además, quien la tiene asignada siempre la ve
-drop policy if exists "tasks_select_member" on public.project_tasks;
-drop policy if exists "tasks_all_admin"     on public.project_tasks;
+drop policy if exists "tasks_select_member"   on public.project_tasks;
+drop policy if exists "tasks_all_admin"       on public.project_tasks;
+drop policy if exists "project_tasks_acceso"  on public.project_tasks;
 create policy "project_tasks_acceso" on public.project_tasks
     for all to authenticated
     using      (public.is_admin() or public.es_miembro_proyecto(project_id) or assigned_to = auth.uid())
     with check (public.is_admin() or public.es_miembro_proyecto(project_id) or assigned_to = auth.uid());
 
 -- project_files
-drop policy if exists "files_select_member" on public.project_files;
-drop policy if exists "files_all_admin"     on public.project_files;
+drop policy if exists "files_select_member"   on public.project_files;
+drop policy if exists "files_all_admin"       on public.project_files;
+drop policy if exists "project_files_acceso"  on public.project_files;
 create policy "project_files_acceso" on public.project_files
     for all to authenticated
     using      (public.is_admin() or public.es_miembro_proyecto(project_id))
@@ -136,15 +146,18 @@ create policy "project_files_acceso" on public.project_files
 -- project_services
 drop policy if exists "project_services_select" on public.project_services;
 drop policy if exists "project_services_all"    on public.project_services;
+drop policy if exists "project_services_acceso" on public.project_services;
 create policy "project_services_acceso" on public.project_services
     for all to authenticated
     using      (public.is_admin() or public.es_miembro_proyecto(project_id))
     with check (public.is_admin() or public.es_miembro_proyecto(project_id));
 
 -- project_members — leer sí (para ver el equipo), tocar solo admin
-drop policy if exists "members_select"      on public.project_members;
-drop policy if exists "members_insert_self" on public.project_members;
-drop policy if exists "members_all_admin"   on public.project_members;
+drop policy if exists "members_select"          on public.project_members;
+drop policy if exists "members_insert_self"     on public.project_members;
+drop policy if exists "members_all_admin"       on public.project_members;
+drop policy if exists "project_members_select"  on public.project_members;
+drop policy if exists "project_members_admin"   on public.project_members;
 create policy "project_members_select" on public.project_members
     for select to authenticated
     using (public.is_admin() or public.es_miembro_proyecto(project_id) or user_id = auth.uid());
@@ -160,23 +173,27 @@ create policy "project_members_admin" on public.project_members
 -- project_budgets / project_budget_lines / project_invoices / project_payments
 -- están marcadas para desaparecer (docs/AUDITORIA-PANEL.md §4.1). Hasta que se
 -- borren, que al menos no las vea cualquiera.
-drop policy if exists "budget_lines_select"    on public.project_budget_lines;
-drop policy if exists "budget_lines_all"       on public.project_budget_lines;
+drop policy if exists "budget_lines_select"          on public.project_budget_lines;
+drop policy if exists "budget_lines_all"             on public.project_budget_lines;
+drop policy if exists "project_budget_lines_admin"   on public.project_budget_lines;
 create policy "project_budget_lines_admin" on public.project_budget_lines
     for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "project_budgets_select" on public.project_budgets;
 drop policy if exists "project_budgets_all"    on public.project_budgets;
+drop policy if exists "project_budgets_admin"  on public.project_budgets;
 create policy "project_budgets_admin" on public.project_budgets
     for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
-drop policy if exists "invoices_select" on public.project_invoices;
-drop policy if exists "invoices_all"    on public.project_invoices;
+drop policy if exists "invoices_select"         on public.project_invoices;
+drop policy if exists "invoices_all"            on public.project_invoices;
+drop policy if exists "project_invoices_admin"  on public.project_invoices;
 create policy "project_invoices_admin" on public.project_invoices
     for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
-drop policy if exists "payments_select" on public.project_payments;
-drop policy if exists "payments_all"    on public.project_payments;
+drop policy if exists "payments_select"         on public.project_payments;
+drop policy if exists "payments_all"            on public.project_payments;
+drop policy if exists "project_payments_admin"  on public.project_payments;
 create policy "project_payments_admin" on public.project_payments
     for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
@@ -184,6 +201,7 @@ create policy "project_payments_admin" on public.project_payments
 drop policy if exists "leads_select_authenticated" on public.leads;
 drop policy if exists "leads_update_authenticated" on public.leads;
 drop policy if exists "leads_delete_authenticated" on public.leads;
+drop policy if exists "leads_admin"                on public.leads;
 create policy "leads_admin" on public.leads
     for all to authenticated using (public.is_admin()) with check (public.is_admin());
 -- Se conserva "leads_insert_anon": el formulario público de la web necesita
@@ -196,6 +214,7 @@ drop policy if exists "service_segmentation_select" on public.service_segmentati
 drop policy if exists "service_segmentation_insert" on public.service_segmentation;
 drop policy if exists "service_segmentation_update" on public.service_segmentation;
 drop policy if exists "service_segmentation_delete" on public.service_segmentation;
+drop policy if exists "service_segmentation_admin"  on public.service_segmentation;
 create policy "service_segmentation_admin" on public.service_segmentation
     for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
@@ -203,6 +222,7 @@ drop policy if exists "funnel_flows_select" on public.funnel_flows;
 drop policy if exists "funnel_flows_insert" on public.funnel_flows;
 drop policy if exists "funnel_flows_update" on public.funnel_flows;
 drop policy if exists "funnel_flows_delete" on public.funnel_flows;
+drop policy if exists "funnel_flows_admin"  on public.funnel_flows;
 create policy "funnel_flows_admin" on public.funnel_flows
     for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
@@ -211,6 +231,7 @@ create policy "funnel_flows_admin" on public.funnel_flows
 -- 6. PROYECTOS: el INSERT también se cierra
 -- -----------------------------------------------------------------------------
 drop policy if exists "projects_insert_authenticated" on public.projects;
+drop policy if exists "projects_insert_admin"         on public.projects;
 create policy "projects_insert_admin" on public.projects
     for insert to authenticated
     with check (public.is_admin());
@@ -256,6 +277,14 @@ create policy "task_comments_acceso" on public.task_comments
 
 
 -- =============================================================================
+-- COMPROBACIÓN — pega esto después para ver el resultado
+-- =============================================================================
+--   select tablename, policyname, cmd
+--     from pg_policies
+--    where schemaname = 'public'
+--      and tablename in ('users','leads','projects','project_tasks','project_members')
+--    order by tablename, policyname;
+--
 -- IMPORTANTE — CÓMO SE CREA EL PRIMER ADMIN
 -- =============================================================================
 -- A partir de esta migración nadie puede ascenderse a sí mismo. Si algún día hay
@@ -263,8 +292,4 @@ create policy "task_comments_acceso" on public.task_comments
 -- Supabase (que corre como service_role y el trigger deja pasar):
 --
 --   update public.users set role = 'admin' where email = 'serincosol@gmail.com';
---
--- Comprueba antes de desplegar que tu propio usuario ya es admin:
---
---   select email, role from public.users order by role;
 -- =============================================================================
