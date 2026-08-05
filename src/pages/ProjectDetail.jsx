@@ -1335,7 +1335,9 @@ export default function ProjectDetail() {
                                             </div>
 
                                             {/* Acciones de Presupuesto */}
-                                            {isBudget && budgetObj && budgetObj.status === 'pendiente' && (
+                                            {/* Enviar se puede siempre (también confirmado: al cliente
+                                                le sirve tener su copia); aceptar/denegar solo pendiente */}
+                                            {isBudget && budgetObj && (
                                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all bg-dark/80 backdrop-blur-md p-1 rounded-xl border border-variable shadow-xl mr-10">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleEnviarBudget(budgetId); }}
@@ -1348,6 +1350,7 @@ export default function ProjectDetail() {
                                                     >
                                                         <Send size={14} />
                                                     </button>
+                                                    {budgetObj.status === 'pendiente' && (<>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleUpdateBudgetStatus(budgetId, 'confirmado'); }}
                                                         disabled={budgetActionLoading === budgetId}
@@ -1374,6 +1377,7 @@ export default function ProjectDetail() {
                                                             ? <span className="size-3.5 border-2 border-rose-500/30 border-t-rose-500 rounded-full animate-spin inline-block" />
                                                             : <X size={14} />}
                                                     </button>
+                                                    </>)}
                                                 </div>
                                             )}
                                         </div>
