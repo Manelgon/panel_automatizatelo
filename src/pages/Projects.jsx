@@ -448,8 +448,9 @@ export default function Projects() {
                                         <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">
                                             Cliente <span className="text-rose-400">*</span>
                                         </label>
-                                        <CustomSelect
+                                        <CustomDropdown
                                             placeholder="-- Seleccionar cliente --"
+                                            icon={Briefcase}
                                             value={formData.client_id}
                                             onChange={(clientId) => setFormData({ ...formData, client_id: clientId })}
                                             options={clients.map(c => ({ value: c.id, label: nombreCliente(c) }))}
