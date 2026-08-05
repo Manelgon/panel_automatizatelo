@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { X, Calendar as CalendarIcon, User, FolderOpen, AlignLeft, Clock } from 'lucide-react';
+import { X, Calendar as CalendarIcon, User, FolderOpen, AlignLeft} from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { useNotifications } from '../context/NotificationContext';
 import { useGlobalLoading } from '../context/LoadingContext';

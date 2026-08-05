@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Users as UsersIcon,
     UserPlus,
-    Search,
     Clock,
     Sun,
     Moon,
@@ -11,16 +10,12 @@ import {
     Mail,
     Phone,
     Briefcase,
-    MessageSquare,
     Star,
     Target,
     Rocket,
     Trash2,
     AlertTriangle,
     UserCheck,
-    Building2,
-    Hash,
-    MapPin,
     CalendarClock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

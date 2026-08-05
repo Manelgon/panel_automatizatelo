@@ -1,10 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Briefcase,
     Plus,
-    Search,
-    Filter,
-    MoreVertical,
     Edit,
     Trash2,
     CheckCircle2,

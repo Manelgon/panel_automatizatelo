@@ -1,24 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     ArrowLeft,
     Calendar,
     CheckCircle2,
-    Clock,
     Download,
     FileText,
     Share2,
     Edit3,
     BarChart3,
-    MoreVertical,
-    LayoutDashboard,
     Users as UsersIcon,
-    FolderOpen,
-    Settings,
     Sun,
     Moon,
     Plus,
     X,
-    ShieldCheck,
     Briefcase,
     Target,
     Trash2,
@@ -26,7 +20,6 @@ import {
     ChevronDown,
     ChevronUp,
     DollarSign,
-    Percent,
     CreditCard,
     Banknote,
     Building2,
@@ -718,7 +711,6 @@ export default function ProjectDetail() {
         setExistingActiveBudget(null);
         doGenerateBudgetPDF(prevId);
     };
-
 
 
     const handleRedownloadBudget = (budgetId) => {

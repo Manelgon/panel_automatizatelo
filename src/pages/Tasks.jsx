@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback} from 'react';
+
 import {
-    ListTodo, Plus, ChevronDown, ChevronUp, ChevronRight, X,
+    ListTodo, Plus, ChevronRight, X,
     AlertCircle, Clock, CheckCircle2, Circle, Flame, ArrowUp,
-    ArrowDown, Minus, MessageSquare, Paperclip, User, Calendar,
-    FolderOpen, Filter, Search, Edit3, Trash2, Send, Flag,
-    GitBranch, Tag, MoreHorizontal, Sun, Moon, RefreshCw,
-    Zap, Target, Package, PlayCircle, Archive
+    ArrowDown, Minus, MessageSquare,
+    FolderOpen, Search, Trash2, Send,
+    GitBranch, Sun, Moon, RefreshCw,
+    Zap, Target, Package, Archive
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';

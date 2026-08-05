@@ -1,26 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     FolderOpen,
     Plus,
-    Search,
-    Filter,
-    BarChart3,
-    Calendar,
     Users as UsersIcon,
     ArrowRight,
-    Edit,
     Trash2,
-    CheckCircle2,
     Clock,
     ShieldCheck,
     Type,
     FileText,
     Briefcase,
-    X,
-    ChevronDown
-} from 'lucide-react';
+    X} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import {useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';

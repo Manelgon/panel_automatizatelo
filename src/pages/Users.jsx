@@ -1,20 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Users as UsersIcon,
     UserPlus,
     Mail,
-    Shield,
     Trash2,
-    Search,
     Clock,
     Sun,
     Moon,
-    LayoutDashboard,
-    FolderOpen,
-    FileText,
     Settings,
-    MoreVertical,
-    CheckCircle2,
     X,
     ShieldCheck,
     UserCircle,
@@ -24,10 +17,9 @@ import {
     Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
-import logo from '../assets/logo.png';
 
 import Sidebar from '../components/Sidebar';
 import CustomDropdown from '../components/CustomDropdown';

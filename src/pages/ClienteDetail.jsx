@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
-import CustomSelect from '../components/CustomSelect';
+
 import { useNotifications } from '../context/NotificationContext';
 
 export default function ClienteDetail() {

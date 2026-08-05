@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ShieldCheck, AlertTriangle, RefreshCw, Download, FileCode, Sun, Moon } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ShieldCheck, AlertTriangle, RefreshCw, FileCode, Sun, Moon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { registrarVerifactu } from '../lib/facturas';
 import Sidebar from '../components/Sidebar';

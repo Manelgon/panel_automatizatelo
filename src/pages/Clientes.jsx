@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+
 import {
     UserCheck, Search, Clock, Sun, Moon, ChevronRight,
-    Building2, User, Mail, Phone, FileText
-} from 'lucide-react';
+    Building2, User} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import DataTable from '../components/DataTable';

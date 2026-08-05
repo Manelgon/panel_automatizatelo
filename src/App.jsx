@@ -1,27 +1,41 @@
-import React from 'react';
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import ProjectDetail from './pages/ProjectDetail';
-import Users from './pages/Users';
-import Leads from './pages/Leads';
-import Clientes from './pages/Clientes';
-import ClienteDetail from './pages/ClienteDetail';
-import Blog from './pages/Blog';
-import Services from './pages/Services';
-import Projects from './pages/Projects';
-import Formaciones from './pages/Formaciones';
-import FormacionDetalle from './pages/FormacionDetalle';
-import Tasks from './pages/Tasks';
-import Facturas from './pages/Facturas';
-import AjustesEmisor from './pages/AjustesEmisor';
-import AjustesEmail from './pages/AjustesEmail';
-import Verifactu from './pages/Verifactu';
-import Calendar from './pages/Calendar';
-import Login from './pages/Login';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { LoadingProvider } from './context/LoadingContext';
+
+// Cada página se descarga cuando se visita, no todas al entrar. Antes el panel
+// era un único chunk de 1,6 MB: para ver el login había que bajarse también el
+// editor del blog, FullCalendar y el generador de PDF.
+//
+// Login queda estático a propósito — es la primera pantalla y no debe esperar
+// a una segunda petición.
+import Login from './pages/Login';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
+const Users = lazy(() => import('./pages/Users'));
+const Leads = lazy(() => import('./pages/Leads'));
+const Clientes = lazy(() => import('./pages/Clientes'));
+const ClienteDetail = lazy(() => import('./pages/ClienteDetail'));
+const Blog = lazy(() => import('./pages/Blog'));
+const Services = lazy(() => import('./pages/Services'));
+const Projects = lazy(() => import('./pages/Projects'));
+const Formaciones = lazy(() => import('./pages/Formaciones'));
+const FormacionDetalle = lazy(() => import('./pages/FormacionDetalle'));
+const Tasks = lazy(() => import('./pages/Tasks'));
+const Facturas = lazy(() => import('./pages/Facturas'));
+const AjustesEmisor = lazy(() => import('./pages/AjustesEmisor'));
+const AjustesEmail = lazy(() => import('./pages/AjustesEmail'));
+const Verifactu = lazy(() => import('./pages/Verifactu'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+
+// El mismo spinner que ya usa el resto del panel mientras carga una página
+const CargandoPagina = () => (
+    <div className="min-h-screen flex items-center justify-center bg-[#0F0716]">
+        <div className="size-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+    </div>
+);
 
 const ProtectedRoute = ({ children, requireAdmin = true }) => {
     const { user, profile, loading, profileLoading } = useAuth();
@@ -76,6 +90,7 @@ function App() {
                 <LoadingProvider>
                     <ThemeProvider>
                         <Router>
+                            <Suspense fallback={<CargandoPagina />}>
                             <Routes>
                                 <Route path="/login" element={<Login />} />
 
@@ -185,6 +200,7 @@ function App() {
                                 {/* Redirect a login por defecto si no encuentra ruta */}
                                 <Route path="*" element={<Navigate to="/" />} />
                             </Routes>
+                            </Suspense>
                         </Router>
                     </ThemeProvider>
                 </LoadingProvider>

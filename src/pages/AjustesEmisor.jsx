@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Settings, Save, Sun, Moon, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { validarIdFiscal } from '../lib/facturas';
