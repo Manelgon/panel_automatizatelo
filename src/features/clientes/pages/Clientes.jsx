@@ -3,11 +3,29 @@ import { useNavigate } from 'react-router-dom';
 
 import {
     UserCheck, Search, Clock, ChevronRight,
-    Building2, User} from 'lucide-react';
+    Building2, User, UserPlus, X} from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import BarraNavegacion from '../../../components/BarraNavegacion';
 import DataTable from '../../../components/DataTable';
+import CustomDropdown from '../../../components/CustomDropdown';
 import { useNotifications } from '../../../context/NotificationContext';
+
+// Alta directa: un cliente que llega sin pasar por la fase de prospecto no
+// necesita lead. El origen queda a la vista en la lista: "Lead" si viene de
+// una conversión (tiene lead_id), "Manual" si se creó aquí o desde un proyecto.
+const FORM_VACIO = {
+    client_type: 'particular',
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    company_name: '',
+    tax_id: '',
+    billing_address: '',
+    billing_postal_code: '',
+    billing_city: '',
+    billing_country: 'España',
+};
 
 export default function Clientes() {
     const navigate = useNavigate();
@@ -16,6 +34,9 @@ export default function Clientes() {
     const [clientes, setClientes] = useState([]);
     const [activeTab, setActiveTab] = useState('todos');
     const [search, setSearch] = useState('');
+    const [modalAbierto, setModalAbierto] = useState(false);
+    const [guardando, setGuardando] = useState(false);
+    const [form, setForm] = useState(FORM_VACIO);
 
     const tabs = [
         { id: 'todos', label: 'Todos' },
@@ -55,6 +76,52 @@ export default function Clientes() {
 
         return () => { supabase.removeChannel(channel); };
     }, []);
+
+    const crearCliente = async (e) => {
+        e.preventDefault();
+        if (!form.first_name.trim() || !form.email.trim()) {
+            return showNotification('Nombre y email son obligatorios', 'error');
+        }
+        if ((form.client_type === 'empresa' || form.client_type === 'agencia') && !form.company_name.trim()) {
+            return showNotification('Una empresa o agencia necesita razón social', 'error');
+        }
+        setGuardando(true);
+        try {
+            // Mismo control anti-duplicados que la conversión de leads
+            const { data: existentes } = await supabase
+                .from('clientes')
+                .select('id')
+                .ilike('email', form.email.trim())
+                .limit(1);
+            if (existentes?.length) {
+                showNotification('Ya hay un cliente con ese email', 'error');
+                return;
+            }
+            const { error } = await supabase.from('clientes').insert([{
+                client_type: form.client_type,
+                first_name: form.first_name.trim(),
+                last_name: form.last_name.trim() || null,
+                email: form.email.trim(),
+                phone: form.phone.trim() || null,
+                company_name: form.company_name.trim() || null,
+                tax_id: form.tax_id.trim() || null,
+                billing_address: form.billing_address.trim() || null,
+                billing_postal_code: form.billing_postal_code.trim() || null,
+                billing_city: form.billing_city.trim() || null,
+                billing_country: form.billing_country.trim() || 'España',
+                status: 'active',
+            }]);
+            if (error) throw error;
+            showNotification('Cliente creado');
+            setForm(FORM_VACIO);
+            setModalAbierto(false);
+            fetchClientes();
+        } catch (err) {
+            showNotification(`No se pudo crear el cliente: ${err.message}`, 'error');
+        } finally {
+            setGuardando(false);
+        }
+    };
 
     const stats = {
         todos: clientes.filter(c => c.status !== 'archived').length,
@@ -114,6 +181,12 @@ export default function Clientes() {
                         >
                             <Clock size={20} />
                         </button>
+                        <button
+                            onClick={() => setModalAbierto(true)}
+                            className="px-5 py-3 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 flex items-center gap-2"
+                        >
+                            <UserPlus size={16} /> Nuevo Cliente
+                        </button>
                     </div>
                 </header>
 
@@ -172,6 +245,19 @@ export default function Clientes() {
                             render: (c) => (
                                 <span className="px-3 py-1 rounded-lg bg-white/5 border border-variable text-[10px] uppercase font-black text-variable-muted">
                                     {c.client_type}
+                                </span>
+                            ),
+                        },
+                        {
+                            key: 'lead_id',
+                            label: 'Origen',
+                            render: (c) => (
+                                <span className={`px-3 py-1 rounded-lg border text-[10px] uppercase font-black ${
+                                    c.lead_id
+                                        ? 'bg-primary/10 border-primary/20 text-primary'
+                                        : 'bg-white/5 border-variable text-variable-muted'
+                                }`}>
+                                    {c.lead_id ? 'Lead' : 'Manual'}
                                 </span>
                             ),
                         },
@@ -236,6 +322,90 @@ export default function Clientes() {
                         }
                     ]}
                 />
+
+                {/* MODAL: NUEVO CLIENTE (alta directa, sin lead) */}
+                {modalAbierto && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setModalAbierto(false)} />
+                        <div className="relative glass rounded-3xl border border-variable p-6 sm:p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <button onClick={() => setModalAbierto(false)} className="absolute top-6 right-6 text-variable-muted hover:text-primary transition-colors">
+                                <X size={22} />
+                            </button>
+
+                            <h2 className="text-2xl sm:text-3xl font-bold font-display mb-2 text-variable-main">Nuevo Cliente</h2>
+                            <p className="text-variable-muted mb-8 italic text-sm">
+                                Alta directa, sin pasar por Leads. Quedará con origen «Manual».
+                            </p>
+
+                            <form onSubmit={crearCliente} className="space-y-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Tipo</label>
+                                        <CustomDropdown
+                                            value={form.client_type}
+                                            onChange={(v) => setForm({ ...form, client_type: v })}
+                                            options={[
+                                                { value: 'particular', label: 'Particular' },
+                                                { value: 'empresa', label: 'Empresa' },
+                                                { value: 'agencia', label: 'Agencia' },
+                                            ]}
+                                        />
+                                    </div>
+                                    {form.client_type !== 'particular' && (
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">
+                                                Razón social <span className="text-rose-400">*</span>
+                                            </label>
+                                            <input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Empresa S.L." />
+                                        </div>
+                                    )}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">
+                                            Nombre <span className="text-rose-400">*</span>
+                                        </label>
+                                        <input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Nombre" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Apellidos</label>
+                                        <input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Apellidos" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">
+                                            Email <span className="text-rose-400">*</span>
+                                        </label>
+                                        <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="email@ejemplo.com" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Teléfono</label>
+                                        <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="600 000 000" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">NIF/CIF</label>
+                                        <input value={form.tax_id} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Necesario para facturar" />
+                                    </div>
+                                </div>
+
+                                <div className="pt-2 border-t border-variable space-y-4">
+                                    <p className="text-xs font-black text-primary uppercase tracking-[0.2em] ml-1">Dirección de facturación</p>
+                                    <input value={form.billing_address} onChange={(e) => setForm({ ...form, billing_address: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Calle y número" />
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <input value={form.billing_postal_code} onChange={(e) => setForm({ ...form, billing_postal_code: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="CP" />
+                                        <input value={form.billing_city} onChange={(e) => setForm({ ...form, billing_city: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="Ciudad" />
+                                        <input value={form.billing_country} onChange={(e) => setForm({ ...form, billing_country: e.target.value })} className="w-full bg-white/5 border border-variable rounded-2xl px-4 py-3 focus:outline-none focus:border-primary/50 text-variable-main text-sm" placeholder="País" />
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={guardando}
+                                    className="w-full py-3.5 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+                                >
+                                    <UserPlus size={16} /> {guardando ? 'Creando…' : 'Crear Cliente'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );
