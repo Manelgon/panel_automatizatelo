@@ -4,6 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import esLocale from '@fullcalendar/core/locales/es';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -13,10 +14,12 @@ import { useNotifications } from '../context/NotificationContext';
 import { useGlobalLoading } from '../context/LoadingContext';
 
 export default function Calendar() {
+    const navigate = useNavigate();
     const { profile } = useAuth();
     const { showNotification } = useNotifications();
     const { withLoading } = useGlobalLoading();
     const [milestones, setMilestones] = useState([]);
+    const [sesiones, setSesiones] = useState([]);
     const [projects, setProjects] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -64,7 +67,7 @@ export default function Calendar() {
 
     const fetchData = async () => {
         setLoading(true);
-        await Promise.all([fetchMilestones(), fetchProjects(), fetchUsers()]);
+        await Promise.all([fetchMilestones(), fetchProjects(), fetchUsers(), fetchSesiones()]);
         setLoading(false);
     };
 
@@ -81,6 +84,13 @@ export default function Calendar() {
         } else {
             setMilestones(data || []);
         }
+    };
+
+    const fetchSesiones = async () => {
+        const { data } = await supabase
+            .from('formacion_sesiones')
+            .select('id, formacion_id, fecha, hora_inicio, hora_fin, horas, lugar, formaciones(titulo)');
+        setSesiones(data || []);
     };
 
     const fetchProjects = async () => {
@@ -116,6 +126,26 @@ export default function Calendar() {
         };
     });
 
+    // Las sesiones de formación también son eventos con fecha y hora: si no
+    // salen aquí, la agenda miente. Se pintan en el naranja de la marca y no se
+    // pueden arrastrar — se editan desde la ficha de la formación.
+    const eventosFormacion = sesiones.map(s => {
+        const conHora = s.hora_inicio && s.hora_fin;
+        return {
+            id: `sesion-${s.id}`,
+            title: `🎓 ${s.formaciones?.titulo || 'Formación'}`,
+            start: conHora ? `${s.fecha}T${s.hora_inicio}` : s.fecha,
+            end: conHora ? `${s.fecha}T${s.hora_fin}` : null,
+            allDay: !conHora,
+            backgroundColor: '#f3791b',
+            borderColor: '#f3791b',
+            editable: false,
+            extendedProps: { esFormacion: true, formacionId: s.formacion_id, lugar: s.lugar, horas: s.horas },
+        };
+    });
+
+    const todosLosEventos = [...events, ...eventosFormacion];
+
     const handleDateSelect = (selectInfo) => {
         setFormData({
             title: '',
@@ -136,6 +166,13 @@ export default function Calendar() {
 
     const handleEventClick = (clickInfo) => {
         const props = clickInfo.event.extendedProps;
+
+        // Una sesión de formación no se edita aquí: se va a su ficha
+        if (props.esFormacion) {
+            navigate(`/formaciones/${props.formacionId}`);
+            return;
+        }
+
         setFormData({
             title: props.title,
             description: props.description || '',
@@ -395,7 +432,7 @@ export default function Calendar() {
                         dayMaxEvents={true}
                         weekends={true}
                         locale={esLocale}
-                        events={events}
+                        events={todosLosEventos}
                         select={handleDateSelect}
                         eventClick={handleEventClick}
                         eventDrop={handleEventDropOrResize}

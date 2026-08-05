@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft, Mail, Phone, MapPin, Hash, Building2, User, Edit3,
     FolderOpen, FileText, Wallet, Receipt, Files, Flag, X,
-    ChevronRight, Calendar, CheckCircle
+    ChevronRight, Calendar, CheckCircle, GraduationCap, ShieldCheck
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
@@ -24,6 +24,7 @@ export default function ClienteDetail() {
 
     const tabs = [
         { id: 'proyectos', label: 'Proyectos', icon: FolderOpen },
+        { id: 'formaciones', label: 'Formaciones', icon: GraduationCap },
         { id: 'facturas', label: 'Facturas', icon: Receipt },
         { id: 'presupuestos', label: 'Presupuestos', icon: Wallet },
         { id: 'hitos', label: 'Hitos', icon: Flag },
@@ -55,10 +56,18 @@ export default function ClienteDetail() {
             // 2. Facturas: ahora viven en `facturas` con client_id directo (sin pasar por proyectos)
             const { data: facturasData } = await supabase
                 .from('facturas')
-                .select('id, numero, total, estado, fecha_emision, project_id, projects(name)')
+                .select('id, numero, total, estado, fecha_emision, project_id, formacion_id, projects(name), formaciones(titulo)')
                 .eq('client_id', id)
                 .order('fecha_emision', { ascending: false });
             data.facturas = facturasData || [];
+
+            // 3. Formaciones del cliente, con el recuento de alumnos y certificados
+            const { data: formacionesData } = await supabase
+                .from('formaciones')
+                .select('id, titulo, tipo, estado, fecha_inicio, horas_totales, precio_cerrado, formacion_alumnos(id, certificado_emitido_at)')
+                .eq('cliente_id', id)
+                .order('fecha_inicio', { ascending: false, nullsFirst: false });
+            data.formaciones = formacionesData || [];
             setCliente(data);
             setEditForm({
                 first_name: data.first_name || '',
@@ -108,7 +117,8 @@ export default function ClienteDetail() {
     // Facturas: ya vienen filtradas por client_id; adaptamos forma para la lista
     const allInvoices = (cliente?.facturas || []).map(f => ({
         ...f,
-        project_name: f.projects?.name || '—',
+        // De dónde salió la factura: un proyecto, una formación, o suelta
+        project_name: f.projects?.name || f.formaciones?.titulo || '—',
     }));
     const allBudgets = (cliente?.projects || []).flatMap(p =>
         (p.project_budgets || []).map(b => ({ ...b, project_name: p.name, project_id: p.id }))
@@ -274,6 +284,43 @@ export default function ClienteDetail() {
                                     </div>
                                 </Link>
                             )}
+                        />
+                    )}
+
+                    {activeTab === 'formaciones' && (
+                        <TabList
+                            items={cliente.formaciones || []}
+                            emptyText="Este cliente no ha recibido formación todavía"
+                            renderItem={(f) => {
+                                const alumnos = f.formacion_alumnos?.length || 0;
+                                const certificados = (f.formacion_alumnos || []).filter(a => a.certificado_emitido_at).length;
+                                return (
+                                    <Link
+                                        key={f.id}
+                                        to={`/formaciones/${f.id}`}
+                                        className="flex items-center justify-between p-4 rounded-xl border border-variable hover:border-primary/40 hover:bg-primary/5 transition-all"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-variable-main truncate">{f.titulo}</p>
+                                            <p className="text-xs text-variable-muted">
+                                                {f.fecha_inicio ? new Date(f.fecha_inicio).toLocaleDateString('es-ES') : 'Sin fecha'}
+                                                {f.horas_totales ? ` · ${f.horas_totales} h` : ''}
+                                                {alumnos ? ` · ${alumnos} alumnos` : ''}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            {certificados > 0 && (
+                                                <span className="px-2 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                                                    <ShieldCheck size={11} /> {certificados}
+                                                </span>
+                                            )}
+                                            <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] uppercase font-bold text-variable-muted">{f.estado}</span>
+                                            <span className="text-xs font-bold text-variable-main">€{Number(f.precio_cerrado || 0).toFixed(2)}</span>
+                                            <ChevronRight size={16} className="text-primary" />
+                                        </div>
+                                    </Link>
+                                );
+                            }}
                         />
                     )}
 

@@ -42,8 +42,9 @@ export default function Facturas() {
                     cliente_nombre, cliente_nif,
                     base_imponible, iva_importe, total,
                     estado, forma_pago,
-                    client_id, project_id,
-                    projects(name, id_alias)
+                    client_id, project_id, formacion_id,
+                    projects(name, id_alias),
+                    formaciones(titulo)
                 `)
                 .order('fecha_emision', { ascending: false });
             if (error) throw error;
@@ -90,7 +91,8 @@ export default function Facturas() {
                 (f.numero || '').toLowerCase().includes(q) ||
                 (f.cliente_nombre || '').toLowerCase().includes(q) ||
                 (f.cliente_nif || '').toLowerCase().includes(q) ||
-                (f.projects?.name || '').toLowerCase().includes(q)
+                (f.projects?.name || '').toLowerCase().includes(q) ||
+                (f.formaciones?.titulo || '').toLowerCase().includes(q)
             );
         }
         return true;
@@ -223,6 +225,9 @@ export default function Facturas() {
                                                 {f.cliente_nif && ` · ${f.cliente_nif}`}
                                                 {f.projects?.name && (
                                                     <> · <Link to={`/projects/${f.project_id}`} className="hover:text-primary">{f.projects.name}</Link></>
+                                                )}
+                                                {f.formaciones?.titulo && (
+                                                    <> · <Link to={`/formaciones/${f.formacion_id}`} className="hover:text-primary">{f.formaciones.titulo}</Link></>
                                                 )}
                                             </p>
                                             <p className="text-[10px] text-variable-muted mt-1">

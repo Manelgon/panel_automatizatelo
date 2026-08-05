@@ -126,6 +126,7 @@ export default function Dashboard() {
     const [payments, setPayments] = useState([]);
     const [users, setUsers] = useState([]);
     const [projectTasks, setProjectTasks] = useState([]);
+    const [formaciones, setFormaciones] = useState([]);
 
     // ─── Fetch All Data ───
     useEffect(() => {
@@ -141,15 +142,20 @@ export default function Dashboard() {
                     { data: paymentsData },
                     { data: usersData },
                     { data: allTasksData },
+                    { data: formacionesData },
                 ] = await Promise.all([
                     supabase.from('leads').select('*').order('created_at', { ascending: false }).limit(10),
                     supabase.from('projects').select('*').order('created_at', { ascending: false }),
                     supabase.from('project_tasks').select('*, projects(name)').order('created_at', { ascending: false }).limit(8),
                     supabase.from('project_milestones').select('*, projects(name)').gte('start_date', new Date().toISOString()).order('start_date', { ascending: true }).limit(6),
-                    supabase.from('facturas').select('*').order('created_at', { ascending: false }),
+                    // Las facturas de formación son filas de `facturas` igual que las
+                    // de proyecto: entran aquí solas. Se traen los dos nombres para
+                    // poder decir de dónde viene cada una.
+                    supabase.from('facturas').select('*, projects(name), formaciones(titulo)').order('created_at', { ascending: false }),
                     supabase.from('project_payments').select('*').order('created_at', { ascending: false }),
                     supabase.from('users').select('id, nombre, apellido1, email, avatar_url'),
                     supabase.from('project_tasks').select('id, status, project_id'),
+                    supabase.from('formaciones').select('id, titulo, estado, fecha_inicio, horas_totales'),
                 ]);
 
                 setLeads(leadsData || []);
@@ -160,6 +166,7 @@ export default function Dashboard() {
                 setPayments(paymentsData || []);
                 setUsers(usersData || []);
                 setProjectTasks(allTasksData || []);
+                setFormaciones(formacionesData || []);
             } catch (err) {
                 console.error('Dashboard fetch error:', err);
             } finally {
@@ -172,9 +179,26 @@ export default function Dashboard() {
     // ─── Computed KPIs ───
     const totalLeads = leads.length;
     const activeProjects = projects.filter(p => p.status === 'En Progreso' || p.status === 'Pendiente').length;
-    const totalInvoiced = invoices.reduce((sum, inv) => sum + parseFloat(inv.total || 0), 0);
-    const totalPaid = payments.reduce((sum, pay) => sum + parseFloat(pay.amount || 0), 0);
+    // Facturado: todo lo emitido, venga de proyecto o de formación. Se descuentan
+    // las anuladas, que no son ingreso.
+    const totalInvoiced = invoices
+        .filter(inv => inv.estado !== 'anulada')
+        .reduce((sum, inv) => sum + parseFloat(inv.total || 0), 0);
+
+    // Cobrado: sale del estado de la propia factura, que es el dato fiscal.
+    // Antes se sumaba project_payments — una tabla del facturador antiguo que
+    // solo conoce proyectos, así que ninguna formación habría contado nunca.
+    const totalPaid = invoices
+        .filter(inv => inv.estado === 'pagada')
+        .reduce((sum, inv) => sum + parseFloat(inv.total || 0), 0);
+
     const pendingBalance = Math.max(0, totalInvoiced - totalPaid);
+
+    const facturadoFormacion = invoices
+        .filter(inv => inv.formacion_id && inv.estado !== 'anulada')
+        .reduce((sum, inv) => sum + parseFloat(inv.total || 0), 0);
+
+    const formacionesActivas = formaciones.filter(f => ['propuesta', 'confirmada'].includes(f.estado)).length;
 
     // User map for display
     const userMap = useMemo(() => {
@@ -326,9 +350,10 @@ export default function Dashboard() {
 
                 {/* ═══ KPI CARDS ═══ */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10">
-                    <StatCard title="Leads Totales" value={totalLeads} subtitle={`${leads.filter(l => l.status === 'pendiente').length} pendientes`} icon={Target} color="primary" delay={0} />
-                    <StatCard title="Proyectos Activos" value={activeProjects} subtitle={`${projects.length} total`} icon={FolderOpen} color="violet" delay={0.1} />
-                    <StatCard title="Total Facturado" value={`€${totalInvoiced.toFixed(2)}`} subtitle={`${invoices.length} facturas`} icon={Receipt} color="emerald" delay={0.2} />
+                    {/* 'pendiente' dejó de existir en la migración 012: ahora es 'nuevo' */}
+                    <StatCard title="Leads Totales" value={totalLeads} subtitle={`${leads.filter(l => l.status === 'nuevo').length} sin contestar`} icon={Target} color="primary" delay={0} />
+                    <StatCard title="En marcha" value={activeProjects + formacionesActivas} subtitle={`${activeProjects} proyectos · ${formacionesActivas} formaciones`} icon={FolderOpen} color="violet" delay={0.1} />
+                    <StatCard title="Total Facturado" value={`€${totalInvoiced.toFixed(2)}`} subtitle={facturadoFormacion > 0 ? `€${facturadoFormacion.toFixed(2)} en formación` : `${invoices.length} facturas`} icon={Receipt} color="emerald" delay={0.2} />
                     <StatCard title="Pendiente de Cobro" value={`€${pendingBalance.toFixed(2)}`} subtitle={pendingBalance <= 0 ? 'Todo cobrado ✓' : `${Math.round((totalPaid / (totalInvoiced || 1)) * 100)}% cobrado`} icon={Wallet} color="amber" delay={0.3} />
                 </div>
 
@@ -588,25 +613,32 @@ export default function Dashboard() {
                             {/* Revenue per project - top 3 */}
                             {invoices.length > 0 && (
                                 <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-variable-muted mb-3">Top Proyectos</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-variable-muted mb-3">Lo que más factura</p>
                                     <div className="space-y-2">
                                         {(() => {
-                                            const projectTotals = {};
-                                            invoices.forEach(inv => {
-                                                const pId = inv.project_id;
-                                                const proj = projects.find(p => p.id === pId);
-                                                if (proj) {
-                                                    projectTotals[pId] = (projectTotals[pId] || { name: proj.name, total: 0 });
-                                                    projectTotals[pId].total += parseFloat(inv.total || 0);
-                                                }
-                                            });
-                                            return Object.values(projectTotals)
+                                            // Antes solo miraba project_id, así que una factura de
+                                            // formación no aparecía por ningún lado.
+                                            const totales = {};
+                                            invoices
+                                                .filter(inv => inv.estado !== 'anulada')
+                                                .forEach(inv => {
+                                                    const clave = inv.project_id || inv.formacion_id;
+                                                    if (!clave) return;
+                                                    const nombre = inv.projects?.name || inv.formaciones?.titulo;
+                                                    if (!nombre) return;
+                                                    totales[clave] = totales[clave] || { nombre, total: 0, esFormacion: !!inv.formacion_id };
+                                                    totales[clave].total += parseFloat(inv.total || 0);
+                                                });
+                                            return Object.values(totales)
                                                 .sort((a, b) => b.total - a.total)
                                                 .slice(0, 3)
-                                                .map((p, i) => (
+                                                .map((x, i) => (
                                                     <div key={i} className="flex items-center justify-between">
-                                                        <span className="text-xs text-variable-muted truncate flex-1 mr-2">{p.name}</span>
-                                                        <span className="text-xs font-bold text-variable-main">€{p.total.toFixed(2)}</span>
+                                                        <span className="text-xs text-variable-muted truncate flex-1 mr-2">
+                                                            {x.esFormacion && <span className="text-primary font-black mr-1.5">·</span>}
+                                                            {x.nombre}
+                                                        </span>
+                                                        <span className="text-xs font-bold text-variable-main">€{x.total.toFixed(2)}</span>
                                                     </div>
                                                 ));
                                         })()}
