@@ -75,6 +75,17 @@ export default function BarraNavegacion() {
 
     useEffect(() => { setAbierto(null); setMovilAbierto(false); }, [pathname]);
 
+    // Título de la pestaña por sección: antes todas decían lo mismo (el <title>
+    // fijo del index.html) y no se distinguía una pestaña de otra.
+    useEffect(() => {
+        const planas = NAV.flatMap((s) => (s.items ? s.items : [s]));
+        // La coincidencia más larga gana: /formaciones/:id cae en Formaciones
+        const seccion = planas
+            .filter((i) => rutaActiva(pathname, i.to))
+            .sort((a, b) => b.to.length - a.to.length)[0];
+        document.title = seccion ? seccion.label + ' · Automátízatelo' : 'Automátízatelo · Panel';
+    }, [pathname]);
+
     const salir = async () => {
         try {
             await signOut();
