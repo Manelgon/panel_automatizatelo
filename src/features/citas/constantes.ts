@@ -31,9 +31,9 @@ export const ORIGENES_CITA = {
 };
 
 /** Fecha y hora para un <input type="datetime-local">, en horario local. */
-export const paraInputLocal = (fecha) => {
+export const paraInputLocal = (fecha?: string | Date | null): string => {
     const d = fecha ? new Date(fecha) : new Date();
-    const pad = (n) => String(n).padStart(2, '0');
+    const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 

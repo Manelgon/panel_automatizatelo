@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { jsPDF } from 'jspdf';
 
 // =============================================================================
 // ENVÍO DE DOCUMENTOS POR CORREO
@@ -9,12 +10,12 @@ import { supabase } from './supabase';
 // =============================================================================
 
 /** jsPDF → base64, por trozos: el spread de un ArrayBuffer grande revienta la pila. */
-export function pdfABase64(doc) {
+export function pdfABase64(doc: jsPDF): string {
     const bytes = new Uint8Array(doc.output('arraybuffer'));
     let binario = '';
     const TROZO = 0x8000;
     for (let i = 0; i < bytes.length; i += TROZO) {
-        binario += String.fromCharCode.apply(null, bytes.subarray(i, i + TROZO));
+        binario += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + TROZO)));
     }
     return btoa(binario);
 }
@@ -23,8 +24,8 @@ export function pdfABase64(doc) {
  * Cuerpo HTML con la voz de la web: primera persona, marca arriba, sin adornos.
  * `lineas` son párrafos ya escritos; se escapan aquí.
  */
-export function htmlDocumento({ saludo = '¡Hola!', lineas = [] }) {
-    const esc = (s) => String(s ?? '')
+export function htmlDocumento({ saludo = '¡Hola!', lineas = [] }: { saludo?: string; lineas?: string[] }): string {
+    const esc = (s: string) => String(s ?? '')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     const parrafos = lineas
@@ -61,7 +62,14 @@ export function htmlDocumento({ saludo = '¡Hola!', lineas = [] }) {
  * Envía un correo con un PDF adjunto a través de la Edge Function.
  * Devuelve { ok } o { error } — nunca lanza: quien llama decide qué enseñar.
  */
-export async function enviarDocumento({ para, asunto, saludo, lineas, doc, nombreAdjunto }) {
+export async function enviarDocumento({ para, asunto, saludo, lineas, doc, nombreAdjunto }: {
+    para: string | null | undefined;
+    asunto: string;
+    saludo?: string;
+    lineas?: string[];
+    doc: jsPDF;
+    nombreAdjunto: string;
+}): Promise<{ ok?: true; error?: string }> {
     if (!para?.trim()) return { error: 'El cliente no tiene email guardado. Añádelo en su ficha.' };
 
     const { data, error } = await supabase.functions.invoke('email', {

@@ -68,7 +68,14 @@ export const APROVECHAMIENTO = {
 };
 
 /** La empresa si la hay; si no, la persona. Mismo criterio que en Proyectos. */
-export const nombreCliente = (c) =>
+type ClienteNombrable = {
+    company_name?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    email?: string | null;
+} | null | undefined;
+
+export const nombreCliente = (c: ClienteNombrable) =>
     (c?.company_name || '').trim()
     || [c?.first_name, c?.last_name].filter(Boolean).join(' ')
     || c?.email

@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import tseslint from 'typescript-eslint';
 
 // =============================================================================
 // ESLint — pensado para cazar lo que el build NO ve
@@ -21,8 +22,19 @@ export default [
         ignores: ['dist/**', 'node_modules/**', 'public/**', 'supabase/functions/**'],
     },
     js.configs.recommended,
+    // Ficheros TypeScript: parser propio y sus recomendadas. `no-undef` se apaga
+    // en TS — el compilador ya lo comprueba mejor, y la regla da falsos
+    // positivos con tipos.
+    ...tseslint.configs.recommended.map((c) => ({ ...c, files: ['**/*.{ts,tsx}'] })),
     {
-        files: ['**/*.{js,jsx}'],
+        files: ['**/*.{ts,tsx}'],
+        rules: {
+            'no-undef': 'off',
+            '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+        },
+    },
+    {
+        files: ['**/*.{js,jsx,ts,tsx}'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',

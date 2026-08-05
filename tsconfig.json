@@ -1,0 +1,31 @@
+{
+    // ==========================================================================
+    // TypeScript en modo convivencia (fase 4f)
+    // ==========================================================================
+    // El proyecto migra por capas: los .jsx siguen funcionando tal cual
+    // (allowJs, sin checkJs) y lo nuevo o lo migrado se escribe en .ts/.tsx con
+    // strict completo. `npm run typecheck` comprueba sin emitir — quien compila
+    // es Vite.
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "jsx": "react-jsx",
+
+        "allowJs": true,
+        "checkJs": false,
+
+        "strict": true,
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+
+        "noEmit": true,
+        "isolatedModules": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist", "supabase/functions"]
+}
