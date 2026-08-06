@@ -12,24 +12,42 @@ import { LoadingProvider } from './context/LoadingContext';
 // Login queda estático a propósito — es la primera pantalla y no debe esperar
 // a una segunda petición.
 import Login from './features/auth/pages/Login';
-const Dashboard = lazy(() => import('./features/dashboard/pages/Dashboard'));
-const ProjectDetail = lazy(() => import('./features/proyectos/pages/ProjectDetail'));
-const Users = lazy(() => import('./features/equipo/pages/Users'));
-const Leads = lazy(() => import('./features/leads/pages/Leads'));
-const Clientes = lazy(() => import('./features/clientes/pages/Clientes'));
-const ClienteDetail = lazy(() => import('./features/clientes/pages/ClienteDetail'));
-const Blog = lazy(() => import('./features/contenidos/pages/Blog'));
-const Services = lazy(() => import('./features/ajustes/pages/Services'));
-const Projects = lazy(() => import('./features/proyectos/pages/Projects'));
-const Formaciones = lazy(() => import('./features/formaciones/pages/Formaciones'));
-const FormacionDetalle = lazy(() => import('./features/formaciones/pages/FormacionDetalle'));
-const Tasks = lazy(() => import('./features/agenda/pages/Tasks'));
-const Facturas = lazy(() => import('./features/facturacion/pages/Facturas'));
-const AjustesEmisor = lazy(() => import('./features/facturacion/pages/AjustesEmisor'));
-const AjustesEmail = lazy(() => import('./features/ajustes/pages/AjustesEmail'));
-const RegistroActividad = lazy(() => import('./features/ajustes/pages/RegistroActividad'));
-const Verifactu = lazy(() => import('./features/facturacion/pages/Verifactu'));
-const Calendar = lazy(() => import('./features/agenda/pages/Calendar'));
+
+// Tras un deploy, un navegador con el index.html viejo pide chunks que ya no
+// existen y la página "no se abre". Si el import falla, recargamos UNA vez
+// (marca en sessionStorage para no entrar en bucle) y el navegador se trae el
+// index nuevo con los chunks buenos.
+const importSeguro = (importar) => () =>
+    importar().then((m) => {
+        sessionStorage.removeItem('panel-recarga-chunk');
+        return m;
+    }).catch((err) => {
+        if (!sessionStorage.getItem('panel-recarga-chunk')) {
+            sessionStorage.setItem('panel-recarga-chunk', '1');
+            window.location.reload();
+            return new Promise(() => { });   // la recarga corta el flujo
+        }
+        throw err;
+    });
+
+const Dashboard = lazy(importSeguro(() => import('./features/dashboard/pages/Dashboard')));
+const ProjectDetail = lazy(importSeguro(() => import('./features/proyectos/pages/ProjectDetail')));
+const Users = lazy(importSeguro(() => import('./features/equipo/pages/Users')));
+const Leads = lazy(importSeguro(() => import('./features/leads/pages/Leads')));
+const Clientes = lazy(importSeguro(() => import('./features/clientes/pages/Clientes')));
+const ClienteDetail = lazy(importSeguro(() => import('./features/clientes/pages/ClienteDetail')));
+const Blog = lazy(importSeguro(() => import('./features/contenidos/pages/Blog')));
+const Services = lazy(importSeguro(() => import('./features/ajustes/pages/Services')));
+const Projects = lazy(importSeguro(() => import('./features/proyectos/pages/Projects')));
+const Formaciones = lazy(importSeguro(() => import('./features/formaciones/pages/Formaciones')));
+const FormacionDetalle = lazy(importSeguro(() => import('./features/formaciones/pages/FormacionDetalle')));
+const Tasks = lazy(importSeguro(() => import('./features/agenda/pages/Tasks')));
+const Facturas = lazy(importSeguro(() => import('./features/facturacion/pages/Facturas')));
+const AjustesEmisor = lazy(importSeguro(() => import('./features/facturacion/pages/AjustesEmisor')));
+const AjustesEmail = lazy(importSeguro(() => import('./features/ajustes/pages/AjustesEmail')));
+const RegistroActividad = lazy(importSeguro(() => import('./features/ajustes/pages/RegistroActividad')));
+const Verifactu = lazy(importSeguro(() => import('./features/facturacion/pages/Verifactu')));
+const Calendar = lazy(importSeguro(() => import('./features/agenda/pages/Calendar')));
 
 // El mismo spinner que ya usa el resto del panel mientras carga una página
 const CargandoPagina = () => (
